@@ -145,4 +145,4 @@ window.addEventListener('online',loadData);
 setInterval(()=>{if(!document.hidden){render();if($('detail-dialog').open)renderDetail();}},60000);
 
 loadData();
-map.init().then(()=>{state.mapReady=true;map.setCenter(state.center);map.setStations(state.visible,state.selected,state.fuel);}).catch(()=>{setMapNotice('지도를 불러오지 못했습니다. 목록 검색과 절약액 계산은 계속 이용할 수 있습니다.');});
+map.init().then(()=>{state.mapReady=true;$('map-loading')?.remove();map.setCenter(state.center);map.setStations(state.visible,state.selected,state.fuel);}).catch(()=>{$('map-loading')?.remove();setMapNotice('지도를 불러오지 못했습니다. 목록 검색과 절약액 계산은 계속 이용할 수 있습니다.');});
