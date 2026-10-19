@@ -41,16 +41,22 @@ jobs:
         with:
           path: |
             public/data/stations.json
-          key: opinet-data-v1-${{ github.run_id }}-${{ github.run_attempt }}
+            public/data/averages.json
+            public/data/highway.json
+          key: fuel-data-v2-${{ github.run_id }}-${{ github.run_attempt }}
           restore-keys: |
+            fuel-data-v2-
             opinet-data-v1-
       - name: Restore shared daily call ledger
         if: github.event_name != 'pull_request'
         uses: actions/cache/restore@v6
         with:
-          path: .cache/opinet-quota.json
-          key: opinet-quota-v1-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            .cache/opinet-quota.json
+            .cache/ex-quota.json
+          key: fuel-quota-v2-${{ github.run_id }}-${{ github.run_attempt }}
           restore-keys: |
+            fuel-quota-v2-
             opinet-quota-v1-
       - name: Collect official prices or preserve explicit unavailable state
         if: github.event_name != 'pull_request'
@@ -59,12 +65,21 @@ jobs:
         env:
           OPINET_API_KEY: ${{ secrets.OPINET_API_KEY }}
         run: node scripts/collect.mjs --output public/data/stations.json --ledger .cache/opinet-quota.json
+      - name: Collect regional averages and highway fuel data
+        if: github.event_name != 'pull_request'
+        continue-on-error: true
+        env:
+          OPINET_API_KEY: ${{ secrets.OPINET_API_KEY }}
+          EX_API_KEY: ${{ secrets.EX_API_KEY }}
+        run: npm run collect:energy
       - name: Save consumed quota even after collection failure
         if: always() && github.event_name != 'pull_request'
         uses: actions/cache/save@v6
         with:
-          path: .cache/opinet-quota.json
-          key: opinet-quota-v1-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            .cache/opinet-quota.json
+            .cache/ex-quota.json
+          key: fuel-quota-v2-${{ github.run_id }}-${{ github.run_attempt }}
       - name: Validate deployable assets and data
         run: npm run check
       - name: Preserve last collection result
@@ -73,7 +88,9 @@ jobs:
         with:
           path: |
             public/data/stations.json
-          key: opinet-data-v1-${{ github.run_id }}-${{ github.run_attempt }}
+            public/data/averages.json
+            public/data/highway.json
+          key: fuel-data-v2-${{ github.run_id }}-${{ github.run_attempt }}
       - name: Build for project root
         env:
           PUBLIC_API_BASE: ${{ vars.PUBLIC_API_BASE }}
@@ -91,8 +108,13 @@ jobs:
         run: |
           node --input-type=module <<'JS'
           import {readFile,appendFile} from 'node:fs/promises';
-          const d=JSON.parse(await readFile('public/data/stations.json','utf8'));
-          await appendFile(process.env.GITHUB_STEP_SUMMARY,`## 주유한눈 데이터 상태\n\n- 상태: ${d.status}\n- 주유소: ${d.stations.length}곳\n- 마지막 수집: ${d.fetchedAt??'없음'}\n- 가격 기준시각은 유종별 priceUpdatedAt 확인\n\nAPI 미연결 상태의 배포 성공은 실가격 연동 성공을 뜻하지 않습니다.\n`);
+          let report='## 주유한눈 데이터 상태\n\n| 자료 | 상태 | 건수 | 마지막 성공 수집 | 이전 자료 보존 |\n|---|---|---:|---|---|\n';
+          for(const [name,file,field] of [['주변 주유소','stations','stations'],['평균 유가','averages','benchmarks'],['고속도로 주유소','highway','stations']]){
+            const d=JSON.parse(await readFile(`public/data/${file}.json`,'utf8'));
+            report+=`| ${name} | ${d.status} | ${d[field].length} | ${d.fetchedAt??'없음'} | ${d.cache?.stale?'예':'아니요'} |\n`;
+          }
+          report+='\n가격 기준시각은 유종별 priceUpdatedAt, 평균 기준일은 asOfDate를 확인합니다. 수소 자료는 직전월 평균의 공식 안내입니다. API 미연결 상태의 배포 성공은 실가격 연동 성공을 뜻하지 않습니다.\n';
+          await appendFile(process.env.GITHUB_STEP_SUMMARY,report);
           JS
 
   deploy:

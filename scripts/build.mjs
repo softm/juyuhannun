@@ -26,9 +26,11 @@ async function hashCode(directory,prefix=''){
 await hashCode(`${root}dist`);
 const revision=hash.digest('hex').slice(0,12),versionRoot=`${root}dist/_app/${revision}`;
 await mkdir(versionRoot,{recursive:true});
-for(const path of ['js','shared','config.js','styles.css'])await cp(`${root}dist/${path}`,`${versionRoot}/${path}`,{recursive:true});
-let html=await readFile(`${root}dist/index.html`,'utf8');
-html=html.replace('href="./styles.css"',`href="./_app/${revision}/styles.css"`).replace('src="./js/app.js"',`src="./_app/${revision}/js/app.js"`).replace('<html lang="ko">',`<html lang="ko" data-build="${revision}">`);
-await writeFile(`${root}dist/index.html`,html);
+for(const path of ['js','shared','config.js',...(await readdir(`${root}dist`)).filter(name=>name.endsWith('.css'))])await cp(`${root}dist/${path}`,`${versionRoot}/${path}`,{recursive:true});
+for(const name of (await readdir(`${root}dist`)).filter(name=>name.endsWith('.html'))){
+ let html=await readFile(`${root}dist/${name}`,'utf8');
+ html=html.replace(/(href|src)="\.\/((?:js\/[^\"]+\.js)|(?:[^\"/]+\.css))"/g,(_,attr,path)=>`${attr}="./_app/${revision}/${path}"`).replace('<html lang="ko">',`<html lang="ko" data-build="${revision}">`);
+ await writeFile(`${root}dist/${name}`,html);
+}
 await writeFile(`${root}dist/.nojekyll`,'');
 console.log(`Built static site in dist/; version ${revision} (publish its contents at the site root).`);

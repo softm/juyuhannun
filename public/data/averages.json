@@ -1,0 +1,71 @@
+{
+  "status": "awaiting_credentials",
+  "provider": "opinet",
+  "dataGranularity": "aggregate",
+  "fetchedAt": null,
+  "benchmarks": [],
+  "datasets": [
+    {
+      "scope": "national",
+      "status": "awaiting_credentials",
+      "fetchedAt": null,
+      "count": 0,
+      "cache": {
+        "hit": false,
+        "ageSeconds": null,
+        "stale": false
+      },
+      "source": {
+        "name": "한국석유공사 오피넷",
+        "url": "https://www.opinet.co.kr/",
+        "apiUrl": "https://www.opinet.co.kr/api/avgAllPrice.do",
+        "documentationUrl": "https://www.opinet.co.kr/user/custapi/openApiInfoDtl.do?apiId=4",
+        "metadataUrl": "https://www.data.go.kr/data/15150932/openapi.do"
+      }
+    },
+    {
+      "scope": "sido",
+      "status": "awaiting_credentials",
+      "fetchedAt": null,
+      "count": 0,
+      "cache": {
+        "hit": false,
+        "ageSeconds": null,
+        "stale": false
+      },
+      "source": {
+        "name": "한국석유공사 오피넷",
+        "url": "https://www.opinet.co.kr/",
+        "apiUrl": "https://www.opinet.co.kr/api/avgSidoPrice.do",
+        "documentationUrl": "https://www.opinet.co.kr/user/custapi/openApiInfoDtl.do?apiId=6"
+      }
+    }
+  ],
+  "coverage": {
+    "kind": "regional_average",
+    "scopes": [
+      "national",
+      "sido"
+    ],
+    "fuel": null,
+    "sido": null,
+    "sigunRequested": false,
+    "complete": false,
+    "description": "전국·지역별 평균가격 참고자료입니다. 개별 주유소의 판매가격이나 실제 절약액을 나타내지 않습니다."
+  },
+  "cache": {
+    "hit": false,
+    "ageSeconds": null,
+    "stale": false
+  },
+  "warnings": [],
+  "error": {
+    "code": "OPINET_CREDENTIALS_REQUIRED",
+    "message": "오피넷 인증키 연결 후 평균가격을 조회할 수 있습니다."
+  },
+  "lastAttempt": {
+    "at": "2026-10-19T23:18:33.993Z",
+    "status": "awaiting_credentials",
+    "calls": 0
+  }
+}

@@ -4,6 +4,8 @@ import { resolve, dirname, extname, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { DailyQuota } from './quota.mjs';
 import { OpinetClient } from './opinet.mjs';
+import { OpinetBenchmarkClient } from './benchmarks.mjs';
+import { HighwayClient } from './highway.mjs';
 import { NaverRouteClient } from './route.mjs';
 import { ServiceError, publicError } from './errors.mjs';
 
@@ -11,10 +13,13 @@ const PROJECT_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const integerEnv = (value, fallback, min, max) => { const number = Number(value); return Number.isInteger(number) && number >= min && number <= max ? number : fallback; };
 const MIME = { '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.mjs': 'text/javascript; charset=utf-8', '.json': 'application/json; charset=utf-8', '.svg': 'image/svg+xml', '.png': 'image/png', '.webp': 'image/webp', '.jpg': 'image/jpeg', '.ico': 'image/x-icon', '.webmanifest': 'application/manifest+json', '.txt': 'text/plain; charset=utf-8', '.xml': 'application/xml; charset=utf-8', '.woff2': 'font/woff2' };
 
-export function createApp({ env = process.env, fetchImpl = fetch, projectRoot = PROJECT_ROOT, clock = Date.now, opinetClient, routeClient } = {}) {
+export function createApp({ env = process.env, fetchImpl = fetch, projectRoot = PROJECT_ROOT, clock = Date.now, opinetClient, routeClient, benchmarkClient, highwayClient } = {}) {
   const opinetQuota = new DailyQuota({ ledgerPath: resolve(projectRoot, env.OPINET_QUOTA_LEDGER || '.cache/opinet-quota.json'), limit: integerEnv(env.OPINET_DAILY_LIMIT, 300, 1, 300), clock });
   const routeQuota = new DailyQuota({ ledgerPath: resolve(projectRoot, env.NAVER_QUOTA_LEDGER || '.cache/naver-quota.json'), limit: integerEnv(env.NAVER_DAILY_LIMIT, 200, 1, 10_000), provider: 'NAVER', clock });
   const opinet = opinetClient ?? new OpinetClient({ apiKey: env.OPINET_API_KEY || '', quota: opinetQuota, fetchImpl, clock, ttlMs: integerEnv(env.OPINET_CACHE_TTL_SECONDS, 600, 30, 3600) * 1000, detailLimit: integerEnv(env.OPINET_DETAIL_LIMIT, 8, 0, 20) });
+  const benchmarks = benchmarkClient ?? new OpinetBenchmarkClient({ client: opinet });
+  const highwayQuota = new DailyQuota({ ledgerPath: resolve(projectRoot, env.EX_QUOTA_LEDGER || '.cache/ex-quota.json'), limit: integerEnv(env.EX_DAILY_LIMIT, 1000, 1, 10_000), provider: 'EX', clock });
+  const highway = highwayClient ?? new HighwayClient({ apiKey: env.EX_API_KEY || '', quota: highwayQuota, fetchImpl, clock });
   const routes = routeClient ?? new NaverRouteClient({ apiKeyId: env.NAVER_MAPS_API_KEY_ID || env.NAVER_CLIENT_ID || '', apiKey: env.NAVER_MAPS_API_KEY || env.NAVER_CLIENT_SECRET || '', quota: routeQuota, fetchImpl, clock });
   const publicRoot = resolve(projectRoot, 'public');
   const allowedOrigins = new Set((env.API_ALLOWED_ORIGINS || '').split(',').map(value => value.trim()).filter(Boolean));
@@ -54,12 +59,20 @@ export function createApp({ env = process.env, fetchImpl = fetch, projectRoot = 
         if (window.count > 120) throw new ServiceError('REQUEST_RATE_EXCEEDED', '요청이 많습니다. 잠시 후 다시 시도해 주세요.', 429);
         if (pathname === '/api/health') {
           const quota = await opinetQuota.snapshot().catch(() => null);
-          json(response, 200, { status: 'ok', service: 'juyuhannun', providers: { opinet: { configured: opinet.configured, quota }, naver: { configured: routes.configured } }, source: 'https://www.opinet.co.kr/', serverTime: new Date(clock()).toISOString() });
+          json(response, 200, { status: 'ok', service: 'juyuhannun', providers: { opinet: { configured: opinet.configured, quota }, highway: { configured: highway.configured }, naver: { configured: routes.configured } }, source: 'https://www.opinet.co.kr/', serverTime: new Date(clock()).toISOString() });
           return;
         }
         if (pathname === '/api/stations') {
           const result = await opinet.nearby({ lat: url.searchParams.get('lat'), lng: url.searchParams.get('lng'), radius: url.searchParams.get('radius') ?? 3000, fuel: url.searchParams.get('fuel') ?? 'B027' });
           json(response, 200, result); return;
+        }
+        if (pathname === '/api/benchmarks') {
+          const option = url.searchParams.get('includeSigun');
+          if (option !== null && !['true', 'false'].includes(option)) throw new ServiceError('INVALID_BENCHMARK_OPTION', '시군구 조회 옵션을 확인해 주세요.', 400);
+          json(response, 200, await benchmarks.snapshot({ fuel: url.searchParams.get('fuel'), sido: url.searchParams.get('sido'), includeSigun: option === 'true' })); return;
+        }
+        if (pathname === '/api/highway-stations') {
+          json(response, 200, await highway.snapshot()); return;
         }
         const detailMatch = pathname.match(/^\/api\/stations\/([^/]+)$/);
         if (detailMatch) { json(response, 200, await opinet.detail(detailMatch[1], url.searchParams.get('fuel') ?? 'B027')); return; }

@@ -14,3 +14,11 @@ dialog{padding:34px;border:1px solid #dce6d6;border-radius:20px;background:#fff;
 .map-section #map>.map-surface{width:100%;height:100%}
 .empty-icon svg,.small-button>svg{fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
 .small-button>svg{width:17px;height:17px}
+.sidebar:has(.route-panel:not([hidden])){overflow-y:auto;overscroll-behavior:contain}
+.sidebar:has(.route-panel:not([hidden])) .route-panel{max-height:none;overflow:visible}
+.sidebar:has(.route-panel:not([hidden])) .results{overflow:visible;flex:none;min-height:180px}
+.sidebar:has(.route-panel:not([hidden])) .view-tabs{position:sticky;top:0;z-index:3;background:white}
+.open-energy-link{display:inline-flex;font-size:11px;font-weight:600;align-items:center;padding:9px 11px;border-radius:7px;background:#edf3e7;white-space:nowrap}
+@media(max-width:760px){.app-header:has(.open-energy-link){gap:8px}.app-header:has(.open-energy-link) .header-actions{gap:4px}.open-energy-link{font-size:10px;padding:7px}.app-header:has(.open-energy-link) .brand small{letter-spacing:.3px}.app-header:has(.open-energy-link) .text-button .icon{display:none}}
+
+@media(max-width:760px){.app-header:has(.open-energy-link) .text-button{padding:8px}.app-header:has(.open-energy-link) .text-button .icon{display:inline-flex}.app-header:has(.open-energy-link) .text-button>span:last-child{display:none}}

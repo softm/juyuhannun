@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#124d42">
+  <meta name="referrer" content="strict-origin-when-cross-origin">
+  <title>평균유가·고속도로 주유소 — 주유한눈</title>
+  <meta name="description" content="오피넷 전국·지역 평균유가와 한국도로공사 고속도로 주유소 정보를 가격 기준일·수집시각과 함께 확인합니다. 수소충전소 월평균 공식 자료도 안내합니다.">
+  <link rel="icon" type="image/svg+xml" href="./assets/icon.svg">
+  <link rel="stylesheet" href="./styles.css">
+  <link rel="stylesheet" href="./energy.css">
+  <script type="module" src="./js/energy.js"></script>
+</head>
+<body class="energy-page energy-reference-view">
+  <a class="skip" href="#energy-results">가격 참고정보 목록으로 이동</a>
+  <header class="app-header">
+    <a class="brand" href="./" aria-label="주유한눈 홈"><img src="./assets/icon.svg" width="42" height="42" alt=""><span>주유<span class="brand-light">한눈</span><small>가격부터 이동 비용까지</small></span></a>
+    <div class="header-copy">공식 자료를 <strong>알맞은 기준으로 비교합니다.</strong></div>
+    <a class="back-to-fuel" href="./">← 주유소 가격 비교</a>
+  </header>
+  <nav class="energy-tabs" aria-label="가격 참고정보 선택">
+    <button type="button" class="active" data-energy="averages" aria-current="page"><span aria-hidden="true">▥</span>평균 유가</button>
+    <button type="button" data-energy="highway"><span aria-hidden="true">↗</span>고속도로 주유소</button>
+    <button type="button" data-energy="hydrogen"><span aria-hidden="true">H₂</span>수소 월평균 안내</button>
+  </nav>
+  <main class="energy-workspace">
+    <aside class="energy-sidebar" aria-label="가격 참고자료 검색">
+      <section class="energy-heading">
+        <span class="eyebrow" id="energy-eyebrow">FUEL PRICE REFERENCE</span>
+        <h1 id="energy-title">우리 지역 기름값,<br>평균과 비교하세요.</h1>
+        <p id="energy-description">전국·지역별 평균으로 가격 흐름을 확인하세요.</p>
+      </section>
+      <div class="energy-filters" id="energy-filters">
+        <label class="energy-search"><span class="sr-only" id="energy-query-label">평균유가 지역 이름 검색</span><input id="energy-query" type="search" placeholder="표시된 지역 이름 검색" maxlength="100" autocomplete="off"><span aria-hidden="true">⌕</span></label>
+        <div class="energy-filter-row">
+          <label id="energy-fuel-wrap">유종<select id="energy-fuel"><option value="B027">휘발유</option><option value="D047">경유</option><option value="K015">LPG</option></select></label>
+          <button id="energy-refresh" class="small-button secondary" type="button">새로고침 ↻</button>
+        </div>
+        <div id="energy-average-filters" class="energy-average-filters"><label>시도별 평균 범위<select id="energy-average-region"><option value="">전국 · 모든 시도</option></select></label><label class="energy-check"><input id="energy-sigun" type="checkbox" disabled>선택한 시도의 시군구 평균도 조회</label><p id="energy-average-help">평균가격은 개별 주유소의 실제 판매가격과 다릅니다.</p></div>
+      </div>
+      <div id="energy-inline-status" class="energy-inline-status" role="status"><span class="source-dot"></span><div><strong>공식 자료 확인 중</strong><p>기준일과 수집시각을 확인합니다.</p></div></div>
+      <div class="energy-result-heading"><h2 id="energy-result-title">평균 유가</h2><span id="energy-count" class="count">0</span><span id="energy-coverage"></span></div>
+      <section id="energy-results" class="energy-results" tabindex="-1" aria-label="가격 참고자료 조회 결과" aria-live="polite" aria-busy="true"></section>
+      <footer class="energy-footer"><a id="energy-source" href="https://www.opinet.co.kr/user/custapi/custApiInfo.do" target="_blank" rel="noopener noreferrer">오피넷 자료 안내 ↗</a><span>가격 기준일과 수집시각을 확인하세요.</span></footer>
+    </aside>
+    <section class="energy-map-panel" aria-label="가격 기준 안내와 고속도로 주유소 지도">
+      <div id="energy-map" class="map-canvas" aria-label="고속도로 주유소 지도" hidden><div id="energy-map-loading" class="map-loading">지도를 준비하고 있습니다.</div></div>
+      <div id="energy-status" class="energy-status" role="status" hidden><span class="source-dot"></span><div><strong>공식 자료 확인 중</strong><p>자료의 범위와 기준시각을 확인합니다.</p></div></div>
+      <div id="energy-map-buttons" class="energy-map-buttons" hidden><button type="button" id="energy-locate" class="map-action" aria-label="현재 위치로 지도 이동" title="현재 위치">◎</button><button type="button" id="energy-home" class="map-action" aria-label="서울 중심으로 지도 이동" title="지도 초기화">⌂</button></div>
+      <div id="energy-map-message" class="energy-map-message"><span class="tag">AVERAGE PRICE</span><h2>비교의 기준을<br>함께 확인하세요.</h2><p>전국·지역 평균유가의 가격 기준일과<br>자료를 받은 수집시각을 구분해 확인하세요.</p></div>
+      <p id="energy-map-notice" class="energy-map-notice" hidden></p>
+      <button type="button" id="energy-mobile-toggle" class="energy-mobile-toggle" aria-expanded="false" aria-controls="energy-results" hidden>목록 넓게 보기</button>
+    </section>
+  </main>
+  <dialog id="energy-detail" class="energy-detail" aria-labelledby="energy-detail-title"><button type="button" id="energy-detail-close" class="dialog-close icon-button" aria-label="고속도로 주유소 상세 닫기">✕</button><div id="energy-detail-content"></div></dialog>
+  <div id="energy-toast" class="toast" role="status" hidden></div>
+</body>
+</html>

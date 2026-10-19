@@ -142,8 +142,31 @@ export class OpinetClient {
       const warnings = [];
       if (stations.length < rows.length) warnings.push({ code: 'INVALID_STATIONS_OMITTED', message: '위치나 식별자가 올바르지 않은 일부 자료를 제외했습니다.' });
       let detailFailure = false;
+      const detailConflicts = new Set();
+      // Check every returned station, including those outside the enrichment
+      // limit. An older detail cache must not overwrite a newer nearby price,
+      // either here or when the user subsequently opens the station details.
+      for (let index = 0; index < stations.length; index++) {
+        const base = stations[index];
+        const detailKey = `detail:${base.id}`;
+        const previous = this.cache.get(detailKey, { allowStale: true })?.value?.station;
+        const previousPrice = previous?.prices?.[search.fuel];
+        if (base.price === null || !previousPrice || previousPrice.price === base.price ||
+            !(Date.parse(previousPrice.fetchedAt ?? previous.fetchedAt) < Date.parse(base.fetchedAt))) continue;
+        this.cache.items.delete(detailKey);
+        this.failureCache.items.delete(detailKey);
+        detailConflicts.add(base.id);
+        stations[index] = {
+          ...previous, fuel: base.fuel, price: base.price,
+          priceUpdatedAt: null, priceTimeStatus: 'unknown',
+          fetchedAt: base.fetchedAt, metadataFetchedAt: previous.fetchedAt,
+          distanceMeters: base.distanceMeters, distanceType: base.distanceType,
+          prices: { ...previous.prices, [search.fuel]: base.prices[search.fuel] },
+        };
+      }
       // Sequential enrichment bounds daily call use and reuses detail cache across fuels/zones.
       for (let index = 0; index < Math.min(this.detailLimit, stations.length); index++) {
+        if (detailConflicts.has(stations[index].id)) continue;
         try {
           const details = await this.detail(stations[index].id, search.fuel);
           if (details.status !== 'ready') { detailFailure = true; continue; }
@@ -156,7 +179,8 @@ export class OpinetClient {
       }
       if (stations.some(station => !station.priceUpdatedAt)) warnings.push({ code: 'PRICE_TIME_UNKNOWN', message: '가격 기준시각이 없는 주유소는 시간 확인이 필요한 자료입니다.' });
       if (detailFailure) warnings.push({ code: 'DETAIL_UNAVAILABLE', message: '일부 주유소의 상세 가격 기준시각을 받지 못했습니다.' });
-      return { status: detailFailure || stations.length < rows.length ? 'partial' : 'ready', provider: 'opinet', fetchedAt, coverage, stations, warnings };
+      if (detailConflicts.size) warnings.push({ code: 'DETAIL_PRICE_CONFLICT', message: '이전 상세가격과 달라 새로 조회한 가격을 표시합니다. 가격 기준시각은 다시 확인이 필요합니다.' });
+      return { status: detailFailure || detailConflicts.size || stations.length < rows.length ? 'partial' : 'ready', provider: 'opinet', fetchedAt, coverage, stations, warnings };
     });
   }
 

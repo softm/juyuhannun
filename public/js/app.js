@@ -34,17 +34,18 @@ async function loadData(){
  try{
   const data=await requestJSON(url,ctrl.signal);if(generation!==state.generation)return;
   if(!Array.isArray(data.stations))throw new Error('가격 자료의 형식을 확인할 수 없습니다.');
+  if(data.status==='error'&&!data.stations.length)throw new Error(data.error?.message||'가격 조회에 실패했습니다. 마지막으로 받은 자료를 표시합니다.');
   state.envelope=data;
   const dedupe=new Map();for(const s of data.stations){if(s&&typeof s.id==='string'&&typeof s.name==='string'&&finite(s.lat)&&finite(s.lng)&&s.lat>=32&&s.lat<=40&&s.lng>=123&&s.lng<=133)dedupe.set(s.id,s);}
   state.all=[...dedupe.values()];state.loading=false;render();if($('detail-dialog').open)renderDetail();
   const shareId=params.get('station');if(shareId&&!state.selected&&state.all.some(s=>s.id===shareId)){const st=state.all.find(s=>s.id===shareId);state.center={lat:st.lat,lng:st.lng};if(state.mapReady)map.setCenter(state.center);render();selectStation(shareId);}
- }catch(error){if(generation!==state.generation)return;state.loading=false;state.envelope={...state.envelope,status:'error',warnings:[error.name==='AbortError'?'자료 응답이 지연되고 있습니다. 다시 시도해 주세요.':error.message],error:{message:error.name==='AbortError'?'조회 시간이 초과되었습니다.':error.message}};render();}
+ }catch(error){if(generation!==state.generation)return;state.loading=false;state.envelope={...state.envelope,status:'error',cache:{...state.envelope?.cache,stale:true},warnings:[error.name==='AbortError'?'자료 응답이 지연되고 있습니다. 다시 시도해 주세요.':error.message],error:{message:error.name==='AbortError'?'조회 시간이 초과되었습니다.':error.message}};render();}
  finally{clearTimeout(timeout);if(generation===state.generation){state.loading=false;$('results').setAttribute('aria-busy','false');$('refresh').classList.remove('busy');$('search-area').disabled=false;}}
 }
 function routeKey(){return JSON.stringify({o:state.origin,d:state.destination,f:state.fuel});}
 function routeFor(id){const value=state.routes.get(id);return value?.key===routeKey()&&Date.now()-value.at<600000?value.route:null;}
 function settings(){return{liters:Number($('liters').value),kmPerLiter:Number($('economy').value),referencePrice:Number($('reference-price').value),hourlyValue:Number($('hourly-value').value)}}
-function stationSavings(station){const p=getFuelPrice(station,state.fuel);if(!p||!freshness(p.priceUpdatedAt,p.fetchedAt).eligible)return{eligible:false,reason:'가격 기준시각을 확인한 뒤 비교할 수 있습니다.'};return calculateSavings({...settings(),unitPrice:p.price,route:routeFor(station.id)});}
+function stationSavings(station){if(state.envelope?.cache?.stale||['error','awaiting_credentials'].includes(state.envelope?.status))return{eligible:false,reason:'가격 갱신에 성공한 뒤 이동 비용을 비교할 수 있습니다.'};const p=getFuelPrice(station,state.fuel);if(!p||!freshness(p.priceUpdatedAt,p.fetchedAt).eligible)return{eligible:false,reason:'가격 기준시각을 확인한 뒤 비교할 수 있습니다.'};return calculateSavings({...settings(),unitPrice:p.price,route:routeFor(station.id)});}
 function render(){
  const filtered=filterStations(state.all,{fuel:state.fuel,center:state.center,radius:state.radius,query:state.query,brand:state.brand,self:state.self,freshOnly:state.freshOnly,favorites:state.view==='saved'?state.favorites:null,sort:state.sort});
  if(state.sort==='savings')filtered.sort((a,b)=>{const x=stationSavings(a),y=stationSavings(b);return Number(y.eligible)-Number(x.eligible)||(x.eligible&&y.eligible?y.netSavings-x.netSavings:a.currentPrice.price-b.currentPrice.price);});

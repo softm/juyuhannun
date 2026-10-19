@@ -1,0 +1,77 @@
+.energy-tabs{display:flex;align-items:stretch;height:58px;padding:0 28px;background:white;border-bottom:1px solid var(--line);gap:12px;overflow-x:auto}
+.energy-tabs button{padding:0 18px;border-bottom:3px solid transparent;font-size:13px;font-weight:500;white-space:nowrap;color:#77887e;display:flex;align-items:center;gap:8px}
+.energy-tabs button.active{color:var(--green);border-bottom-color:var(--green);font-weight:800}
+.energy-tabs button>span{font-size:17px;font-weight:800}.back-to-fuel{font-size:12px;font-weight:600;padding:10px 0;white-space:nowrap}
+.energy-workspace{display:grid;grid-template-columns:430px minmax(0,1fr);height:calc(100dvh - 140px);min-height:480px}
+.energy-sidebar{display:flex;flex-direction:column;min-height:0;background:white;border-right:1px solid var(--line);z-index:20}
+.energy-heading{padding:28px 28px 20px}.energy-heading .eyebrow{font-size:9px;letter-spacing:2px;color:#7d946e}.energy-heading h1{font-size:25px;line-height:1.45;letter-spacing:-1.2px;margin:9px 0 10px}.energy-heading p{font-size:11px;line-height:1.8;color:#7c8c80;word-break:keep-all}
+.energy-filters{padding:0 24px 16px;border-bottom:1px solid var(--line)}.energy-search{display:flex;align-items:center;background:#f4f7f0;border:1px solid #e6ecdf;border-radius:8px;padding:0 12px;gap:10px}.energy-search input{height:40px;min-width:0;width:100%;border:0;background:none;color:var(--ink);font-size:12px}.energy-search>span:last-child{font-size:22px;color:#738d68}
+.energy-filter-row{display:flex;align-items:end;gap:10px;margin-top:12px}.energy-filter-row>label{flex:1;font-size:10px;color:#84917f}.energy-filter-row select,.energy-average-filters select{width:100%;height:33px;padding:0 7px;border:1px solid var(--line);border-radius:6px;background:white;color:var(--ink);font-size:11px;margin-top:4px}.energy-filter-row .small-button{height:33px;font-size:10px;padding:0 11px}
+.energy-average-filters{margin-top:12px;display:grid;gap:11px;font-size:10px;color:#647c66}.energy-check{display:flex;align-items:center;gap:6px}.energy-check input{width:13px;height:13px;margin:0}
+.energy-result-heading{display:flex;align-items:center;gap:8px;padding:17px 25px 12px;font-size:12px}.energy-result-heading h2{font-size:13px}.energy-result-heading>span:last-child{font-size:9px;color:var(--muted);margin-left:auto}
+.energy-results{flex:1;min-height:120px;overflow:auto;padding:0 20px 25px;overscroll-behavior:contain;scrollbar-width:thin}.energy-footer{display:flex;flex-wrap:wrap;justify-content:space-between;gap:7px;padding:12px 20px;border-top:1px solid var(--line);font-size:9px;color:#91a08b}.energy-footer a{font-size:10px}
+.energy-map-panel{position:relative;min-height:0;overflow:hidden;background:#edf2e9}.energy-map-panel #energy-map{position:absolute;inset:0;min-height:0}.energy-map-panel #energy-map>.map-surface{width:100%;height:100%}
+.energy-status{position:absolute;top:24px;left:24px;right:24px;display:flex;gap:12px;align-items:center;padding:15px 18px;background:#fffffff5;border:1px solid #e4ebdf;border-radius:13px;box-shadow:0 6px 24px #263c1410;z-index:12}.energy-status strong{font-size:12px}.energy-status p{font-size:10px;color:#7e8e77;margin-top:5px;line-height:1.6}.energy-status .source-dot{flex:none}
+.energy-map-buttons{position:absolute;right:24px;top:125px;display:grid;gap:9px;z-index:12}.energy-map-buttons button{font-size:25px;line-height:1}.energy-map-message{position:absolute;left:28px;bottom:34px;padding:24px 26px;border-radius:17px;background:#124d42f5;color:white;max-width:390px;z-index:11;box-shadow:0 8px 30px #193c2330}.energy-map-message .tag{background:#d7ee9d;color:#2f5130;font-size:8px;letter-spacing:1.3px;padding:5px 8px}.energy-map-message h2{font-size:26px;line-height:1.45;letter-spacing:-1px;margin:15px 0 10px}.energy-map-message p{font-size:11px;line-height:1.85;color:#bcd0b6}.energy-unit-row{display:flex;gap:14px;margin-top:18px;padding-top:15px;border-top:1px solid #ffffff20;font-size:9px;color:#bdcfb3}.energy-unit-row b{display:block;font-size:11px;color:#e0efcd;margin-top:5px;font-weight:500}
+.energy-map-notice{position:absolute;left:25px;right:95px;bottom:25px;z-index:12;padding:10px 13px;background:#fffffff2;border-radius:8px;font-size:11px;line-height:1.7;color:#587455}.energy-mobile-toggle{display:none}
+.energy-card{margin-bottom:10px;padding:17px;border:1px solid var(--line);border-radius:11px;background:white}.energy-card.selected{border-color:var(--green);box-shadow:0 0 0 1px var(--green)}.energy-card h3{font-size:14px;line-height:1.5}.energy-card .energy-card-sub{font-size:10px;color:#81907c;line-height:1.8;margin:6px 0 11px}.energy-card-price{display:flex;align-items:baseline;gap:5px;font-size:25px;font-weight:800}.energy-card-price small{font-size:10px;font-weight:400;color:#8a9580}.energy-card .confidence{margin-top:10px}.energy-card-note{font-size:10px;line-height:1.8;color:#89937e;margin-top:8px}.energy-card-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}.energy-card-actions .small-button{padding:8px 11px;font-size:10px}.energy-card-actions .small-button:disabled{cursor:default}
+.energy-empty{padding:23px 7px 10px;line-height:1.8}.energy-empty-symbol{width:49px;height:49px;background:#f0f5e9;border-radius:15px;display:flex;align-items:center;justify-content:center;color:#729761;font-size:23px;margin-bottom:17px}.energy-empty h3{font-size:17px;letter-spacing:-.7px;margin-bottom:9px}.energy-empty p{font-size:11px;color:#829277;line-height:1.9;word-break:keep-all}.energy-empty .small-button{margin:17px 0 20px;font-size:11px}.energy-facts{border-top:1px solid var(--line);padding:14px 0;margin:3px 0}.energy-facts>div{padding:10px 0;display:grid;grid-template-columns:80px 1fr;gap:13px;font-size:10px;line-height:1.8}.energy-facts strong{font-weight:600;color:#4f7054}.energy-facts span{color:#87957d}.energy-facts a{text-decoration:underline;text-underline-offset:3px}
+.benchmark-row{display:grid;grid-template-columns:1fr auto;gap:10px;padding:15px 0;border-bottom:1px solid var(--line)}.benchmark-row h3{font-size:12px}.benchmark-row p{font-size:10px;color:#89947e;margin-top:5px;line-height:1.7}.benchmark-row strong{font-size:19px;text-align:right}.benchmark-row strong small{font-size:9px;font-weight:400;margin-left:3px}.benchmark-date{font-size:10px;color:#879779;line-height:1.7;margin:7px 0 10px}.aggregate-note{padding:13px 15px;border-radius:9px;background:#f3f6ec;font-size:11px;color:#6b8060;line-height:1.85;margin-bottom:14px}
+.energy-detail{width:min(550px,calc(100vw - 30px));max-height:calc(100dvh - 32px);border:0;border-radius:18px;padding:30px;overflow:auto;color:var(--ink)}.energy-detail::backdrop{background:#102d2366;backdrop-filter:blur(4px)}.energy-detail h2{font-size:23px;line-height:1.5;margin:12px 0}.energy-detail h3{font-size:14px;margin-top:20px}.energy-detail p{font-size:11px;line-height:1.9;color:#7e8d73}.energy-detail dl{display:grid;grid-template-columns:92px 1fr;gap:11px;font-size:11px;line-height:1.8;margin:20px 0}.energy-detail dt{color:#869478}.energy-detail dd{margin:0;overflow-wrap:anywhere}.energy-detail-close{position:absolute;right:15px;top:15px}.open-energy-link{display:inline-flex;font-size:11px;font-weight:600;align-items:center;padding:9px 11px;border-radius:7px;background:#edf3e7;white-space:nowrap}
+@media(max-width:1100px){.energy-workspace{grid-template-columns:370px minmax(0,1fr)}.energy-heading{padding:23px 23px 17px}.energy-map-message{left:20px;bottom:25px;padding:20px;max-width:300px}.energy-map-message h2{font-size:23px}.energy-map-message p{font-size:10px}}
+@media(max-width:760px){.energy-tabs{height:49px;padding:0 12px;gap:5px}.energy-tabs button{font-size:11px;padding:0 9px;gap:5px}.energy-tabs button>span{font-size:13px}.energy-workspace{display:flex;flex-direction:column;height:calc(100dvh - 117px);min-height:480px;position:relative}.energy-sidebar{position:absolute;inset:34% 0 0;border-right:0;border-radius:16px 16px 0 0;overflow:auto;overscroll-behavior:contain}.energy-map-panel{position:absolute;inset:0 0 66%}.energy-heading{padding:19px 20px 13px}.energy-heading .eyebrow{font-size:8px}.energy-heading h1{font-size:21px;margin:6px 0}.energy-heading h1 br{display:none}.energy-heading p{font-size:10px}.energy-filters{padding:0 19px 13px}.energy-search input{height:35px;font-size:11px}.energy-filter-row{margin-top:9px}.energy-result-heading{padding:14px 20px 10px}.energy-results{min-height:200px;overflow:visible;flex:none;padding:0 18px 20px}.energy-footer{margin-top:auto;padding:11px 19px}.energy-map-message{display:none}.energy-status{top:12px;left:13px;right:13px;padding:11px 12px;border-radius:10px;gap:8px}.energy-status strong{font-size:11px}.energy-status p{font-size:9px;margin-top:3px}.energy-map-buttons{top:100px;right:14px;gap:6px}.energy-map-buttons button{font-size:21px;width:33px;height:33px}.energy-map-notice{left:13px;bottom:39px;right:62px;font-size:9px;padding:7px 9px}.energy-empty{padding:16px 4px 5px}.energy-empty-symbol{display:none}.energy-empty h3{font-size:15px}.energy-empty p{font-size:11px}.energy-mobile-toggle{display:block;position:absolute;z-index:13;left:14px;bottom:20px;border:1px solid #dfe6d6;border-radius:16px;background:white;box-shadow:0 3px 8px #20391515;padding:7px 12px;font-size:10px}.energy-page.energy-list-expanded .energy-sidebar{inset:16% 0 0}.energy-page.energy-list-expanded .energy-map-panel{inset:0 0 84%}.energy-page.energy-list-expanded .energy-status{max-width:calc(100% - 139px)}.energy-page.energy-list-expanded .energy-status p{display:none}.energy-page.energy-list-expanded .energy-map-buttons,.energy-page.energy-list-expanded .energy-map-notice{display:none}.energy-page.energy-list-expanded .energy-mobile-toggle{left:auto;right:13px;bottom:17px}.energy-detail{padding:25px 22px}.energy-detail dl{grid-template-columns:80px 1fr}.back-to-fuel{font-size:11px}.app-header:has(.open-energy-link){gap:8px}.app-header:has(.open-energy-link) .header-actions{gap:4px}.open-energy-link{font-size:10px;padding:7px}.app-header:has(.open-energy-link) .brand small{letter-spacing:.3px}.app-header:has(.open-energy-link) .text-button .icon{display:none}}
+
+.energy-sidebar{overflow-y:auto}
+.energy-heading,.energy-filters,.energy-result-heading,.energy-footer,.energy-inline-status{flex:none}
+.energy-inline-status{display:flex;gap:10px;align-items:center;margin:14px 24px 0;padding:12px 14px;border:1px solid #e2e9de;border-radius:9px;background:#f8faf5}
+.energy-inline-status strong{font-size:11px;line-height:1.7}
+.energy-inline-status p{font-size:10px;color:#61745f;line-height:1.8;margin-top:3px}
+.energy-inline-status .source-dot{flex:none}
+.energy-status[data-state=pending] .source-dot,.energy-inline-status[data-state=pending] .source-dot{background:#b48836}
+.energy-status[data-state=error] .source-dot,.energy-inline-status[data-state=error] .source-dot{background:#b56938}
+.energy-warning{padding:12px 14px;border:1px solid #eddcbe;border-radius:8px;background:#fcf7eb;color:#876027;font-size:11px;line-height:1.9;margin:0 0 12px;word-break:keep-all}
+.energy-loading{text-align:center;padding-top:28px}
+.energy-card .confidence{line-height:1.65;white-space:normal}
+.energy-card-actions{align-items:center}
+.energy-card-actions .energy-card-note{margin:0}
+.energy-card-price{font-variant-numeric:tabular-nums}
+.benchmark-row{grid-template-columns:minmax(0,1fr) auto;gap:12px}
+.benchmark-row h3{line-height:1.7;overflow-wrap:anywhere}
+.benchmark-value{text-align:right;font-variant-numeric:tabular-nums}
+.benchmark-value strong{display:block;white-space:nowrap}
+.benchmark-value p{font-size:9px;white-space:nowrap}
+.benchmark-source{display:inline-block;font-size:9px;margin-top:7px;text-decoration:underline;text-underline-offset:3px}
+.benchmark-row .confidence{margin-top:6px;display:flex;width:fit-content}
+.energy-average-filters p{font-size:10px;color:#61745f;line-height:1.8;word-break:keep-all}
+.energy-price-table-wrap{max-width:100%;overflow-x:auto;margin:0 0 18px}
+.energy-price-table{width:100%;border-collapse:collapse;font-size:10px;line-height:1.8;text-align:left}
+.energy-price-table caption{text-align:left;font-size:12px;font-weight:700;padding:0 0 10px}
+.energy-price-table th,.energy-price-table td{padding:9px 7px;border-bottom:1px solid var(--line);vertical-align:top}
+.energy-price-table thead{background:#f5f8f0;color:#657857}
+.energy-price-table tbody th{white-space:nowrap}
+.energy-price-table td:nth-child(2){white-space:nowrap;font-weight:600;font-variant-numeric:tabular-nums}
+.energy-price-table td:nth-child(n+3){min-width:86px;color:#66765f}
+.energy-reference-view .energy-map-panel{background:linear-gradient(140deg,#edf2e9,#e2ebd8)}
+.energy-reference-view .energy-map-message{left:50%;top:50%;bottom:auto;transform:translate(-50%,-50%);width:calc(100% - 64px);max-width:470px;padding:34px}
+.energy-reference-view .energy-map-message h2{font-size:30px}
+.energy-reference-view .energy-map-message p{font-size:12px}
+.energy-reference-view .energy-unit-row{justify-content:space-between;gap:10px}
+@media(max-width:1100px){.energy-reference-view .energy-map-message{width:calc(100% - 40px);padding:25px}.energy-reference-view .energy-map-message h2{font-size:26px}.energy-reference-view .energy-map-message p{font-size:11px}}
+@media(max-width:760px){
+  .energy-inline-status{margin:12px 19px 0;padding:11px 12px}
+  .energy-inline-status strong{font-size:11px}.energy-inline-status p{font-size:10px}
+  .energy-page.energy-reference-view .energy-sidebar{inset:0;border-radius:0}
+  .energy-page.energy-reference-view .energy-map-panel{display:none}
+  .energy-search input,.energy-filter-row select,.energy-average-filters select{font-size:16px;min-height:40px}
+  .energy-filter-row>label,.energy-average-filters>label{font-size:11px}
+  .energy-filter-row .small-button{height:40px;font-size:11px}
+  .energy-card-actions .small-button{min-height:38px;font-size:11px}
+  .energy-check{min-height:32px;line-height:1.6}.energy-check input{width:16px;height:16px;flex:none}
+  .energy-price-table{font-size:10px}.energy-price-table td:nth-child(n+3){min-width:92px}
+  .energy-price-table th,.energy-price-table td{padding:8px 6px}
+  .energy-tabs button{min-height:44px}.energy-map-buttons{top:105px}
+  .energy-warning{font-size:11px}.benchmark-row h3{font-size:12px}.benchmark-row p{font-size:10px}
+  .energy-reference-view .energy-heading{padding-top:22px}
+}
+.energy-map-panel .map-loading{z-index:1;pointer-events:none}
+.energy-map-panel .map-provider-notice{display:none}

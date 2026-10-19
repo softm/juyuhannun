@@ -13,8 +13,10 @@ export function distanceMeters(a, b) {
   return 6371008.8 * 2 * Math.atan2(Math.sqrt(Math.min(1,x)), Math.sqrt(Math.max(0,1-x)));
 }
 export function getFuelPrice(station, fuel) {
+  if (station?.dataGranularity && station.dataGranularity !== 'station') return null;
+  if (station?.unit && station.unit !== 'KRW/L') return null;
   const p = station?.prices?.[fuel] || (station?.fuel === fuel ? station : null);
-  if (!p || !finite(p.price) || p.price <= 0) return null;
+  if (!p || (p.unit && p.unit !== 'KRW/L') || !finite(p.price) || p.price <= 0) return null;
   return { price: p.price, priceUpdatedAt: p.priceUpdatedAt ?? null, fetchedAt: p.fetchedAt ?? station.fetchedAt ?? null };
 }
 export function freshness(priceUpdatedAt, fetchedAt, now = Date.now()) {

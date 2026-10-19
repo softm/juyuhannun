@@ -128,6 +128,45 @@ test('upstream failure preserves stale data and never renews the price or fetch 
   assert.equal(JSON.stringify(failed).includes('do-not-leak'), false);
 });
 
+test('a fresh nearby price invalidates conflicting older detail cache, including beyond enrichment limit', async () => {
+  for (const detailLimit of [0, 1]) {
+    let now = clock(); let detailCalls = 0; let failDetail = false;
+    const client = new OpinetClient({ apiKey: 'fixture-only', clock: () => now, detailLimit, fetchImpl: async url => {
+      if (new URL(url).pathname.endsWith('detailById.do')) {
+        detailCalls += 1;
+        if (failDetail) throw new Error('temporary provider failure');
+        return json({ RESULT: { OIL: [{ ...detailRow, OIL_PRICE: [{ PRODCD: 'B027', PRICE: detailCalls === 1 ? 1745 : 1800, TRADE_DT: '20261019', TRADE_TM: detailCalls === 1 ? '140000' : '140900' }] }] } });
+      }
+      return json({ RESULT: { OIL: [{ ...nearbyRow, PRICE: 1800 }] } });
+    } });
+    const old = await client.detail(nearbyRow.UNI_ID);
+    now += 9 * 60_000;
+    const fresh = await client.nearby(search);
+    const station = fresh.stations[0];
+    assert.equal(station.price, 1800);
+    assert.equal(station.priceUpdatedAt, null);
+    assert.equal(station.prices.B027.priceUpdatedAt, null);
+    assert.equal(station.prices.B027.fetchedAt, new Date(now).toISOString());
+    assert.equal(station.prices.B027.sourceDate, undefined);
+    assert.equal(station.metadataFetchedAt, old.station.fetchedAt);
+    assert.equal(station.roadAddress, detailRow.NEW_ADR);
+    assert.equal(station.facilities.carWash, true);
+    assert.equal(fresh.status, 'partial');
+    assert.equal(detailCalls, 1);
+
+    // Opening details cannot revive the conflicting old value, even as a
+    // stale fallback when the provider is temporarily unavailable.
+    failDetail = true;
+    await assert.rejects(client.detail(nearbyRow.UNI_ID), { code: 'OPINET_NETWORK_ERROR' });
+    now += 16_000; failDetail = false;
+    const reopened = await client.detail(nearbyRow.UNI_ID);
+    assert.equal(reopened.cache.hit, false);
+    assert.equal(reopened.station.price, 1800);
+    assert.equal(reopened.station.priceUpdatedAt, '2026-10-19T05:09:00.000Z');
+    assert.equal(detailCalls, 3);
+  }
+});
+
 test('durable quota prevents races/restarts and resets on the Korean calendar day', async t => {
   const dir = await temporary(t); const ledgerPath = join(dir, 'quota.json');
   let now = Date.parse('2026-10-19T14:59:59Z');

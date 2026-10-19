@@ -128,13 +128,14 @@ function installMarkerStyles() {
  * setCenter/focus/locate/showRoute do not call onCenterChange.
  */
 export class MapController {
-  constructor(container, { onCenterChange = () => {}, onSelect = () => {}, onPick = null, onState = () => {} } = {}) {
+  constructor(container, { onCenterChange = () => {}, onSelect = () => {}, onPick = null, onState = () => {}, markerPresentation = null } = {}) {
     this.container = typeof container === 'string' ? document.querySelector(container) : container;
     if (!this.container) throw new Error('지도를 표시할 영역이 없습니다.');
     this.onCenterChange = onCenterChange;
     this.onSelect = onSelect;
     this.onPick = onPick;
     this.onState = onState;
+    this.markerPresentation = typeof markerPresentation === 'function' ? markerPresentation : null;
     this.provider = 'none';
     this.ready = false;
     this.map = null;
@@ -375,16 +376,18 @@ export class MapController {
     for (const row of rows) {
       const id = String(row.id), point = pointFor(row), selected = id === this._selectedId;
       const info = getFuelPrice(row, fuel);
-      const price = info ? info.price.toLocaleString('ko-KR', { maximumFractionDigits: 1 }) : '미확인';
+      const presentation = this.markerPresentation?.(row, { fuel });
+      const price = presentation ? String(presentation.value ?? '미확인') : info ? info.price.toLocaleString('ko-KR', { maximumFractionDigits: 1 }) : '미확인';
       const fuelName = FUEL_TYPES.find(item => item.code === fuel)?.name || '유종';
       const confidence = info ? freshness(info.priceUpdatedAt, info.fetchedAt) : { eligible: false, label: '가격 미제공' };
-      const label = row.name + ', ' + fuelName + ' ' + (info ? price + '원' : '가격 미확인') + ', ' + confidence.label;
-      const stale = !confidence.eligible;
+      const label = presentation ? String(presentation.label || row.name) : row.name + ', ' + fuelName + ' ' + (info ? price + '원' : '가격 미확인') + ', ' + confidence.label;
+      const stale = presentation ? presentation.stale !== false : !confidence.eligible;
+      const unit = presentation ? String(presentation.unit || '') : info ? '원' : '';
       const content = '<button type="button" class="price-pin' + (selected ? ' selected' : '') +
         (stale ? ' is-stale' : '') + '" data-station-id="' + escapeHTML(id) +
         '" aria-label="' + escapeHTML(label) + '" aria-pressed="' + selected + '" title="' +
         escapeHTML(label) + '"><span class="price-pin-value">' + escapeHTML(price) +
-        (info ? '<small>원</small>' : '') + '</span><span class="price-pin-name">' +
+        (unit ? '<small>' + escapeHTML(unit) + '</small>' : '') + '</span><span class="price-pin-name">' +
         escapeHTML(row.name || '주유소') + '</span></button>';
       let marker = this._markers.get(id);
       if (this.provider === 'naver') {
