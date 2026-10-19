@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#124d42">
+  <title>주유한눈 — 가격부터 이동 비용까지</title>
+  <meta name="description" content="정유사에 관계없이 가까운 주유소 가격과 가격 기준시각을 비교하세요. 주유량과 연비, 추가 이동 비용을 반영해 예상 절약액을 확인합니다.">
+  <meta name="referrer" content="strict-origin-when-cross-origin">
+  <meta property="og:title" content="주유한눈 — 가격부터 이동 비용까지">
+  <meta property="og:description" content="어디서 넣어야 더 이득일까요? 공식 가격의 기준시각과 추가 이동 비용을 함께 확인하세요.">
+  <link rel="icon" type="image/svg+xml" href="./assets/icon.svg"><link rel="manifest" href="./manifest.webmanifest">
+  <link rel="stylesheet" href="./styles.css">
+  <script type="module" src="./js/app.js"></script>
+</head>
+<body>
+  <a class="skip" href="#results">주유소 목록으로 이동</a>
+  <header class="app-header">
+    <a class="brand" href="./" aria-label="주유한눈 홈"><img src="./assets/icon.svg" width="42" height="42" alt=""><span>주유<span class="brand-light">한눈</span><small>가격부터 이동 비용까지</small></span></a>
+    <div class="header-copy">오늘의 주유, <strong>이동 비용까지 비교하세요.</strong></div>
+    <div class="header-actions"><button class="text-button" id="open-calculator"><span class="icon" data-icon="calculator"></span><span>절약액 계산</span></button><button class="icon-button" id="open-info" aria-label="데이터 출처와 이용 안내"><span class="icon" data-icon="info"></span></button></div>
+  </header>
+  <main class="workspace">
+    <aside class="sidebar" aria-label="주유소 검색과 비교">
+      <nav class="view-tabs" aria-label="보기 선택"><button class="view-tab active" data-view="nearby" aria-current="page"><span class="icon" data-icon="pin"></span>주변 주유소</button><button class="view-tab" data-view="route"><span class="icon" data-icon="route"></span>경로 비용 비교</button><button class="view-tab" data-view="saved"><span class="icon" data-icon="heart"></span>찜한 곳</button></nav>
+      <div class="search-block">
+        <form id="search-form" class="search-box" role="search"><span class="icon" data-icon="search"></span><input id="query" type="search" placeholder="지역, 주소 또는 주유소 검색" aria-label="지역, 주소 또는 주유소 검색" autocomplete="off" maxlength="100"><button type="submit" class="icon-button" aria-label="검색"><span class="icon" data-icon="arrow"></span></button></form>
+        <div id="search-candidates" class="search-candidates" hidden></div>
+        <div class="fuel-tabs" id="fuel-tabs" aria-label="유종 선택"><button data-fuel="B027" class="active" aria-pressed="true">휘발유</button><button data-fuel="D047" aria-pressed="false">경유</button><button data-fuel="B034" aria-pressed="false">고급휘발유</button><button data-fuel="K015" aria-pressed="false">LPG</button></div>
+        <div class="filter-line"><label class="select-wrap"><span class="sr-only">검색 반경</span><select id="radius"><option value="1000">반경 1 km</option><option value="3000">반경 3 km</option><option value="5000" selected>반경 5 km</option></select></label><label class="select-wrap brand-select"><span class="sr-only">정유사</span><select id="brand-filter"><option value="">모든 정유사</option><option value="SKE">SK에너지</option><option value="GSC">GS칼텍스</option><option value="HDO">HD현대오일뱅크</option><option value="SOL">S-OIL</option><option value="RTE">알뜰주유소</option><option value="RTX">고속도로 알뜰</option><option value="NHO">농협 알뜰</option><option value="ETC">자가상표</option><option value="E1G">E1</option><option value="SKG">SK가스</option></select></label><button id="toggle-filters" class="filter-button" aria-expanded="false" aria-controls="extra-filters"><span class="icon" data-icon="sliders"></span>필터</button></div>
+        <div id="extra-filters" class="extra-filters" hidden><label><input id="self-only" type="checkbox"> 셀프만 보기</label><label><input id="fresh-only" type="checkbox" checked> 24시간 이내 확인 가격</label><p>시각 미확인·24시간 초과 가격은 기본적으로 제외합니다.</p></div>
+      </div>
+      <section id="route-panel" class="route-panel" aria-labelledby="route-heading" hidden>
+        <div class="section-title"><h2 id="route-heading">이동비를 빼면 얼마일까요?</h2><span class="tag">예상 절약액</span></div>
+        <p class="muted">출발지 → 목적지와 주유소 경유 경로를 비교합니다.</p>
+        <div class="trip-points"><div><span class="point origin"></span><span id="origin-label">출발지를 선택해 주세요</span><button id="origin-map" class="tiny-button">지도 중심</button></div><div><span class="point destination"></span><span id="destination-label">목적지를 선택해 주세요</span><button id="destination-map" class="tiny-button">지도 중심</button></div></div>
+        <form id="destination-form" class="destination-form"><input id="destination-query" placeholder="목적지 주소 검색" aria-label="목적지 주소 검색" maxlength="100"><button class="small-button" type="submit">찾기</button></form><div id="destination-candidates" class="search-candidates" hidden></div>
+        <div class="input-grid"><label>주유량<span class="number-field"><input id="liters" type="number" value="40" min="1" max="1000" step="1" inputmode="decimal"><span>L</span></span></label><label>내 차 연비<span class="number-field"><input id="economy" type="number" value="12" min="1" max="100" step="0.1" inputmode="decimal"><span>km/L</span></span></label></div>
+        <label class="full-input">평소 주유 가격 / 비교 기준<span class="number-field"><input id="reference-price" type="number" placeholder="기준 단가 입력" min="1" max="10000" step="1" inputmode="decimal"><span>원/L</span></span></label>
+        <details class="time-option"><summary>시간 비용도 반영하기</summary><label>시간당 비용<span class="number-field"><input id="hourly-value" type="number" value="0" min="0" max="1000000" step="1000" inputmode="numeric"><span>원/시간</span></span></label><p>0원이면 연료비와 추가 통행료만 반영합니다.</p></details>
+        <p id="route-help" class="route-help">주유소를 선택하면 경유 경로를 비교할 수 있습니다.</p>
+      </section>
+      <div class="results-header"><div><h2 id="results-title">주변 주유소</h2><span id="result-count" class="count">0</span></div><label><span class="sr-only">정렬 기준</span><select id="sort"><option value="price">가격 낮은순</option><option value="distance">가까운순 · 직선</option><option value="savings">확인된 절약액순</option></select></label></div>
+      <section id="results" class="results" aria-label="검색 결과" aria-live="polite" aria-busy="true"><div class="loading-state"><div class="spinner"></div><h3>가격 자료를 확인하고 있어요</h3><p>가격과 기준시각을 함께 확인합니다.</p></div></section>
+      <footer class="sidebar-footer"><span class="source-dot"></span>자료 출처 <a href="https://www.opinet.co.kr/" target="_blank" rel="noopener noreferrer">한국석유공사 오피넷 <span aria-hidden="true">↗</span></a><button id="footer-info">기준시각 안내</button></footer>
+    </aside>
+    <section class="map-section" aria-label="주유소 지도">
+      <div id="map" class="map-canvas" aria-label="지도"><div id="map-loading" class="map-loading"><span class="icon" data-icon="map"></span><span>지도를 준비하고 있습니다</span></div></div>
+      <div class="map-top"><div id="data-status" class="data-status" role="status"><span class="status-indicator pending"></span><div><strong>가격 자료 확인 중</strong><span>공식 자료의 기준시각을 확인합니다.</span></div><button class="icon-button" id="refresh" aria-label="가격 자료 새로고침"><span class="icon" data-icon="refresh"></span></button></div><label class="auto-search"><input id="auto-search" type="checkbox" checked> 지도 이동 시 검색</label></div>
+      <button id="search-area" class="search-area"><span class="icon" data-icon="search"></span>이 지역에서 찾기</button>
+      <div class="map-actions"><button id="locate" class="map-action" aria-label="현재 위치로 이동" title="현재 위치"><span class="icon" data-icon="locate"></span></button><button id="reset-map" class="map-action" aria-label="서울 중심으로 지도 초기화" title="지도 초기화"><span class="icon" data-icon="home"></span></button></div>
+      <div id="map-notice" class="map-notice" hidden></div>
+      <div class="map-bottom"><div class="price-summary"><span id="summary-area">검색 중심 · 반경 5 km</span><div><span>확인된 최저가</span><strong id="lowest-price">—</strong><span>원/L</span></div><small id="summary-caption">비교 가능한 가격 자료를 기다리고 있습니다</small></div><div class="map-legend"><span><i class="legend-dot"></i>24시간 이내 확인 가격</span><span><i class="legend-dot muted-dot"></i>오래된·시각 미확인 가격</span><small>거리 표시는 직선거리입니다.</small></div></div>
+      <button id="mobile-list-toggle" class="mobile-list-toggle"><span class="icon" data-icon="list"></span><span>목록 보기</span></button>
+    </section>
+  </main>
+  <dialog id="detail-dialog" class="detail-dialog"><button class="dialog-close icon-button" data-close="detail-dialog" aria-label="주유소 상세 닫기"><span class="icon" data-icon="close"></span></button><div id="detail-content"></div></dialog>
+  <dialog id="info-dialog" class="info-dialog"><button class="dialog-close icon-button" data-close="info-dialog" aria-label="이용 안내 닫기"><span class="icon" data-icon="close"></span></button><span class="eyebrow">DATA & TRUST</span><h2>가격의 시각까지 확인하세요.</h2><p class="intro">주유한눈은 한국석유공사 오피넷의 공식 API 자료를 바탕으로 가격과 이동 비용을 비교하는 독립적인 서비스입니다.</p><div class="info-section"><h3>세 가지 시각을 구분합니다</h3><dl><dt>가격 기준시각</dt><dd>오피넷 상세정보에서 해당 유종에 제공하는 보고 일시입니다.</dd><dt>수집 시각</dt><dd>주유한눈이 공식 자료를 가져온 일시입니다. 새로고침해도 가격 기준시각은 바뀌지 않습니다.</dd><dt>경로 조회시각</dt><dd>도로 경로를 계산한 시각입니다. 교통상황에 따라 주행시간이 달라질 수 있습니다.</dd></dl></div><div class="info-section"><h3>실시간 가격은 어떻게 반영되나요?</h3><p>오피넷은 카드 단말기 가격을 1·2·9·12·16·19시에 반영하고, 직접 보고한 가격은 입력·수정 시 반영합니다. 현장 가격이 먼저 변경될 수 있으므로 방문 전 최신 가격을 확인하세요.</p><p>주유한눈의 표시 기준은 6시간 이내, 6~24시간, 24시간 초과입니다. 이는 앱의 비교 기준이며 가격의 정확성을 보증하는 등급은 아닙니다.</p></div><div class="info-section"><h3>예상 절약액의 계산 기준</h3><p>(기준 단가 − 주유소 단가) × 주유량 − 추가 연료비 − 추가 통행료 − 선택한 시간 비용.</p><p>추가 주행거리는 같은 출발지·목적지의 직접 경로와 주유소 경유 경로를 비교합니다. 지도상의 직선거리는 이 계산에 사용하지 않습니다. 카드 할인·대기·주유 시간은 포함하지 않습니다.</p></div><div class="info-section"><h3>위치와 저장</h3><p>현재 위치는 위치 버튼을 누르고 권한을 허용한 경우에만 사용합니다. 지도와 경로 제공업체 및 가격 조회 서버에 요청에 필요한 좌표가 전달될 수 있습니다. 찜한 주유소 ID와 유종 설정만 이 브라우저에 저장하며, 이동 이력을 보관하지 않습니다.</p></div><div class="info-links"><a href="https://www.opinet.co.kr/user/dopds/dopDs_4.do" target="_blank" rel="noopener noreferrer">가격조사·공개기준 ↗</a><a href="https://www.opinet.co.kr/user/custapi/custApiInfo.do" target="_blank" rel="noopener noreferrer">오피넷 API 안내 ↗</a><a href="https://github.com/softm/juyuhannun" target="_blank" rel="noopener noreferrer">주유한눈 소스 ↗</a></div></dialog>
+  <dialog id="calculator-dialog" class="calculator-dialog"><button class="dialog-close icon-button" data-close="calculator-dialog" aria-label="절약액 계산 닫기"><span class="icon" data-icon="close"></span></button><span class="eyebrow">FUEL SAVINGS</span><h2>조금 더 가도 이득일까요?</h2><p class="intro">가격과 추가 이동거리를 직접 입력해 비교해 보세요.</p><form id="calculator-form"><div class="input-grid"><label>비교 기준 단가<span class="number-field"><input id="calc-reference" type="number" min="1" max="10000" required placeholder="예: 1700"><span>원/L</span></span></label><label>주유소 단가<span class="number-field"><input id="calc-price" type="number" min="1" max="10000" required placeholder="예: 1650"><span>원/L</span></span></label><label>주유량<span class="number-field"><input id="calc-liters" type="number" min="1" max="1000" required value="40"><span>L</span></span></label><label>내 차 연비<span class="number-field"><input id="calc-economy" type="number" min="1" max="100" step="0.1" required value="12"><span>km/L</span></span></label><label>추가 이동거리 전체<span class="number-field"><input id="calc-distance" type="number" min="0" max="3000" step="0.1" required placeholder="왕복·우회 거리"><span>km</span></span></label><label>추가 통행료<span class="number-field"><input id="calc-toll" type="number" min="0" max="1000000" required value="0"><span>원</span></span></label></div><button type="submit" class="primary-button">이동 비용까지 계산하기 <span aria-hidden="true">→</span></button></form><div id="calculator-result" class="calculator-result" aria-live="polite" hidden></div><p class="calculation-note">직접 입력한 조건의 계산입니다. 실제 주유소 가격·도로 경로 조회 결과와 구분됩니다. 시간·카드 할인은 반영하지 않습니다.</p></dialog>
+  <div id="toast" class="toast" role="status" hidden></div>
+</body>
+</html>

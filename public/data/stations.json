@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "status": "awaiting_credentials",
+  "provider": "opinet",
+  "fetchedAt": null,
+  "isLive": false,
+  "coverage": { "kind": "sample_zones", "complete": false, "zones": [], "description": "아직 공식 가격 자료가 수집되지 않았습니다." },
+  "stations": [],
+  "warnings": ["공식 가격 연동 대기 중입니다. 조회할 수 있는 주유소 가격 자료가 아직 없습니다."],
+  "error": { "code": "OPINET_NOT_CONFIGURED", "message": "공식 가격 연동 대기 중입니다." }
+}

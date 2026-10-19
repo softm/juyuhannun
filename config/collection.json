@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "description": "전국 자료가 아닌 공공 장소 중심의 제한된 서비스 검증 범위입니다. 전국 가격 제공은 오피넷 제휴 계약과 수집 서버 구성을 확인한 뒤 별도로 확대해야 합니다.",
+  "dailyCallLimit": 300,
+  "maxCallsPerRun": 36,
+  "detailLimitPerSearch": 3,
+  "fuels": ["B027", "D047", "B034", "K015"],
+  "zones": [
+    { "id": "seoul-city-hall", "name": "서울시청 주변", "lat": 37.5665, "lng": 126.9780, "radius": 3000 },
+    { "id": "daejeon-station", "name": "대전역 주변", "lat": 36.3322, "lng": 127.4346, "radius": 3000 }
+  ]
+}

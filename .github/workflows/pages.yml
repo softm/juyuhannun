@@ -1,0 +1,111 @@
+name: Collect, verify and deploy Pages
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+  schedule:
+    # KST 01:17, 02:17, 09:17, 12:17, 16:17, 19:17.
+    # Actions schedules can be delayed; source timestamps remain authoritative.
+    - cron: '17 0,3,7,10,16,17 * * *'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: juyuhannun-${{ github.event_name == 'pull_request' && github.ref || 'production' }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    permissions:
+      contents: read
+      pages: read
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+          package-manager-cache: false
+      - name: Verify core, data and route behaviour
+        run: npm test
+      - name: Restore last collected data
+        if: github.event_name != 'pull_request'
+        uses: actions/cache/restore@v6
+        with:
+          path: |
+            public/data/stations.json
+          key: opinet-data-v1-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: |
+            opinet-data-v1-
+      - name: Restore shared daily call ledger
+        if: github.event_name != 'pull_request'
+        uses: actions/cache/restore@v6
+        with:
+          path: .cache/opinet-quota.json
+          key: opinet-quota-v1-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: |
+            opinet-quota-v1-
+      - name: Collect official prices or preserve explicit unavailable state
+        if: github.event_name != 'pull_request'
+        id: collect
+        continue-on-error: true
+        env:
+          OPINET_API_KEY: ${{ secrets.OPINET_API_KEY }}
+        run: node scripts/collect.mjs --output public/data/stations.json --ledger .cache/opinet-quota.json
+      - name: Save consumed quota even after collection failure
+        if: always() && github.event_name != 'pull_request'
+        uses: actions/cache/save@v6
+        with:
+          path: .cache/opinet-quota.json
+          key: opinet-quota-v1-${{ github.run_id }}-${{ github.run_attempt }}
+      - name: Validate deployable assets and data
+        run: npm run check
+      - name: Preserve last collection result
+        if: github.event_name != 'pull_request'
+        uses: actions/cache/save@v6
+        with:
+          path: |
+            public/data/stations.json
+          key: opinet-data-v1-${{ github.run_id }}-${{ github.run_attempt }}
+      - name: Build for project root
+        env:
+          PUBLIC_API_BASE: ${{ vars.PUBLIC_API_BASE }}
+        run: npm run build
+      - name: Configure GitHub Pages
+        if: github.event_name != 'pull_request'
+        uses: actions/configure-pages@v5
+      - name: Upload website
+        if: github.event_name != 'pull_request'
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: dist
+      - name: Report data readiness
+        if: github.event_name != 'pull_request'
+        run: |
+          node --input-type=module <<'JS'
+          import {readFile,appendFile} from 'node:fs/promises';
+          const d=JSON.parse(await readFile('public/data/stations.json','utf8'));
+          await appendFile(process.env.GITHUB_STEP_SUMMARY,`## 주유한눈 데이터 상태\n\n- 상태: ${d.status}\n- 주유소: ${d.stations.length}곳\n- 마지막 수집: ${d.fetchedAt??'없음'}\n- 가격 기준시각은 유종별 priceUpdatedAt 확인\n\nAPI 미연결 상태의 배포 성공은 실가격 연동 성공을 뜻하지 않습니다.\n`);
+          JS
+
+  deploy:
+    if: github.event_name != 'pull_request'
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy website
+        id: deployment
+        uses: actions/deploy-pages@v4

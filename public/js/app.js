@@ -1,0 +1,148 @@
+import {APP_CONFIG} from '../config.js';
+import {MapController} from './map.js';
+import {FUEL_TYPES,BRANDS,escapeHTML as esc,money,finite,distanceMeters,getFuelPrice,freshness,formatTime,calculateSavings,filterStations} from './core.js';
+
+const $=(id)=>document.getElementById(id);
+const iconPaths={pin:'<path d="M20 10c0 6-8 12-8 12S4 16 4 10a8 8 0 1 1 16 0Z"/><circle cx="12" cy="10" r="2.5"/>',route:'<circle cx="5" cy="6" r="2"/><circle cx="19" cy="18" r="2"/><path d="M7 6h9a4 4 0 0 1 0 8H8a4 4 0 0 0 0 8h9"/>',heart:'<path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1.1-1.1a5.5 5.5 0 0 0-7.8 7.8L12 21l8.8-8.6a5.5 5.5 0 0 0 0-7.8Z"/>',search:'<circle cx="10.5" cy="10.5" r="7"/><path d="m16 16 5 5"/>',arrow:'<path d="M4 12h16m-6-6 6 6-6 6"/>',calculator:'<rect x="5" y="2" width="14" height="20" rx="2"/><path d="M8 6h8M8 11h1m6 0h1m-8 4h1m6 0h1m-8 4h1m6 0h1"/>',info:'<circle cx="12" cy="12" r="9"/><path d="M12 11v6m0-10h.01"/>',sliders:'<path d="M4 7h16M4 17h16"/><circle cx="9" cy="7" r="2" fill="white"/><circle cx="15" cy="17" r="2" fill="white"/>',map:'<path d="m2 6 6-3 8 3 6-3v15l-6 3-8-3-6 3Zm6-3v15m8-12v15"/>',refresh:'<path d="M20 7v5h-5M4 17v-5h5"/><path d="M19 8a8 8 0 0 0-14-3M5 16a8 8 0 0 0 14 3"/>',locate:'<circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/><path d="M12 2v4m0 12v4M2 12h4m12 0h4"/>',home:'<path d="m3 10 9-7 9 7v11H3Zm6 11v-8h6v8"/>',list:'<path d="M8 5h13M8 12h13M8 19h13M3 5h.01M3 12h.01M3 19h.01"/>',close:'<path d="m6 6 12 12M6 18 18 6"/>',pump:'<rect x="3" y="3" width="12" height="17" rx="2"/><path d="M6 7h6v4H6ZM1 21h16m-2-8h2v5a2 2 0 0 0 4 0V8l-4-4m3 3v4h1"/>',share:'<circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.6 10.5 6.8-4m-6.8 7 6.8 4"/>',phone:'<path d="M6 3H3c0 10 8 18 18 18v-4l-5-2-2 3a17 17 0 0 1-8-8l3-2-3-5Z"/>',check:'<path d="m5 12 4 4L20 5"/>',clock:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>'};
+const icon=(name)=>`<svg viewBox="0 0 24 24" aria-hidden="true">${iconPaths[name]||iconPaths.pin}</svg>`;
+document.querySelectorAll('[data-icon]').forEach(el=>el.innerHTML=icon(el.dataset.icon));
+function readStorage(key,fallback){try{return JSON.parse(localStorage.getItem(key))??fallback;}catch{return fallback;}}
+function saveStorage(key,value){try{localStorage.setItem(key,JSON.stringify(value));}catch{}}
+const storedFavorites=readStorage('juyu:favorites:v1',[]);
+const storedFuel=readStorage('juyu:fuel:v1','B027');
+const params=new URLSearchParams(location.search);
+const requestedFuel=params.get('fuel')||storedFuel;
+const state={fuel:FUEL_TYPES.some(f=>f.code===requestedFuel)?requestedFuel:'B027',view:'nearby',center:{...APP_CONFIG.defaultCenter},envelope:null,all:[],visible:[],selected:null,query:'',brand:'',radius:5000,self:false,freshOnly:true,sort:'price',origin:null,destination:null,routes:new Map(),favorites:new Set(Array.isArray(storedFavorites)?storedFavorites.filter(v=>typeof v==='string'&&/^[\w-]{1,50}$/.test(v)).slice(0,500):[]),generation:0,controller:null,mapReady:false,searchGeneration:0,routeGeneration:0,loading:false};
+const localHost=['localhost','127.0.0.1','[::1]'].includes(location.hostname);
+const sharedId=params.get('station');
+if(sharedId&&/^[\w-]{1,50}$/.test(sharedId)&&params.has('slat')&&params.has('slng')){const lat=Number(params.get('slat')),lng=Number(params.get('slng'));if(finite(lat)&&finite(lng)&&lat>=32&&lat<=40&&lng>=123&&lng<=133)state.center={lat,lng};}
+const apiBase=(APP_CONFIG.apiBase||(localHost?'/api':'')).replace(/\/$/,'');
+let toastTimer;
+let detailGeneration=0;
+function toast(message){$('toast').textContent=message;$('toast').hidden=false;clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('toast').hidden=true,4500);}
+function showDialog(id){const d=$(id);if(!d.open)d.showModal();}
+function closeDialog(id){$(id).close();}
+function setMapNotice(message){$('map-notice').textContent=message;$('map-notice').hidden=!message;}
+const map=new MapController($('map'),{onCenterChange:center=>{if($('auto-search').checked){state.center=center;loadData();}else toast('이 지역에서 찾기를 눌러 새 중심에서 검색하세요.');},onSelect:id=>selectStation(id),onState:({provider,status,message})=>{if(status==='error'||provider==='leaflet')setMapNotice(message||'대체 지도에서 확인하고 있습니다.');}});
+
+async function requestJSON(url,signal){const response=await fetch(url,{signal,cache:'no-store',credentials:'omit',headers:{Accept:'application/json'}});let data;try{data=await response.json();}catch{throw new Error('가격 서버에서 올바른 자료를 받지 못했습니다.');}if(!response.ok&&!data.status)throw new Error('자료를 가져오지 못했습니다. 잠시 후 다시 시도해 주세요.');return data;}
+async function loadData(){
+ const generation=++state.generation;state.controller?.abort();const ctrl=new AbortController();state.controller=ctrl;state.loading=true;
+ $('results').setAttribute('aria-busy','true');$('refresh').classList.add('busy');$('search-area').disabled=true;
+ const url=apiBase?`${apiBase}/stations?${new URLSearchParams({lat:state.center.lat,lng:state.center.lng,radius:state.radius,fuel:state.fuel})}`:`${APP_CONFIG.dataUrl||'./data/stations.json'}?v=${Math.floor(Date.now()/60000)}`;
+ const timeout=setTimeout(()=>ctrl.abort(),30000);
+ try{
+  const data=await requestJSON(url,ctrl.signal);if(generation!==state.generation)return;
+  if(!Array.isArray(data.stations))throw new Error('가격 자료의 형식을 확인할 수 없습니다.');
+  state.envelope=data;
+  const dedupe=new Map();for(const s of data.stations){if(s&&typeof s.id==='string'&&typeof s.name==='string'&&finite(s.lat)&&finite(s.lng)&&s.lat>=32&&s.lat<=40&&s.lng>=123&&s.lng<=133)dedupe.set(s.id,s);}
+  state.all=[...dedupe.values()];state.loading=false;render();if($('detail-dialog').open)renderDetail();
+  const shareId=params.get('station');if(shareId&&!state.selected&&state.all.some(s=>s.id===shareId)){const st=state.all.find(s=>s.id===shareId);state.center={lat:st.lat,lng:st.lng};if(state.mapReady)map.setCenter(state.center);render();selectStation(shareId);}
+ }catch(error){if(generation!==state.generation)return;state.loading=false;state.envelope={...state.envelope,status:'error',warnings:[error.name==='AbortError'?'자료 응답이 지연되고 있습니다. 다시 시도해 주세요.':error.message],error:{message:error.name==='AbortError'?'조회 시간이 초과되었습니다.':error.message}};render();}
+ finally{clearTimeout(timeout);if(generation===state.generation){state.loading=false;$('results').setAttribute('aria-busy','false');$('refresh').classList.remove('busy');$('search-area').disabled=false;}}
+}
+function routeKey(){return JSON.stringify({o:state.origin,d:state.destination,f:state.fuel});}
+function routeFor(id){const value=state.routes.get(id);return value?.key===routeKey()&&Date.now()-value.at<600000?value.route:null;}
+function settings(){return{liters:Number($('liters').value),kmPerLiter:Number($('economy').value),referencePrice:Number($('reference-price').value),hourlyValue:Number($('hourly-value').value)}}
+function stationSavings(station){const p=getFuelPrice(station,state.fuel);if(!p||!freshness(p.priceUpdatedAt,p.fetchedAt).eligible)return{eligible:false,reason:'가격 기준시각을 확인한 뒤 비교할 수 있습니다.'};return calculateSavings({...settings(),unitPrice:p.price,route:routeFor(station.id)});}
+function render(){
+ const filtered=filterStations(state.all,{fuel:state.fuel,center:state.center,radius:state.radius,query:state.query,brand:state.brand,self:state.self,freshOnly:state.freshOnly,favorites:state.view==='saved'?state.favorites:null,sort:state.sort});
+ if(state.sort==='savings')filtered.sort((a,b)=>{const x=stationSavings(a),y=stationSavings(b);return Number(y.eligible)-Number(x.eligible)||(x.eligible&&y.eligible?y.netSavings-x.netSavings:a.currentPrice.price-b.currentPrice.price);});
+ state.visible=filtered;
+ $('result-count').textContent=filtered.length;
+ $('results-title').textContent=state.view==='saved'?'찜한 주유소':state.view==='route'?'경유 후보 주유소':'주변 주유소';
+ if(!filtered.length)renderEmpty();else $('results').innerHTML=filtered.map((s,i)=>card(s,i)).join('');
+ if(state.mapReady)map.setStations(filtered,state.selected,state.fuel);
+ const reliable=filtered.filter(s=>s.confidence.eligible);const cheapest=reliable.length?Math.min(...reliable.map(s=>s.currentPrice.price)):null;
+ $('lowest-price').textContent=money(cheapest);$('summary-area').textContent=`검색 중심 · 반경 ${state.radius/1000} km`;
+ $('summary-caption').textContent=cheapest?`${FUEL_TYPES.find(f=>f.code===state.fuel).name} · 확인된 ${reliable.length}곳 내 비교${state.envelope?.coverage?.complete===false?' · 전체 주유소 아님':''}`:'비교 가능한 가격 자료를 기다리고 있습니다';
+ renderStatus();
+}
+function renderStatus(){
+ const e=state.envelope;const fresh=state.all.filter(s=>{const p=getFuelPrice(s,state.fuel);return p&&freshness(p.priceUpdatedAt,p.fetchedAt).eligible;});
+ let title='가격 자료 연결 대기',description='공식 가격 자료가 연결되면 이곳에서 비교할 수 있어요.',cls='pending';
+ if(e?.status==='error'){title='가격 자료를 다시 확인해 주세요';description=state.all.length?'마지막으로 받은 자료를 표시합니다. 가격 기준시각을 확인하세요.':e.error?.message||'잠시 후 다시 시도해 주세요.';cls='error';}
+ else if(e?.status==='ready'||e?.status==='partial'){
+  title=fresh.length?'공식 가격 자료 확인':'최신 가격 확인이 필요해요';cls=fresh.length?'':'pending';
+  description=`수집 ${formatTime(e.fetchedAt,true)}${e.status==='partial'?' · 일부 조회 실패':''}`;
+  if(e.coverage?.kind==='sample_zones')description+=' · 지정 지역 일부 자료';else description+=' · 조회 범위 내 자료';
+ }
+ $('data-status').innerHTML=`<span class="status-indicator ${cls}"></span><div><strong>${esc(title)}</strong><span>${esc(description)}</span></div><button class="icon-button${state.loading?' busy':''}" id="refresh" aria-label="가격 자료 새로고침"><span class="icon">${icon('refresh')}</span></button>`;
+ $('refresh').addEventListener('click',loadData);
+}
+function card(s,index){
+ const saved=state.favorites.has(s.id),saving=stationSavings(s);
+ return `<article class="station-card${state.selected===s.id?' selected':''}" data-station="${esc(s.id)}"><button class="card-main" data-action="detail" data-id="${esc(s.id)}" aria-label="${esc(s.name)} 상세 보기"><div class="card-top"><span class="station-number">${index+1}</span><h3 class="station-name">${esc(s.name)}</h3></div><div class="card-sub"><span>${esc(BRANDS[s.brand]||s.brand||'상표 미확인')}</span><i class="brand-dot"></i><span>${esc(s.facilities?.self===true?'셀프':s.facilities?.self===false?'일반 주유':'셀프 여부 미확인')}</span></div><div class="card-price-line"><div class="card-price">${money(s.currentPrice.price)}<small>원/L</small></div><span class="distance-label">직선 ${(s.distance/1000).toFixed(1)} km</span></div>${saving.eligible?`<div class="saving-line${saving.netSavings<0?' negative':''}">이동비 반영 ${money(Math.abs(saving.netSavings))}원 ${saving.netSavings>=0?'예상 절약':'추가 비용'}</div>`:''}</button><div class="card-bottom"><span class="confidence ${s.confidence.state}" title="가격 기준 ${esc(formatTime(s.currentPrice.priceUpdatedAt))}">${s.confidence.label}</span><div class="card-actions"><button data-action="share" data-id="${esc(s.id)}" aria-label="${esc(s.name)} 공유">${icon('share')}</button><button data-action="save" data-id="${esc(s.id)}" class="${saved?'is-saved':''}" aria-label="${esc(s.name)} ${saved?'찜 해제':'찜하기'}" aria-pressed="${saved}">${icon('heart')}</button></div></div></article>`;
+}
+function renderEmpty(){
+ const e=state.envelope;let title='이 지역의 가격을 확인해 보세요',desc='지도 중심을 바꾸거나 검색 조건을 넓혀 보세요.',buttons='<button class="small-button" data-action="reset-filters">검색 조건 초기화</button>';
+ if(e?.status==='awaiting_credentials'||!e){title='정확한 가격을 준비하고 있어요';desc='아직 연결된 공식 가격 자료가 없습니다.<br>현재 가격은 오피넷에서 확인해 주세요.';buttons='<a class="small-button" href="https://www.opinet.co.kr/" target="_blank" rel="noopener noreferrer">오피넷에서 가격 확인 ↗</a><button class="small-button secondary" data-action="calculator">절약액 계산</button>';}
+ else if(e.status==='error'&&!state.all.length){title='가격 자료를 가져오지 못했어요';desc='연결 상태를 확인한 뒤 다시 시도해 주세요.';buttons='<button class="small-button" data-action="retry">다시 시도</button>';}
+ else if(state.view==='saved'){title=state.favorites.size?'이 조건에 맞는 찜한 곳이 없어요':'자주 가는 주유소를 모아 보세요';desc=state.favorites.size?'다른 지역으로 이동하거나 유종·필터를 확인해 주세요.':'주유소의 하트를 누르면 여기에 저장됩니다.';}
+ else if(state.freshOnly&&state.all.some(s=>distanceMeters(state.center,s)<=state.radius&&getFuelPrice(s,state.fuel))){title='최신 시각을 확인한 가격이 없어요';desc='오래된 가격이나 기준시각이 없는 자료는<br>기본 비교에서 제외됩니다.';buttons='<button class="small-button" data-action="show-old">오래된 가격도 살펴보기</button>';}
+ else if(e.coverage?.kind==='sample_zones'){title='아직 가격이 수집되지 않은 지역이에요';desc='현재는 지정한 지역의 일부 자료를 제공합니다.<br>지도 중심을 수집 지역으로 이동해 보세요.';const zones=(e.coverage.zones||[]).filter((z,i,a)=>a.findIndex(x=>x.id===z.id)===i).slice(0,5);buttons=zones.map(z=>`<button class="small-button" data-action="zone" data-zone="${esc(z.id)}">${esc(z.name||z.id)}</button>`).join('')||'<a class="small-button" href="https://www.opinet.co.kr/" target="_blank" rel="noopener noreferrer">오피넷에서 확인 ↗</a>';}
+ $('results').innerHTML=`<div class="empty-state"><div class="empty-icon">${icon(state.view==='saved'?'heart':'pump')}</div><h3>${title}</h3><p>${desc}</p><div class="empty-actions">${buttons}</div>${e?.status==='awaiting_credentials'?'<p class="note">가격 기준시각이 확인되는 자료만 비교합니다.</p>':''}</div>`;
+}
+function toggleFavorite(id){if(state.favorites.has(id))state.favorites.delete(id);else state.favorites.add(id);saveStorage('juyu:favorites:v1',[...state.favorites].slice(-500));render();if($('detail-dialog').open)renderDetail();}
+function selectView(view){state.view=view;document.querySelectorAll('[data-view]').forEach(b=>{b.classList.toggle('active',b.dataset.view===view);if(b.dataset.view===view)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current');});$('route-panel').hidden=view!=='route';render();}
+async function selectStation(id){const detailRevision=++detailGeneration,dataRevision=state.generation;const station=state.all.find(s=>s.id===id);if(!station)return;state.selected=id;if(state.mapReady)map.focus(station,{preserveZoom:true});render();renderDetail();showDialog('detail-dialog');if(apiBase){const fuel=state.fuel;try{const result=await requestJSON(`${apiBase}/stations/${encodeURIComponent(id)}?fuel=${fuel}`,AbortSignal.timeout(15000));if(detailRevision!==detailGeneration||dataRevision!==state.generation||state.selected!==id||state.fuel!==fuel)return;if(result.station?.id===id&&result.status==='ready'){state.all=state.all.map(s=>s.id===id?{...s,...result.station,prices:{...s.prices,...result.station.prices}}:s);render();if($('detail-dialog').open)renderDetail();}}catch{if(detailRevision===detailGeneration&&dataRevision===state.generation&&state.selected===id&&$('detail-dialog').open)toast('상세 가격 갱신에 실패했습니다. 표시된 기준시각을 확인해 주세요.');}}}
+function renderDetail(){
+ const station=state.all.find(s=>s.id===state.selected);if(!station){closeDialog('detail-dialog');return;}
+ const p=getFuelPrice(station,state.fuel),confidence=p?freshness(p.priceUpdatedAt,p.fetchedAt):{state:'unknown',label:'선택한 유종 가격 없음',eligible:false};const fuelName=FUEL_TYPES.find(f=>f.code===state.fuel).name;
+ const f=station.facilities||{};const facilityLabels=[f.self===true?'셀프':f.self===false?'일반 주유':null,f.carWash===true?'세차 가능':null,f.maintenance===true?'정비 가능':null,f.convenience===true?'편의점':null].filter(Boolean);
+ const nav=`https://map.kakao.com/link/to/${encodeURIComponent(station.name)},${station.lat},${station.lng}`;
+ const phone=String(station.phone||'').replace(/[^\d+\-]/g,'');const saving=stationSavings(station);const route=routeFor(station.id);
+ $('detail-content').innerHTML=`<span class="eyebrow">STATION DETAILS</span><h2>${esc(station.name)}</h2><p class="detail-brand">${esc(BRANDS[station.brand]||station.brand||'상표 미확인')} · ${fuelName}</p><div class="detail-hero"><strong>${p?money(p.price):'—'}</strong><span>원/L</span><span class="confidence ${confidence.state}">${confidence.label}</span></div><p class="detail-address">${esc(station.roadAddress||station.address||'주소 정보 미제공')}</p><div class="detail-facilities">${facilityLabels.map(v=>`<span>${v}</span>`).join('')}</div><dl class="detail-meta"><dt>가격 기준시각</dt><dd>${esc(formatTime(p?.priceUpdatedAt))}</dd><dt>수집 시각</dt><dd>${esc(formatTime(p?.fetchedAt))}</dd><dt>자료 출처</dt><dd><a href="https://www.opinet.co.kr/" target="_blank" rel="noopener noreferrer">한국석유공사 오피넷 ↗</a></dd><dt>거리</dt><dd>검색 중심에서 직선 ${(distanceMeters(state.center,station)/1000).toFixed(1)} km</dd></dl>${!confidence.eligible?'<p class="detail-warn">가격 기준시각이 확인되지 않았거나 오래된 자료입니다. 예상 절약액 추천에서 제외하며, 현장 가격을 확인해 주세요.</p>':''}<div class="detail-actions"><a class="small-button" href="${nav}" target="_blank" rel="noopener noreferrer">${icon('route')}길찾기</a>${phone?`<a class="small-button secondary" href="tel:${esc(phone)}">전화</a>`:''}<button class="small-button secondary" data-action="share" data-id="${esc(station.id)}">공유</button><button class="small-button secondary" data-action="save" data-id="${esc(station.id)}" aria-pressed="${state.favorites.has(station.id)}">${state.favorites.has(station.id)?'찜 해제':'찜하기'}</button></div><div class="detail-calculation"><h3>추가 이동비를 반영한 비교</h3>${saving.eligible?`<div class="calculator-result${saving.netSavings<0?' negative':''}"><span>${settings().liters}L 주유 · 이동 비용 반영</span><strong>${money(Math.abs(saving.netSavings))}원 ${saving.netSavings>=0?'예상 절약':'추가 비용'}</strong>${costBreakdown(saving)}</div><p class="route-small">추가 ${(saving.extraDistanceMeters/1000).toFixed(1)} km · 약 ${Math.ceil(saving.extraDurationSeconds/60)}분<br>경로 조회 ${esc(formatTime(route?.fetchedAt,true))} · 주유 대기·주유시간 제외</p>`:`<p class="muted">${esc(saving.reason||'출발지·목적지와 비교 기준을 입력하면 계산할 수 있습니다.')}</p>`}<button class="primary-button" id="compare-route">도로 경로로 절약액 확인 <span>→</span></button><p class="calculation-note">설정한 평소 단가로 기존 경로에서 주유할 때와 비교한 예상 금액입니다. 가격 차이만으로 최저 비용을 확정하지 않습니다.</p></div>`;
+ $('compare-route').addEventListener('click',compareSelectedRoute);
+}
+function costBreakdown(s){return `<div class="cost-table"><div><span>주유 가격 차이</span><strong>${money(s.grossSavings)}원</strong></div><div><span>추가 연료비</span><strong>− ${money(s.fuelCost)}원</strong></div><div><span>통행료 차이</span><strong>${s.tollCost>=0?'−':'+'} ${money(Math.abs(s.tollCost))}원</strong></div>${s.timeCost?`<div><span>추가 시간 비용</span><strong>− ${money(s.timeCost)}원</strong></div>`:''}</div>`;}
+async function compareSelectedRoute(){
+ const st=state.all.find(s=>s.id===state.selected);if(!st)return;
+ if(!state.origin||!state.destination||!$('reference-price').value){closeDialog('detail-dialog');selectView('route');toast('출발지·목적지와 비교 기준 단가를 입력해 주세요.');return;}
+ if(!apiBase){toast('도로 경로 조회가 아직 연결되지 않았습니다. 직접 계산기를 이용할 수 있습니다.');return;}
+ const generation=++state.routeGeneration,id=st.id,key=routeKey();const button=$('compare-route');button.disabled=true;button.textContent='도로 경로를 비교하고 있습니다…';
+ const ctrl=new AbortController(),timer=setTimeout(()=>ctrl.abort(),30000);
+ try{const route=await requestJSON(`${apiBase}/route?${new URLSearchParams({origin:`${state.origin.lng},${state.origin.lat}`,destination:`${state.destination.lng},${state.destination.lat}`,via:`${st.lng},${st.lat}`})}`,ctrl.signal);
+  if(generation!==state.routeGeneration||key!==routeKey())return;
+  if(route.status!=='ready')throw new Error(route.error?.message||'경로를 확인하지 못했습니다.');
+  state.routes.set(id,{route,key,at:Date.now()});if(state.selected===id&&state.mapReady&&Array.isArray(route.via?.path))map.showRoute(route.via.path);render();if(state.selected===id&&$('detail-dialog').open)renderDetail();
+ }catch(error){if(generation===state.routeGeneration&&key===routeKey()&&state.selected===id)toast(error.name==='AbortError'?'경로 응답이 지연되고 있습니다.':error.message);}finally{clearTimeout(timer);if(button.isConnected){button.disabled=false;button.innerHTML='도로 경로로 절약액 확인 <span>→</span>';}}
+}
+async function shareStation(id){const st=state.all.find(s=>s.id===id);if(!st)return;const url=new URL(location.href);url.search='';url.hash='';url.searchParams.set('station',id);url.searchParams.set('fuel',state.fuel);url.searchParams.set('slat',String(st.lat));url.searchParams.set('slng',String(st.lng));const p=getFuelPrice(st,state.fuel);const text=`${st.name} · ${FUEL_TYPES.find(f=>f.code===state.fuel).name} ${p?`${money(p.price)}원/L`:'가격 미확인'}\n가격 기준 ${formatTime(p?.priceUpdatedAt)} · 한국석유공사 오피넷\n현장 가격은 달라질 수 있습니다.`;try{if(navigator.share)await navigator.share({title:`${st.name} | 주유한눈`,text,url:url.href});else{await navigator.clipboard.writeText(`${text}\n${url.href}`);toast('주유소 링크를 복사했습니다.');}}catch(e){if(e.name!=='AbortError')toast('공유 기능을 사용할 수 없습니다. 주소를 직접 복사해 주세요.');}}
+function invalidateRoutes(){++state.routeGeneration;state.routes.clear();if(state.mapReady)map.clearRoute();render();}
+function setPoint(type,point,name){state[type]={lat:point.lat,lng:point.lng};$(`${type}-label`).textContent=name||`지도 선택 (${point.lat.toFixed(4)}, ${point.lng.toFixed(4)})`;invalidateRoutes();}
+async function search(query,target='search-candidates',onPick){const ticket=++state.searchGeneration;const box=$(target);if(!query.trim()){box.hidden=true;return;}box.hidden=false;box.innerHTML='<p>주소를 찾고 있습니다…</p>';try{if(!state.mapReady)throw new Error('지도가 준비되면 주소를 찾을 수 있습니다.');const results=await map.searchAddress(query.trim());if(ticket!==state.searchGeneration)return;if(!results.length){box.innerHTML='<p>검색 결과가 없습니다. 도로명 또는 지번 주소로 검색해 주세요.</p>';return;}box.innerHTML='';results.slice(0,6).forEach(item=>{const b=document.createElement('button');b.type='button';b.innerHTML=`<strong>${esc(item.name||item.address)}</strong><small>${esc(item.address||'')}</small>`;b.addEventListener('click',()=>{box.hidden=true;onPick(item);});box.appendChild(b);});}catch(error){if(ticket===state.searchGeneration)box.innerHTML=`<p>${esc(error.message||'주소 검색을 이용할 수 없습니다.')}</p>`;}}
+
+document.querySelectorAll('[data-view]').forEach(b=>b.addEventListener('click',()=>selectView(b.dataset.view)));
+document.querySelectorAll('[data-fuel]').forEach(b=>{b.classList.toggle('active',b.dataset.fuel===state.fuel);b.setAttribute('aria-pressed',String(b.dataset.fuel===state.fuel));b.addEventListener('click',()=>{state.fuel=b.dataset.fuel;saveStorage('juyu:fuel:v1',state.fuel);document.querySelectorAll('[data-fuel]').forEach(x=>{x.classList.toggle('active',x===b);x.setAttribute('aria-pressed',String(x===b));});invalidateRoutes();loadData();});});
+$('query').addEventListener('input',()=>{++state.searchGeneration;$('search-candidates').hidden=true;state.query=$('query').value;render();});
+$('destination-query').addEventListener('input',()=>{++state.searchGeneration;$('destination-candidates').hidden=true;});
+$('search-form').addEventListener('submit',e=>{e.preventDefault();search($('query').value,'search-candidates',item=>{state.center={lat:item.lat,lng:item.lng};state.query='';$('query').value='';map.setCenter(state.center);loadData();toast(`${item.name||item.address} 주변을 확인합니다.`);});});
+$('destination-form').addEventListener('submit',e=>{e.preventDefault();search($('destination-query').value,'destination-candidates',item=>{setPoint('destination',item,item.name||item.address);$('destination-query').value='';toast('목적지를 설정했습니다. 경유할 주유소를 선택해 주세요.');});});
+$('origin-map').addEventListener('click',()=>{setPoint('origin',state.mapReady?map.getCenter():state.center);toast('지도 중심을 출발지로 설정했습니다.');});
+$('destination-map').addEventListener('click',()=>{setPoint('destination',state.mapReady?map.getCenter():state.center);toast('지도 중심을 목적지로 설정했습니다.');});
+$('radius').addEventListener('change',()=>{state.radius=Number($('radius').value);loadData();});
+$('brand-filter').addEventListener('change',()=>{state.brand=$('brand-filter').value;render();});
+$('self-only').addEventListener('change',()=>{state.self=$('self-only').checked;render();});
+$('fresh-only').addEventListener('change',()=>{state.freshOnly=$('fresh-only').checked;render();});
+$('sort').addEventListener('change',()=>{state.sort=$('sort').value;if(state.sort==='savings'&&!state.routes.size){selectView('route');toast('도로 경로를 확인한 주유소부터 절약액을 비교합니다.');}render();});
+$('toggle-filters').addEventListener('click',()=>{const open=$('extra-filters').hidden;$('extra-filters').hidden=!open;$('toggle-filters').setAttribute('aria-expanded',String(open));});
+$('search-area').addEventListener('click',()=>{if(state.mapReady)state.center=map.getCenter();loadData();});
+$('refresh').addEventListener('click',loadData);
+$('reset-map').addEventListener('click',()=>{state.center={...APP_CONFIG.defaultCenter};if(state.mapReady)map.setCenter(state.center);loadData();});
+$('locate').addEventListener('click',async()=>{const b=$('locate');b.disabled=true;try{if(!state.mapReady)throw new Error('지도가 준비되는 중입니다.');const position=await map.locate();state.center={lat:position.lat,lng:position.lng};setPoint('origin',state.center,'현재 위치');await loadData();toast('현재 위치 주변으로 이동했습니다.');}catch(error){toast(error.message||'현재 위치를 확인하지 못했습니다. 위치 권한을 확인해 주세요.');}finally{b.disabled=false;}});
+$('mobile-list-toggle').addEventListener('click',()=>{const on=document.querySelector('.workspace').classList.toggle('list-expanded');$('mobile-list-toggle').innerHTML=`<span class="icon">${icon(on?'map':'list')}</span><span>${on?'지도 보기':'목록 보기'}</span>`;});
+for(const id of ['liters','economy','reference-price','hourly-value'])$(id).addEventListener('input',render);
+for(const id of ['open-info','footer-info'])$(id).addEventListener('click',()=>showDialog('info-dialog'));
+$('open-calculator').addEventListener('click',()=>showDialog('calculator-dialog'));
+document.querySelectorAll('[data-close]').forEach(b=>b.addEventListener('click',()=>closeDialog(b.dataset.close)));
+document.querySelectorAll('dialog').forEach(d=>d.addEventListener('click',e=>{if(e.target!==d)return;const r=d.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)d.close();}));
+document.addEventListener('click',e=>{const b=e.target.closest('[data-action]');if(!b)return;const action=b.dataset.action,id=b.dataset.id;if(action==='detail')selectStation(id);else if(action==='save')toggleFavorite(id);else if(action==='share')shareStation(id);else if(action==='calculator')showDialog('calculator-dialog');else if(action==='retry')loadData();else if(action==='show-old'){state.freshOnly=false;$('fresh-only').checked=false;render();}else if(action==='zone'){const zone=state.envelope?.coverage?.zones?.find(z=>z.id===b.dataset.zone);if(zone?.center){state.center=zone.center;if(state.mapReady)map.setCenter(zone.center);loadData();}}else if(action==='reset-filters'){state.query='';state.brand='';state.self=false;state.radius=5000;$('query').value='';$('brand-filter').value='';$('self-only').checked=false;$('radius').value='5000';loadData();}});
+$('calculator-form').addEventListener('input',()=>{$('calculator-result').hidden=true;});
+$('calculator-form').addEventListener('submit',e=>{e.preventDefault();const read=id=>Number($(id).value),ref=read('calc-reference'),price=read('calc-price'),liters=read('calc-liters'),economy=read('calc-economy'),km=read('calc-distance'),toll=read('calc-toll');if(![ref,price,liters,economy].every(v=>finite(v)&&v>0)||![km,toll].every(v=>finite(v)&&v>=0))return;const grossSavings=(ref-price)*liters,fuelCost=km/economy*ref,netSavings=grossSavings-fuelCost-toll;const box=$('calculator-result');box.hidden=false;box.classList.toggle('negative',netSavings<0);box.innerHTML=`<span>직접 입력한 조건 · ${liters}L 주유</span><strong>${money(Math.abs(netSavings))}원 ${netSavings>=0?'예상 절약':'추가 비용'}</strong>${costBreakdown({grossSavings,fuelCost,tollCost:toll,timeCost:0})}`;});
+document.addEventListener('visibilitychange',()=>{if(!document.hidden){render();if(state.envelope?.fetchedAt&&Date.now()-Date.parse(state.envelope.fetchedAt)>600000)loadData();}});
+window.addEventListener('online',loadData);
+setInterval(()=>{if(!document.hidden){render();if($('detail-dialog').open)renderDetail();}},60000);
+
+loadData();
+map.init().then(()=>{state.mapReady=true;map.setCenter(state.center);map.setStations(state.visible,state.selected,state.fuel);}).catch(()=>{setMapNotice('지도를 불러오지 못했습니다. 목록 검색과 절약액 계산은 계속 이용할 수 있습니다.');});
