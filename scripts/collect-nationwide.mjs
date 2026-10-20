@@ -73,21 +73,48 @@ function locateStation(s,index){
  return null;
 }
 async function readStations(path){try{const d=JSON.parse(await readFile(path,'utf8'));return Array.isArray(d.stations)?d.stations:[];}catch{return[];}}
+async function readJson(path){try{return JSON.parse(await readFile(path,'utf8'));}catch{return null;}}
+async function reuseDailyPrices(outputDirectory,day,minRows){
+ const [master,history,manifest]=await Promise.all([
+  readJson(resolve(outputDirectory,'master.json')),
+  readJson(resolve(outputDirectory,'history',`${day}.json`)),
+  readJson(resolve(outputDirectory,'manifest.json')),
+ ]);
+ if(!Array.isArray(master?.stations)||!Array.isArray(history?.stations)||history.date!==day||history.stations.length<minRows)return null;
+ const priceById=new Map(history.stations.filter(row=>row?.id&&row.prices&&typeof row.prices==='object').map(row=>[row.id,row.prices]));
+ const stations=master.stations.filter(row=>row?.id&&priceById.has(row.id)).map(row=>({...row,prices:priceById.get(row.id),source:SOURCE}));
+ if(stations.length<minRows)return null;
+ const firstPrice=stations.flatMap(row=>Object.values(row.prices||{})).find(Boolean);
+ const sourceDate=String(firstPrice?.sourceDate||manifest?.priceDate||day).replaceAll('-','');
+ if(!/^\d{8}$/.test(sourceDate))return null;
+ return {stations,sourceDate,fetchedAt:history.fetchedAt||firstPrice?.fetchedAt||manifest?.fetchedAt||null,downloadBytes:manifest?.downloadBytes??0};
+}
 async function prune(dir,keep){let names=[];try{names=(await readdir(dir)).filter(n=>/^\d{4}-\d{2}-\d{2}\.json$/.test(n)).sort().reverse();}catch{return;}await Promise.all(names.slice(keep).map(n=>unlink(resolve(dir,n)).catch(()=>{})));}
 
-export async function collectNationwide({outputDirectory=resolve(ROOT,'public/data/nationwide'),serviceKey=process.env.DATA_GO_KR_SERVICE_KEY||'',fetchImpl=fetch,clock=Date.now,historyDays=31,minRows=1000}={}){
- const fetchedAt=new Date(clock()).toISOString();const client=new OpinetBrowserDownloadClient({clock});
- let targetDate=kstDate(clock()),gasPrice;
- try{gasPrice=await client.dailyPrices({businessType:'station',targetDate});}
- catch(firstError){
-  const fallbackDate=previousKstDate(clock());
-  if(fallbackDate===targetDate)throw firstError;
-  console.info(JSON.stringify({event:'opinet_public_download_fallback',from:targetDate,to:fallbackDate,reason:firstError?.code||'download_failed'}));
-  targetDate=fallbackDate;
-  gasPrice=await client.dailyPrices({businessType:'station',targetDate});
+export async function collectNationwide({outputDirectory=resolve(ROOT,'public/data/nationwide'),serviceKey=process.env.DATA_GO_KR_SERVICE_KEY||'',fetchImpl=fetch,clock=Date.now,historyDays=31,minRows=1000,forceRefresh=process.env.NATIONWIDE_FORCE_REFRESH==='1'}={}){
+ const attemptedAt=new Date(clock()).toISOString(),day=seoulDay(clock());
+ let fetchedAt=attemptedAt,targetDate=kstDate(clock()),downloadBytes=0,all=null,priceSource='download';
+ if(!forceRefresh){
+  const reused=await reuseDailyPrices(outputDirectory,day,minRows);
+  if(reused){
+   all=reused.stations;targetDate=reused.sourceDate;fetchedAt=reused.fetchedAt||attemptedAt;downloadBytes=reused.downloadBytes;priceSource='same_day_cache';
+   console.info(JSON.stringify({event:'opinet_daily_price_reuse',date:targetDate,rows:all.length}));
+  }
  }
- const byId=mergeBasicAndPrice([],gasPrice.rows,{fetchedAt,kind:'station',sourceDate:gasPrice.sourceDate||targetDate});
- const all=[...byId.values()],priced=all.filter(s=>Object.keys(s.prices).length);
+ if(!all){
+  const client=new OpinetBrowserDownloadClient({clock});let gasPrice;
+  try{gasPrice=await client.dailyPrices({businessType:'station',targetDate});}
+  catch(firstError){
+   const fallbackDate=previousKstDate(clock());
+   if(fallbackDate===targetDate)throw firstError;
+   console.info(JSON.stringify({event:'opinet_public_download_fallback',from:targetDate,to:fallbackDate,reason:firstError?.code||'download_failed'}));
+   targetDate=fallbackDate;
+   gasPrice=await client.dailyPrices({businessType:'station',targetDate});
+  }
+  const byId=mergeBasicAndPrice([],gasPrice.rows,{fetchedAt:attemptedAt,kind:'station',sourceDate:gasPrice.sourceDate||targetDate});
+  all=[...byId.values()];fetchedAt=attemptedAt;downloadBytes=gasPrice.bytes;priceSource='download';
+ }
+ const priced=all.filter(s=>Object.keys(s.prices||{}).length);
  if(priced.length<minRows)throw new Error(`Nationwide price row count too small: ${priced.length}`);
 
  const prior=[...(await readStations(resolve(outputDirectory,'master.json'))),...(await readStations(resolve(outputDirectory,'latest.json'))),...(await readStations(resolve(ROOT,'public/data/stations.json')))];
@@ -120,12 +147,11 @@ export async function collectNationwide({outputDirectory=resolve(ROOT,'public/da
  if(standard.status!=='ready')warnings.push({code:'STANDARD_COORDINATES_UNAVAILABLE',message:'공공데이터 전국주유소표준 좌표 보강이 연결되지 않았거나 실패했습니다.'});
  const coverage={kind:'nationwide',complete:ratio>=0.98,serviceReady,totalPriceStations:priced.length,mappedPriceStations:mappedPriced.length,mappedRatio:Number(ratio.toFixed(4)),priceDate:targetDate.slice(0,4)+'-'+targetDate.slice(4,6)+'-'+targetDate.slice(6,8),description:'오피넷 유가내려받기의 사업자별 일일 판매가격 CSV를 공개 다운로드 화면에서 일 1회 수집하고 공공데이터 전국주유소표준 좌표를 병합합니다.'};
  const status=serviceReady&&ratio>=0.98?'ready':'partial';
- const latest={version:2,status,provider:'opinet-public-download',dataGranularity:'station',fetchedAt,source:SOURCE,coverage,stations:mappedPriced,cache:{hit:false,ageSeconds:0,stale:false},warnings,lastAttempt:{at:fetchedAt,status,calls:1+standard.calls}};
+ const latest={version:2,status,provider:'opinet-public-download',dataGranularity:'station',fetchedAt,source:SOURCE,coverage,stations:mappedPriced,cache:{hit:priceSource==='same_day_cache',ageSeconds:priceSource==='same_day_cache'&&Number.isFinite(Date.parse(fetchedAt))?Math.max(0,Math.floor((clock()-Date.parse(fetchedAt))/1000)):0,stale:false},warnings,lastAttempt:{at:attemptedAt,status,calls:(priceSource==='download'?1:0)+standard.calls}};
  const master={version:2,status,provider:'opinet-public-download',fetchedAt,source:SOURCE,coverage,stations:all.map(({prices,...s})=>s),warnings};
- const day=seoulDay(clock());
  const history={version:2,date:day,provider:'opinet-public-download',fetchedAt,stations:priced.map(s=>({id:s.id,prices:s.prices}))};
- const manifest={version:2,status,provider:'opinet-public-download',fetchedAt,stationCount:all.length,priceStationCount:priced.length,mappedPriceStationCount:mappedPriced.length,mappedRatio:coverage.mappedRatio,serviceReady,standardDataStatus:standard.status,standardCalls:standard.calls,priceDate:coverage.priceDate,downloadBytes:gasPrice.bytes,historyDate:day,latest:'./latest.json',master:'./master.json',history:`./history/${day}.json`,sources:[SOURCE,{name:'전국주유소표준데이터',url:'https://www.data.go.kr/data/15129441/standard.do'}]};
+ const manifest={version:2,status,provider:'opinet-public-download',fetchedAt,stationCount:all.length,priceStationCount:priced.length,mappedPriceStationCount:mappedPriced.length,mappedRatio:coverage.mappedRatio,serviceReady,standardDataStatus:standard.status,standardCalls:standard.calls,priceDate:coverage.priceDate,downloadBytes,priceSource,historyDate:day,latest:'./latest.json',master:'./master.json',history:`./history/${day}.json`,sources:[SOURCE,{name:'전국주유소표준데이터',url:'https://www.data.go.kr/data/15129441/standard.do'}]};
  await atomicWriteJson(resolve(outputDirectory,'latest.json'),latest);await atomicWriteJson(resolve(outputDirectory,'master.json'),master);await atomicWriteJson(resolve(outputDirectory,'manifest.json'),manifest);await atomicWriteJson(resolve(outputDirectory,'history',`${day}.json`),history);await prune(resolve(outputDirectory,'history'),historyDays);
- return {status,count:mappedPriced.length,total:priced.length,mappedRatio:coverage.mappedRatio,serviceReady,priceDate:coverage.priceDate,downloadBytes:gasPrice.bytes,standardStatus:standard.status,standardCalls:standard.calls,fetchedAt};
+ return {status,count:mappedPriced.length,total:priced.length,mappedRatio:coverage.mappedRatio,serviceReady,priceDate:coverage.priceDate,downloadBytes,priceSource,standardStatus:standard.status,standardCalls:standard.calls,fetchedAt};
 }
 if(process.argv[1]&&resolve(process.argv[1])===fileURLToPath(import.meta.url)){try{console.log(JSON.stringify(await collectNationwide()));}catch(error){console.error(JSON.stringify(publicError(error)));process.exitCode=1;}}
