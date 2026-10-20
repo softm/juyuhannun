@@ -28,7 +28,7 @@ jobs:
       contents: read
       pages: read
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v7
         with:
@@ -37,6 +37,8 @@ jobs:
         with:
           node-version: '24'
           package-manager-cache: false
+      - name: Install runtime dependencies
+        run: npm install --no-audit --no-fund
       - name: Verify core, data and route behaviour
         run: npm test
       - name: Restore last collected data

@@ -61,7 +61,7 @@ export function parseCsv(text) {
   return rows.filter(r=>r.some(v=>String(v).trim()!==''));
 }
 
-function toObjects(text) {
+export function csvObjects(text) {
   const rows=parseCsv(text);
   const headerIndex=rows.findIndex(r=>r.some(v=>String(v).replace(/\s/g,'').includes('고유번호')));
   if(headerIndex<0) throw new ServiceError('OPINET_DOWNLOAD_SCHEMA_ERROR','오피넷 CSV에서 고유번호 열을 찾지 못했습니다.');
@@ -94,7 +94,7 @@ export class OpinetDownloadClient {
     if(bytes.byteLength<1000) throw new ServiceError('OPINET_DOWNLOAD_EMPTY','오피넷 CSV 파일이 비어 있거나 너무 작습니다.');
     const text=decodeKoreanCsv(bytes);
     if(/^\s*</.test(text.slice(0,200))) throw new ServiceError('OPINET_DOWNLOAD_HTML_RESPONSE','CSV 대신 웹 페이지가 반환되었습니다.');
-    const rows=toObjects(text);
+    const rows=csvObjects(text);
     if(!rows.length) throw new ServiceError('OPINET_DOWNLOAD_EMPTY','오피넷 CSV에 데이터 행이 없습니다.');
     return {rows,source:SOURCE,bytes:bytes.byteLength};
   }

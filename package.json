@@ -16,5 +16,8 @@
     "collect:energy": "node scripts/collect-energy.mjs",
     "check": "node scripts/check.mjs",
     "collect:nationwide": "node scripts/collect-nationwide.mjs"
+  },
+  "dependencies": {
+    "playwright-core": "^1.56.0"
   }
 }
