@@ -46,22 +46,30 @@ function mergeBasicAndPrice(basicRows,currentRows,{fetchedAt,kind,sourceDate=nul
  for(const row of currentRows){const s=parseOpinetRow(row,{fetchedAt,kind,sourceDate});if(!s)continue;const old=byId.get(s.id);byId.set(s.id,old?{...old,...s,address:s.address??old.address,roadAddress:s.roadAddress??old.roadAddress,phone:s.phone??old.phone,prices:{...old.prices,...s.prices},facilities:{...old.facilities,...s.facilities}}:s);}
  return byId;
 }
-function coordinateIndex(rows){
- const add=(map,k,v)=>{if(!k)return;if(map.has(k))map.set(k,null);else map.set(k,v);};
+export function coordinateIndex(rows){
+ // The same public record occurs in the seed, previous snapshots and fresh data,
+ // and both of its addresses can yield the same regional key. Those repetitions
+ // are one candidate. Only genuinely different stations make a key ambiguous.
+ const add=(map,k,v)=>{
+  if(!k)return;
+  if(!map.has(k)){map.set(k,v);return;}
+  const old=map.get(k);
+  if(!old||old.identity!==v.identity)map.set(k,null);
+ };
  const phone=new Map(),address=new Map(),nameAddress=new Map(),nameRegion=new Map();
  const regionKey=v=>normalizeRegionText(v).replace(/[(),]/g,' ').trim().split(/\s+/).slice(0,2).join('');
  for(const r of rows){
-  if(!Number.isFinite(r?.lat)||!Number.isFinite(r?.lng))continue;
-  const loc={lat:r.lat,lng:r.lng,roadAddress:r.roadAddress??null,address:r.address??null,phone:r.phone??null};
+  if(!Number.isFinite(r?.lat)||!Number.isFinite(r?.lng)||r.lat<32||r.lat>40||r.lng<123||r.lng>133)continue;
+  const loc={lat:r.lat,lng:r.lng,roadAddress:r.roadAddress??null,address:r.address??null,phone:r.phone??null,identity:`${normalName(r.name)}|${r.lat.toFixed(5)}|${r.lng.toFixed(5)}`};
   add(phone,normalPhone(r.phone),loc);
   for(const a of [r.roadAddress,r.address]){
-   const ak=normalAddress(a);add(address,ak,loc);add(nameAddress,`${normalName(r.name)}|${ak}`,loc);
+   const ak=normalAddress(a);if(!ak)continue;add(address,ak,loc);add(nameAddress,`${normalName(r.name)}|${ak}`,loc);
    add(nameRegion,`${normalName(r.name)}|${regionKey(a)}`,loc);
   }
  }
  return {phone,address,nameAddress,nameRegion,regionKey};
 }
-function locateStation(s,index){
+export function locateStation(s,index){
  const byPhone=index.phone.get(normalPhone(s.phone));if(byPhone)return byPhone;
  for(const a of [s.roadAddress,s.address]){
   const ak=normalAddress(a);if(!ak)continue;
@@ -91,7 +99,7 @@ async function reuseDailyPrices(outputDirectory,day,minRows){
 }
 async function prune(dir,keep){let names=[];try{names=(await readdir(dir)).filter(n=>/^\d{4}-\d{2}-\d{2}\.json$/.test(n)).sort().reverse();}catch{return;}await Promise.all(names.slice(keep).map(n=>unlink(resolve(dir,n)).catch(()=>{})));}
 
-export async function collectNationwide({outputDirectory=resolve(ROOT,'public/data/nationwide'),serviceKey=process.env.DATA_GO_KR_SERVICE_KEY||'',fetchImpl=fetch,clock=Date.now,historyDays=31,minRows=1000,forceRefresh=process.env.NATIONWIDE_FORCE_REFRESH==='1'}={}){
+async function collectNationwideSnapshot({outputDirectory=resolve(ROOT,'public/data/nationwide'),nearbyPath=resolve(ROOT,'public/data/stations.json'),serviceKey=process.env.DATA_GO_KR_SERVICE_KEY||'',fetchImpl=fetch,clock=Date.now,historyDays=31,minRows=1000,forceRefresh=process.env.NATIONWIDE_FORCE_REFRESH==='1',downloadClient=new OpinetBrowserDownloadClient({clock})}={}){
  const attemptedAt=new Date(clock()).toISOString(),day=seoulDay(clock());
  let fetchedAt=attemptedAt,targetDate=kstDate(clock()),downloadBytes=0,all=null,priceSource='download';
  if(!forceRefresh){
@@ -102,7 +110,7 @@ export async function collectNationwide({outputDirectory=resolve(ROOT,'public/da
   }
  }
  if(!all){
-  const client=new OpinetBrowserDownloadClient({clock});let gasPrice;
+  const client=downloadClient;let gasPrice;
   try{gasPrice=await client.dailyPrices({businessType:'station',targetDate});}
   catch(firstError){
    const fallbackDate=previousKstDate(clock());
@@ -121,7 +129,7 @@ export async function collectNationwide({outputDirectory=resolve(ROOT,'public/da
   ...(await readStations(resolve(outputDirectory,'coordinate-seed.json'))),
   ...(await readStations(resolve(outputDirectory,'master.json'))),
   ...(await readStations(resolve(outputDirectory,'latest.json'))),
-  ...(await readStations(resolve(ROOT,'public/data/stations.json')))
+  ...(await readStations(nearbyPath))
  ];
  let standard={status:'error',stations:[],calls:0};
  try{
@@ -155,8 +163,23 @@ export async function collectNationwide({outputDirectory=resolve(ROOT,'public/da
  const latest={version:2,status,provider:'opinet-public-download',dataGranularity:'station',fetchedAt,source:SOURCE,coverage,stations:mappedPriced,cache:{hit:priceSource==='same_day_cache',ageSeconds:priceSource==='same_day_cache'&&Number.isFinite(Date.parse(fetchedAt))?Math.max(0,Math.floor((clock()-Date.parse(fetchedAt))/1000)):0,stale:false},warnings,lastAttempt:{at:attemptedAt,status,calls:(priceSource==='download'?1:0)+standard.calls}};
  const master={version:2,status,provider:'opinet-public-download',fetchedAt,source:SOURCE,coverage,stations:all.map(({prices,...s})=>s),warnings};
  const history={version:2,date:day,provider:'opinet-public-download',fetchedAt,stations:priced.map(s=>({id:s.id,prices:s.prices}))};
- const manifest={version:2,status,provider:'opinet-public-download',fetchedAt,stationCount:all.length,priceStationCount:priced.length,mappedPriceStationCount:mappedPriced.length,mappedRatio:coverage.mappedRatio,serviceReady,standardDataStatus:standard.status,standardCalls:standard.calls,priceDate:coverage.priceDate,downloadBytes,priceSource,historyDate:day,latest:'./latest.json',master:'./master.json',history:`./history/${day}.json`,sources:[SOURCE,{name:'전국주유소표준데이터',url:'https://www.data.go.kr/data/15129441/standard.do'}]};
+ const manifest={version:2,status,provider:'opinet-public-download',fetchedAt,lastAttempt:latest.lastAttempt,stationCount:all.length,priceStationCount:priced.length,mappedPriceStationCount:mappedPriced.length,mappedRatio:coverage.mappedRatio,serviceReady,standardDataStatus:standard.status,standardCalls:standard.calls,priceDate:coverage.priceDate,downloadBytes,priceSource,historyDate:day,latest:'./latest.json',master:'./master.json',history:`./history/${day}.json`,sources:[SOURCE,{name:'전국주유소표준데이터',url:'https://www.data.go.kr/data/15129441/standard.do'}]};
  await atomicWriteJson(resolve(outputDirectory,'latest.json'),latest);await atomicWriteJson(resolve(outputDirectory,'master.json'),master);await atomicWriteJson(resolve(outputDirectory,'manifest.json'),manifest);await atomicWriteJson(resolve(outputDirectory,'history',`${day}.json`),history);await prune(resolve(outputDirectory,'history'),historyDays);
  return {status,count:mappedPriced.length,total:priced.length,mappedRatio:coverage.mappedRatio,serviceReady,priceDate:coverage.priceDate,downloadBytes,priceSource,standardStatus:standard.status,standardCalls:standard.calls,fetchedAt};
+}
+export async function collectNationwide(options={}){
+ try{return await collectNationwideSnapshot(options);}
+ catch(error){
+  const dir=options.outputDirectory??resolve(ROOT,'public/data/nationwide');
+  const at=new Date((options.clock??Date.now)()).toISOString();
+  const lastAttempt={at,status:'error',error:publicError(error)};
+  // A failed download must be visible while retaining original observations.
+  for(const name of ['latest','manifest']){
+   const previous=await readJson(resolve(dir,`${name}.json`));
+   const retained=name==='latest'?Boolean(previous?.stations?.length):Boolean(previous?.priceStationCount);
+   await atomicWriteJson(resolve(dir,`${name}.json`),{...(previous??{version:2,provider:'opinet-public-download',fetchedAt:null,...(name==='latest'?{stations:[],coverage:{kind:'nationwide',complete:false,serviceReady:false}}:{stationCount:0,priceStationCount:0,mappedPriceStationCount:0,serviceReady:false})}),status:retained?'partial':'error',cache:{...previous?.cache,stale:true},lastAttempt});
+  }
+  throw error;
+ }
 }
 if(process.argv[1]&&resolve(process.argv[1])===fileURLToPath(import.meta.url)){try{console.log(JSON.stringify(await collectNationwide()));}catch(error){console.error(JSON.stringify(publicError(error)));process.exitCode=1;}}

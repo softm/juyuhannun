@@ -1,10 +1,18 @@
 import {cp,mkdir,rm,writeFile,readFile,readdir} from 'node:fs/promises';
 import {createHash} from 'node:crypto';
 import {fileURLToPath} from 'node:url';
+import {writeDataStatus} from './data-status.mjs';
+import {gzipSync} from 'node:zlib';
 const root=fileURLToPath(new URL('../',import.meta.url));
 await rm(`${root}dist`,{recursive:true,force:true});
 await mkdir(`${root}dist`,{recursive:true});
 await cp(`${root}public`,`${root}dist`,{recursive:true});
+await writeDataStatus(`${root}dist/data`);
+for(const name of ['stations','nationwide/latest']){
+ const path=`${root}dist/data/${name}.json`;
+ const compact=JSON.stringify(JSON.parse(await readFile(path,'utf8')));
+ await writeFile(`${path}.gz`,gzipSync(compact,{level:9}));
+}
 if(process.env.PUBLIC_API_BASE){
  const u=new URL(process.env.PUBLIC_API_BASE);
  if(u.protocol!=='https:'||u.username||u.password||u.search||u.hash)throw new Error('PUBLIC_API_BASE must be an HTTPS API base without credentials or parameters.');

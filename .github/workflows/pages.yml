@@ -126,11 +126,13 @@ jobs:
         run: |
           node --input-type=module <<'JS'
           import {readFile,appendFile} from 'node:fs/promises';
-          let report='## 주유한눈 데이터 상태\n\n| 자료 | 상태 | 건수 | 마지막 성공 수집 | 이전 자료 보존 |\n|---|---|---:|---|---|\n';
+          let report='## 주유한눈 데이터 상태\n\n[수집 현황 페이지](https://softm.github.io/juyuhannun/data-status.html)\n\n| 자료 | 상태 | 건수 | 마지막 성공 수집 | 이전 자료 보존 |\n|---|---|---:|---|---|\n';
           for(const [name,file,field] of [['주변 주유소','stations','stations'],['전국 일괄가격','nationwide/latest','stations'],['평균 유가','averages','benchmarks'],['고속도로 주유소','highway','stations']]){
             const d=JSON.parse(await readFile(`public/data/${file}.json`,'utf8'));
             report+=`| ${name} | ${d.status} | ${d[field].length} | ${d.fetchedAt??'없음'} | ${d.cache?.stale?'예':'아니요'} |\n`;
           }
+          const manifest=JSON.parse(await readFile('public/data/nationwide/manifest.json','utf8'));
+          report+=`\n전국 가격 ${manifest.priceStationCount??0}곳 · 지도 좌표 ${manifest.mappedPriceStationCount??0}곳 · 좌표 미확보 ${Math.max(0,(manifest.priceStationCount??0)-(manifest.mappedPriceStationCount??0))}곳 · 가격 기준일 ${manifest.priceDate??'미확인'}\n`;
           report+='\n가격 기준시각은 유종별 priceUpdatedAt, 평균 기준일은 asOfDate를 확인합니다. 수소 자료는 직전월 평균의 공식 안내입니다. API 미연결 상태의 배포 성공은 실가격 연동 성공을 뜻하지 않습니다.\n';
           await appendFile(process.env.GITHUB_STEP_SUMMARY,report);
           JS
