@@ -65,6 +65,26 @@ export async function collect({ outputPath, ledgerPath, configPath, apiKey = pro
     return { status: snapshot.status, count: snapshot.stations?.length ?? 0, calls: 0, fetchedAt: snapshot.fetchedAt ?? null };
   }
   const client = new OpinetClient({ apiKey, quota: runQuota, fetchImpl, clock, detailLimit: config.detailLimitPerSearch });
+  try {
+    await client.verifyCredential();
+  } catch (error) {
+    coverage.zones = config.zones.flatMap(zone => config.fuels.map(fuel => ({
+      id: zone.id, name: zone.name, center: { lat: zone.lat, lng: zone.lng }, radiusMeters: zone.radius,
+      fuel, status: 'error', count: 0, lastSuccessAt: null,
+    })));
+    const retained = previous?.stations?.length ? previous : { ...empty, coverage, stations: [] };
+    const snapshot = {
+      ...retained,
+      status: previous?.stations?.length ? 'partial' : 'error',
+      coverage,
+      lastAttempt: { at: attemptedAt, status: 'error', calls: runQuota.used, credential: 'failed' },
+      warnings: [{ code: 'OPINET_CREDENTIAL_PREFLIGHT_FAILED', message: '가격 조회 전에 오피넷 지역코드 선검증이 실패했습니다. 키 발급처·활성화 상태를 확인해 주세요.' }],
+      error: publicError(error),
+    };
+    snapshot.quota = await dailyQuota.snapshot().catch(() => ({ limit: config.dailyCallLimit, remaining: null, used: null, error: 'QUOTA_LEDGER_UNREADABLE' }));
+    await atomicWriteJson(outputPath, snapshot);
+    return { status: snapshot.status, count: snapshot.stations?.length ?? 0, calls: runQuota.used, fetchedAt: snapshot.fetchedAt ?? null, credentialValid: false };
+  }
   const stations = new Map(); const warnings = []; let successes = 0; let failures = 0; let partials = 0; let lastSuccessAt = null;
   const previousZones = new Map((previous?.coverage?.zones ?? []).map(zone => [`${zone.id}:${zone.fuel}`, zone]));
   for (const zone of config.zones) {
@@ -101,7 +121,7 @@ export async function collect({ outputPath, ledgerPath, configPath, apiKey = pro
   }
   snapshot.quota = await dailyQuota.snapshot().catch(() => ({ limit: config.dailyCallLimit, remaining: null, used: null, error: 'QUOTA_LEDGER_UNREADABLE' }));
   await atomicWriteJson(outputPath, snapshot);
-  return { status: snapshot.status, count: snapshot.stations?.length ?? 0, calls: runQuota.used, fetchedAt: snapshot.fetchedAt ?? null };
+  return { status: snapshot.status, count: snapshot.stations?.length ?? 0, calls: runQuota.used, fetchedAt: snapshot.fetchedAt ?? null, credentialValid: true };
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
@@ -118,6 +138,6 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
     const summary = await collect({ outputPath: flags['--output'], ledgerPath: flags['--ledger'], configPath: flags['--config'] });
     console.log(JSON.stringify(summary));
     // Data error status stays in the output; the deployment can retain the previous snapshot.
-    if (summary.status === 'error') process.exitCode = 1;
+    if (summary.status === 'error' || summary.credentialValid === false) process.exitCode = 1;
   } catch (error) { console.error(JSON.stringify(publicError(error))); process.exitCode = 1; }
 }

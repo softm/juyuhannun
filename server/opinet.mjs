@@ -23,6 +23,20 @@ export function validateStationId(id) {
   return id;
 }
 
+export function validateAreaCodes(rows) {
+  if (!Array.isArray(rows) || rows.length === 0) {
+    throw new ServiceError('OPINET_CREDENTIAL_UNUSABLE', '오피넷 지역코드가 비어 있습니다. 오피넷에서 직접 발급한 인증키의 활성화·사용 상태를 확인해 주세요.', 503);
+  }
+  const valid = rows.map(row => ({
+    code: textValue(row?.AREA_CD),
+    name: textValue(row?.AREA_NM),
+  })).filter(row => /^\d{2}$/.test(row.code) && row.code !== '00' && row.name);
+  if (valid.length === 0) {
+    throw new ServiceError('OPINET_CREDENTIAL_SCHEMA_ERROR', '오피넷 지역코드 응답을 확인할 수 없습니다. 인증키 종류와 제공기관 응답을 확인해 주세요.', 502);
+  }
+  return valid;
+}
+
 // The API describes a Korean domestic reference date/time, without a timezone suffix.
 // Retain it as a source reference time; never substitute the API fetch time.
 export function parsePriceTimestamp(date, time) {
@@ -94,6 +108,13 @@ export class OpinetClient {
   }
 
   get configured() { return this.apiKey.length > 0; }
+
+  async verifyCredential() {
+    if (!this.configured) throw new ServiceError('OPINET_CREDENTIALS_REQUIRED', '오피넷 인증키를 연결하면 가격을 조회할 수 있습니다.', 503);
+    const rows = await this.request('areaCode.do', {});
+    const areas = validateAreaCodes(rows);
+    return { status: 'ready', count: areas.length };
+  }
 
   async request(endpoint, parameters) {
     if (!this.configured) throw new ServiceError('OPINET_CREDENTIALS_REQUIRED', '오피넷 인증키를 연결하면 가격을 조회할 수 있습니다.', 503);
