@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { extractDownloadForm, parseCsv, parseDailyPriceCsv, decodeKoreanCsv, OpinetDownloadClient } from '../server/opinet-download.mjs';
-import { normalizeStandardStation } from '../server/data-go-stations.mjs';
+import { normalizeStandardStation, parseStandardStationCsv } from '../server/data-go-stations.mjs';
 
 test('download form parser keeps hidden fields and CSV parser handles quoted commas',()=>{
  const html='<form name="commonForm"><input type="hidden" name="menuNo" value="11"><input type="hidden" name="subMenuNo" value="22"></form>';
@@ -27,4 +27,13 @@ test('historical daily CSV parser keeps the documented nationwide price column o
  assert.equal(rows[0]['기준일자'],'20261020');
  assert.equal(rows[0]['보통휘발유'],'1799');
  assert.equal(rows[0]['경유'],'1699');
+});
+
+test('standard station CSV parser accepts the public Korean headers',()=>{
+ const header='주유소명,시도명,시군구명,소재지도로명주소,소재지지번주소,전화번호,위도,경도,상표구분명,데이터기준일자\r\n';
+ const body=Array.from({length:1001},(_,i)=>`테스트${i},서울특별시,중구,서울특별시 중구 테스트로 ${i},,02-1,37.5,127.1,SK,2026-10-01`).join('\r\n');
+ const rows=parseStandardStationCsv(header+body);
+ assert.equal(rows.length,1001);
+ assert.equal(rows[0].name,'테스트0');
+ assert.equal(rows[0].lat,37.5);
 });

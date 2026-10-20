@@ -22,7 +22,7 @@ Playwright가 공개 다운로드 화면의 NetFunnel/페이지 초기화를 통
 표준데이터 API: `https://api.data.go.kr/openapi/tn_pubr_public_conm_api`  
 개발계정은 페이지당 최대 1000건이며 공공데이터포털 안내상 개발계정 신청 가능 트래픽은 10,000이다.
 
-표준데이터 좌표를 자동 보강하려면 Repository Secret `DATA_GO_KR_SERVICE_KEY`를 등록한다. 키가 없어도 전국 가격·이력 수집은 수행하지만 좌표 매칭률이 80% 미만이면 브라우저는 기존 일반 Opinet 반경 자료를 계속 사용한다.
+좌표는 먼저 공공데이터포털의 공개 `전국주유소표준데이터.csv` 다운로드를 시도한다. 공개 CSV 다운로드가 막히거나 포털 UI가 변경되면 Repository Secret `DATA_GO_KR_SERVICE_KEY`를 사용해 공식 API `tn_pubr_public_conm_api`로 자동 폴백한다. 둘 다 실패하거나 좌표 매칭률이 80% 미만이면 브라우저는 기존 일반 Opinet 반경 자료를 계속 사용한다.
 
 ## 생성 파일
 

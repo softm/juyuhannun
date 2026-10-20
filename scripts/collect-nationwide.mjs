@@ -3,6 +3,7 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { OpinetBrowserDownloadClient, kstDate, previousKstDate } from '../server/opinet-browser-download.mjs';
 import { fetchStandardStations } from '../server/data-go-stations.mjs';
+import { DataGoStationBrowserClient } from '../server/data-go-browser-download.mjs';
 import { atomicWriteJson, seoulDay } from '../server/quota.mjs';
 import { publicError } from '../server/errors.mjs';
 
@@ -37,13 +38,28 @@ function mergeBasicAndPrice(basicRows,currentRows,{fetchedAt,kind,sourceDate=nul
 }
 function coordinateIndex(rows){
  const add=(map,k,v)=>{if(!k)return;if(map.has(k))map.set(k,null);else map.set(k,v);};
- const phone=new Map(),address=new Map(),nameAddress=new Map();
- for(const r of rows){if(!Number.isFinite(r?.lat)||!Number.isFinite(r?.lng))continue;const loc={lat:r.lat,lng:r.lng,roadAddress:r.roadAddress??null,address:r.address??null,phone:r.phone??null};add(phone,normalPhone(r.phone),loc);for(const a of [r.roadAddress,r.address]){const ak=normalAddress(a);add(address,ak,loc);add(nameAddress,`${normalName(r.name)}|${ak}`,loc);}}
- return {phone,address,nameAddress};
+ const phone=new Map(),address=new Map(),nameAddress=new Map(),nameRegion=new Map();
+ const regionKey=v=>text(v).toLocaleLowerCase('ko-KR').replace(/[(),]/g,' ').trim().split(/\s+/).slice(0,2).join('');
+ for(const r of rows){
+  if(!Number.isFinite(r?.lat)||!Number.isFinite(r?.lng))continue;
+  const loc={lat:r.lat,lng:r.lng,roadAddress:r.roadAddress??null,address:r.address??null,phone:r.phone??null};
+  add(phone,normalPhone(r.phone),loc);
+  for(const a of [r.roadAddress,r.address]){
+   const ak=normalAddress(a);add(address,ak,loc);add(nameAddress,`${normalName(r.name)}|${ak}`,loc);
+   add(nameRegion,`${normalName(r.name)}|${regionKey(a)}`,loc);
+  }
+ }
+ return {phone,address,nameAddress,nameRegion,regionKey};
 }
 function locateStation(s,index){
  const byPhone=index.phone.get(normalPhone(s.phone));if(byPhone)return byPhone;
- for(const a of [s.roadAddress,s.address]){const ak=normalAddress(a);if(!ak)continue;const named=index.nameAddress.get(`${normalName(s.name)}|${ak}`);if(named)return named;const exact=index.address.get(ak);if(exact)return exact;}
+ for(const a of [s.roadAddress,s.address]){
+  const ak=normalAddress(a);if(!ak)continue;
+  const named=index.nameAddress.get(`${normalName(s.name)}|${ak}`);if(named)return named;
+  const exact=index.address.get(ak);if(exact)return exact;
+  const regional=index.nameRegion.get(`${normalName(s.name)}|${index.regionKey(a)}`);if(regional)return regional;
+ }
+ if(s.region){const regional=index.nameRegion.get(`${normalName(s.name)}|${index.regionKey(s.region)}`);if(regional)return regional;}
  return null;
 }
 async function readStations(path){try{const d=JSON.parse(await readFile(path,'utf8'));return Array.isArray(d.stations)?d.stations:[];}catch{return[];}}
@@ -66,7 +82,17 @@ export async function collectNationwide({outputDirectory=resolve(ROOT,'public/da
 
  const prior=[...(await readStations(resolve(outputDirectory,'master.json'))),...(await readStations(resolve(outputDirectory,'latest.json'))),...(await readStations(resolve(ROOT,'public/data/stations.json')))];
  let standard={status:'awaiting_credentials',stations:[],calls:0};
- try{standard=await fetchStandardStations({serviceKey,fetchImpl});}catch(error){standard={status:'error',stations:[],calls:0,error:publicError(error)};}
+ if(String(serviceKey).trim()){
+  try{standard=await fetchStandardStations({serviceKey,fetchImpl});}
+  catch(apiError){
+   console.info(JSON.stringify({event:'data_go_station_api_fallback',reason:apiError?.code||'api_failed'}));
+   try{standard=await new DataGoStationBrowserClient().download();}
+   catch(downloadError){standard={status:'error',stations:[],calls:0,error:publicError(downloadError)};}
+  }
+ }else{
+  try{standard=await new DataGoStationBrowserClient().download();}
+  catch(downloadError){standard={status:'awaiting_credentials',stations:[],calls:0,error:publicError(downloadError)};}
+ }
  const index=coordinateIndex([...prior,...standard.stations]);
  let located=0;
  for(const s of all){
