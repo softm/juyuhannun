@@ -295,9 +295,12 @@ test('collector retains last good snapshot after every zone fails and enforces a
   const dir = await temporary(t); const outputPath = join(dir, 'stations.json'); const ledgerPath = join(dir, 'quota.json');
   const historical = { status: 'ready', fetchedAt: '2025-07-23T06:00:00Z', coverage: { zones: [] }, stations: [{ ...normalizeDetail(detailRow, { fetchedAt: '2025-07-23T06:00:00Z' }), coverageZones: ['seoul-city-hall:B027'] }] };
   await writeFile(outputPath, JSON.stringify(historical));
-  const result = await collect({ outputPath, ledgerPath, configPath: resolve('config/collection.json'), apiKey: 'never-publish', clock, fetchImpl: async () => { throw new Error('never-publish'); } });
+  const result = await collect({ outputPath, ledgerPath, configPath: resolve('config/collection.json'), apiKey: 'never-publish', clock, fetchImpl: async url => {
+    if (new URL(url).pathname.endsWith('areaCode.do')) return json({ RESULT: { OIL: [{ AREA_CD: '01', AREA_NM: '서울' }] } });
+    throw new Error('never-publish');
+  } });
   const retained = JSON.parse(await readFile(outputPath, 'utf8'));
-  assert.equal(result.status, 'partial'); assert.equal(result.calls, 8);
+  assert.equal(result.status, 'partial'); assert.equal(result.calls, 9);
   assert.deepEqual(retained.stations, historical.stations);
   assert.equal(retained.fetchedAt, historical.fetchedAt);
   assert.equal(JSON.stringify(retained).includes('never-publish'), false);
@@ -319,12 +322,13 @@ test('partial collection publishes only successful/retained regions with indepen
   await writeFile(outputPath, JSON.stringify({ status: 'ready', fetchedAt: '2025-07-23T06:00:00Z', coverage: { zones: [{ id: 'daejeon-station', fuel: 'B027', lastSuccessAt: '2025-07-23T06:00:00Z' }] }, stations: [oldStation] }));
   const result = await collect({ outputPath, ledgerPath, configPath, apiKey: 'testing-only', clock, fetchImpl: async url => {
     const parsed = new URL(url);
+    if (parsed.pathname.endsWith('areaCode.do')) return json({ RESULT: { OIL: [{ AREA_CD: '01', AREA_NM: '서울' }] } });
     if (parsed.pathname.endsWith('detailById.do')) return json({ RESULT: { OIL: [detailRow] } });
     if (Number(parsed.searchParams.get('x')) > 330_000) throw new Error('region unavailable');
     return json({ RESULT: { OIL: [nearbyRow] } });
   } });
   const snapshot = JSON.parse(await readFile(outputPath, 'utf8'));
-  assert.equal(result.status, 'partial'); assert.equal(result.calls, 3); assert.equal(result.count, 2);
+  assert.equal(result.status, 'partial'); assert.equal(result.calls, 4); assert.equal(result.count, 2);
   assert.equal(snapshot.fetchedAt, '2026-10-19T05:00:00.000Z');
   assert.equal(snapshot.coverage.zones[0].status, 'ready'); assert.equal(snapshot.coverage.zones[1].status, 'error');
   assert.equal(snapshot.coverage.zones[1].lastSuccessAt, '2025-07-23T06:00:00Z');
