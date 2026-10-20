@@ -27,52 +27,50 @@ function kstDate(now=Date.now()){
 }
 
 export class OpinetBrowserDownloadClient{
-  constructor({clock=Date.now,timeoutMs=300000}={}){this.clock=clock;this.timeoutMs=timeoutMs;}
-  async dailyPrices({targetDate=kstDate(this.clock()),businessType='A'}={}){
-    if(!/^\d{8}$/.test(targetDate)||!['A','B'].includes(businessType))throw new ServiceError('OPINET_DOWNLOAD_REQUEST_INVALID','전국 가격 다운로드 날짜/업종을 확인해 주세요.',400);
-    const path=await executablePath();let browser;
+  constructor({clock=Date.now,pageReadyTimeoutMs=180000,downloadTimeoutMs=300000}={}){this.clock=clock;this.pageReadyTimeoutMs=pageReadyTimeoutMs;this.downloadTimeoutMs=downloadTimeoutMs;}
+  async currentPrices({businessType='station'}={}){
+    if(!['station','lpg'].includes(businessType))throw new ServiceError('OPINET_DOWNLOAD_REQUEST_INVALID','전국 현재가격 다운로드 업종을 확인해 주세요.',400);
+    const path=await executablePath();let browser;let stage='launch';
+    const report=value=>console.info(JSON.stringify({event:'opinet_public_download',stage:value,businessType}));
     try{
       browser=await chromium.launch({executablePath:path,headless:true,args:['--no-sandbox','--disable-dev-shm-usage','--disable-gpu','--no-zygote','--disable-extensions','--disable-background-networking']});
+      stage='context';report(stage);
       const context=await browser.newContext({
         userAgent:'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36',
         locale:'ko-KR',acceptDownloads:true,
       });
       const page=await context.newPage();
-      page.on('dialog',dialog=>dialog.accept().catch(()=>{}));
+      page.on('dialog',dialog=>{report(`dialog_${dialog.type()}`);dialog.accept().catch(()=>{});});
+      stage='goto';report(stage);
       await page.goto(OPINET_DOWNLOAD_URL,{waitUntil:'domcontentloaded',timeout:120000});
-      try{
-        await page.waitForFunction(()=>typeof globalThis.fn_Download==='function',undefined,{timeout:this.timeoutMs});
-      }catch{throw new ServiceError('OPINET_NETFUNNEL_TIMEOUT','오피넷 공개 다운로드 화면 준비가 지연되어 이번 전국 수집을 중단했습니다.');}
-      await page.evaluate(({date,type})=>{
-        const setValue=(selector,value)=>{const el=document.querySelector(selector);if(el){el.value=value;el.dispatchEvent(new Event('change',{bubbles:true}));}};
-        setValue('#span_start_date_picker',date);setValue('#span_end_date_picker',date);
-        for(const name of ['START_DT','startDt'])setValue(`[name="${name}"]`,date);
-        for(const name of ['END_DT','endDt'])setValue(`[name="${name}"]`,date);
-        const radio=(name,value)=>{const el=document.querySelector(`input[name="${name}"][value="${value}"]`);if(el){el.checked=true;el.dispatchEvent(new Event('change',{bubbles:true}));}};
-        radio('rdo3',type);radio('rdo4','X');
-        if(globalThis.$){
-          globalThis.$('#span_start_date_picker').val(date);
-          globalThis.$('#span_end_date_picker').val(date);
-          globalThis.$(`input[name="rdo3"][value="${type}"]`).prop('checked',true).trigger('change');
-          globalThis.$('input[name="rdo4"][value="X"]').prop('checked',true).trigger('change');
+      stage='wait_page';report(stage);
+      await page.waitForSelector('.tbl_type20',{state:'visible',timeout:this.pageReadyTimeoutMs});
+      await page.waitForFunction(()=>typeof globalThis.fn_Download==='function',undefined,{timeout:this.pageReadyTimeoutMs});
+      if(businessType==='lpg'){
+        stage='select_lpg';report(stage);
+        for(const id of ['#rdo1_1','#rdo2_1']){
+          const el=page.locator(id);
+          if(await el.count())await el.click();
         }
-      },{date:targetDate,type:businessType});
-      const [download]=await Promise.all([
-        page.waitForEvent('download',{timeout:600000}),
-        page.evaluate(()=>globalThis.fn_Download(6)),
-      ]);
+      }
+      stage='invoke_current_csv';report(stage);
+      const downloadPromise=page.waitForEvent('download',{timeout:this.downloadTimeoutMs});
+      await page.evaluate(()=>globalThis.fn_Download(5));
+      const download=await downloadPromise;
+      stage='read_download';report(stage);
       const bytes=await bufferFromDownload(download);
-      if(bytes.byteLength<10000)throw new ServiceError('OPINET_DOWNLOAD_EMPTY','오피넷 전국 가격 CSV가 비어 있거나 예상보다 작습니다.');
+      if(bytes.byteLength<10000)throw new ServiceError('OPINET_DOWNLOAD_EMPTY','오피넷 전국 현재가격 CSV가 비어 있거나 예상보다 작습니다.');
       const text=decodeKoreanCsv(bytes);
       if(/^\s*</.test(text.slice(0,200)))throw new ServiceError('OPINET_DOWNLOAD_HTML_RESPONSE','CSV 대신 웹 페이지가 반환되었습니다.');
       const rows=csvObjects(text);
-      if(rows.length<100)throw new ServiceError('OPINET_DOWNLOAD_EMPTY','오피넷 전국 가격 CSV의 데이터 행이 충분하지 않습니다.');
-      return {rows,bytes:bytes.byteLength,targetDate,suggestedFilename:download.suggestedFilename()||null};
+      if(rows.length<100)throw new ServiceError('OPINET_DOWNLOAD_EMPTY','오피넷 전국 현재가격 CSV의 데이터 행이 충분하지 않습니다.');
+      report('ready');
+      return {rows,bytes:bytes.byteLength,suggestedFilename:download.suggestedFilename()||null};
     }catch(error){
+      console.info(JSON.stringify({event:'opinet_public_download',stage:'failed',failedAt:stage,businessType}));
       if(error instanceof ServiceError)throw error;
-      throw new ServiceError('OPINET_BROWSER_DOWNLOAD_ERROR','오피넷 공개 전국 가격 CSV 다운로드에 실패했습니다.');
+      throw new ServiceError('OPINET_BROWSER_DOWNLOAD_ERROR',`오피넷 공개 전국 현재가격 CSV 다운로드에 실패했습니다. 단계: ${stage}`);
     }finally{if(browser)await browser.close().catch(()=>{});}
   }
 }
-
 export { kstDate };
