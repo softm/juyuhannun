@@ -379,7 +379,7 @@ export class MapController {
       const presentation = this.markerPresentation?.(row, { fuel });
       const price = presentation ? String(presentation.value ?? '미확인') : info ? info.price.toLocaleString('ko-KR', { maximumFractionDigits: 1 }) : '미확인';
       const fuelName = FUEL_TYPES.find(item => item.code === fuel)?.name || '유종';
-      const confidence = info ? freshness(info.priceUpdatedAt, info.fetchedAt) : { eligible: false, label: '가격 미제공' };
+      const confidence = info ? freshness(info.priceUpdatedAt, info.fetchedAt, Date.now(), info.priceTimeStatus, info.sourceDate) : { eligible: false, label: '가격 미제공' };
       const label = presentation ? String(presentation.label || row.name) : row.name + ', ' + fuelName + ' ' + (info ? price + '원' : '가격 미확인') + ', ' + confidence.label;
       const stale = presentation ? presentation.stale !== false : !confidence.eligible;
       const unit = presentation ? String(presentation.unit || '') : info ? '원' : '';
