@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { extractDownloadForm, parseCsv, parseDailyPriceCsv, decodeKoreanCsv, OpinetDownloadClient } from '../server/opinet-download.mjs';
-import { normalizeStandardStation, parseStandardStationCsv } from '../server/data-go-stations.mjs';
+import { normalizeStandardStation, parseStandardStationCsv, fetchStandardStationsPublic } from '../server/data-go-stations.mjs';
 
 test('download form parser keeps hidden fields and CSV parser handles quoted commas',()=>{
  const html='<form name="commonForm"><input type="hidden" name="menuNo" value="11"><input type="hidden" name="subMenuNo" value="22"></form>';
@@ -36,4 +36,17 @@ test('standard station CSV parser accepts the public Korean headers',()=>{
  assert.equal(rows.length,1001);
  assert.equal(rows[0].name,'테스트0');
  assert.equal(rows[0].lat,37.5);
+});
+
+test('public data-go grid fetcher reads the keyless header contract and nationwide station rows',async()=>{
+ const header={fileName:'전국주유소표준데이터',totalCount:1001,tableVO:{svcTableNm:'tn_pubr_public_conm_svc',colNmList:['CONM_NM','CTPV_NM','SGG_NM','LCTN_ROAD_NM','TELNO','LAT','LOT','DATA_CRTR_YMD']}};
+ const rows=Array.from({length:1001},(_,i)=>({CONM_NM:`테스트${i}`,CTPV_NM:'서울특별시',SGG_NM:'중구',LCTN_ROAD_NM:`서울특별시 중구 테스트로 ${i}`,TELNO:'02-1',LAT:'37.5',LOT:'127.1',DATA_CRTR_YMD:'2026-10-01'}));
+ const calls=[];
+ const result=await fetchStandardStationsPublic({fetchImpl:async url=>{calls.push(String(url));return new Response(JSON.stringify(calls.length===1?header:rows),{headers:{'Content-Type':'application/json'}});}});
+ assert.equal(result.status,'ready');
+ assert.equal(result.stations.length,1001);
+ assert.equal(result.calls,2);
+ assert.match(calls[0],/columList\.json\?pk=15129441&ext=CSV/);
+ assert.match(calls[1],/standard\.json/);
+ assert.match(calls[1],/colNmList=CONM_NM/);
 });

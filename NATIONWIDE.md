@@ -22,7 +22,7 @@ Playwright가 공개 다운로드 화면의 NetFunnel/페이지 초기화를 통
 표준데이터 API: `https://api.data.go.kr/openapi/tn_pubr_public_conm_api`  
 개발계정은 페이지당 최대 1000건이며 공공데이터포털 안내상 개발계정 신청 가능 트래픽은 10,000이다.
 
-좌표는 먼저 공공데이터포털의 공개 `전국주유소표준데이터.csv` 다운로드를 시도한다. 공개 CSV 다운로드가 막히거나 포털 UI가 변경되면 Repository Secret `DATA_GO_KR_SERVICE_KEY`를 사용해 공식 API `tn_pubr_public_conm_api`로 자동 폴백한다. 둘 다 실패하거나 좌표 매칭률이 80% 미만이면 브라우저는 기존 일반 Opinet 반경 자료를 계속 사용한다.
+좌표는 공공데이터포털 화면이 CSV를 만들 때 사용하는 **키 없는 공개 JSON**을 직접 사용한다. `/download/columList.json?pk=15129441&ext=CSV`에서 스키마·건수를 확인하고 `/download/standard.json`을 페이지 단위로 읽는다. 2026-10-20 확인 시 5,433건이 반환됐다. 이 공개 경로가 실패한 경우에만 Repository Secret `DATA_GO_KR_SERVICE_KEY`의 공식 API `tn_pubr_public_conm_api`로 폴백한다. 좌표 매칭률이 충분하지 않으면 기존 일반 Opinet 반경 자료를 계속 표시한다.
 
 ## 생성 파일
 

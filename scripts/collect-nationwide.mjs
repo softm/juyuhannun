@@ -2,8 +2,7 @@ import { readFile, readdir, unlink } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { OpinetBrowserDownloadClient, kstDate, previousKstDate } from '../server/opinet-browser-download.mjs';
-import { fetchStandardStations } from '../server/data-go-stations.mjs';
-import { DataGoStationBrowserClient } from '../server/data-go-browser-download.mjs';
+import { fetchStandardStations, fetchStandardStationsPublic } from '../server/data-go-stations.mjs';
 import { atomicWriteJson, seoulDay } from '../server/quota.mjs';
 import { publicError } from '../server/errors.mjs';
 
@@ -81,17 +80,15 @@ export async function collectNationwide({outputDirectory=resolve(ROOT,'public/da
  if(priced.length<minRows)throw new Error(`Nationwide price row count too small: ${priced.length}`);
 
  const prior=[...(await readStations(resolve(outputDirectory,'master.json'))),...(await readStations(resolve(outputDirectory,'latest.json'))),...(await readStations(resolve(ROOT,'public/data/stations.json')))];
- let standard={status:'awaiting_credentials',stations:[],calls:0};
- if(String(serviceKey).trim()){
-  try{standard=await fetchStandardStations({serviceKey,fetchImpl});}
-  catch(apiError){
-   console.info(JSON.stringify({event:'data_go_station_api_fallback',reason:apiError?.code||'api_failed'}));
-   try{standard=await new DataGoStationBrowserClient().download();}
-   catch(downloadError){standard={status:'error',stations:[],calls:0,error:publicError(downloadError)};}
-  }
- }else{
-  try{standard=await new DataGoStationBrowserClient().download();}
-  catch(downloadError){standard={status:'awaiting_credentials',stations:[],calls:0,error:publicError(downloadError)};}
+ let standard={status:'error',stations:[],calls:0};
+ try{
+  standard=await fetchStandardStationsPublic({fetchImpl});
+ }catch(publicErrorValue){
+  console.info(JSON.stringify({event:'data_go_public_grid_fallback',reason:publicErrorValue?.code||'public_grid_failed'}));
+  if(String(serviceKey).trim()){
+   try{standard=await fetchStandardStations({serviceKey,fetchImpl});}
+   catch(apiError){standard={status:'error',stations:[],calls:0,error:publicError(apiError)};}
+  }else standard={status:'error',stations:[],calls:0,error:publicError(publicErrorValue)};
  }
  const index=coordinateIndex([...prior,...standard.stations]);
  let located=0;
