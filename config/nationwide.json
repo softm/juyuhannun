@@ -1,0 +1,9 @@
+{
+  "version": 1,
+  "mode": "premium-region-daily",
+  "historyDays": 31,
+  "description": "전국 전체 주유소 기본정보와 판매가격을 지역별 전체 프리미엄 API로 매일 1회 수집합니다. 프리미엄 계약 전에는 기존 일반 API 자료를 서비스 폴백으로 유지합니다.",
+  "requiredSecrets": ["OPINET_API_KEY", "OPINET_PREMIUM_API_KEY"],
+  "requiredVariables": ["OPINET_PREMIUM_MASTER_URL", "OPINET_PREMIUM_PRICE_URL"],
+  "optionalVariables": ["OPINET_PREMIUM_KEY_PARAM", "OPINET_PREMIUM_AREA_PARAM"]
+}

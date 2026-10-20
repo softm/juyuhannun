@@ -29,10 +29,20 @@ async function requestJSON(url,signal){const response=await fetch(url,{signal,ca
 async function loadData(){
  const generation=++state.generation;state.controller?.abort();const ctrl=new AbortController();state.controller=ctrl;state.loading=true;
  $('results').setAttribute('aria-busy','true');$('refresh').classList.add('busy');$('search-area').disabled=true;
- const url=apiBase?`${apiBase}/stations?${new URLSearchParams({lat:state.center.lat,lng:state.center.lng,radius:state.radius,fuel:state.fuel})}`:`${APP_CONFIG.dataUrl||'./data/stations.json'}?v=${Math.floor(Date.now()/60000)}`;
  const timeout=setTimeout(()=>ctrl.abort(),30000);
  try{
-  const data=await requestJSON(url,ctrl.signal);if(generation!==state.generation)return;
+  let data;
+  if(apiBase){
+   const url=`${apiBase}/stations?${new URLSearchParams({lat:state.center.lat,lng:state.center.lng,radius:state.radius,fuel:state.fuel})}`;
+   data=await requestJSON(url,ctrl.signal);
+  }else{
+   const stamp=Math.floor(Date.now()/60000), nationwide=APP_CONFIG.nationwideDataUrl||'./data/nationwide/latest.json', fallback=APP_CONFIG.dataUrl||'./data/stations.json';
+   let nationwideData=null;
+   try{nationwideData=await requestJSON(`${nationwide}?v=${stamp}`,ctrl.signal);}catch{}
+   if(nationwideData&&Array.isArray(nationwideData.stations)&&nationwideData.stations.length>0&&['ready','partial'].includes(nationwideData.status))data=nationwideData;
+   else data=await requestJSON(`${fallback}?v=${stamp}`,ctrl.signal);
+  }
+  if(generation!==state.generation)return;
   if(!Array.isArray(data.stations))throw new Error('가격 자료의 형식을 확인할 수 없습니다.');
   if(data.status==='error'&&!data.stations.length)throw new Error(data.error?.message||'가격 조회에 실패했습니다. 마지막으로 받은 자료를 표시합니다.');
   state.envelope=data;
@@ -66,7 +76,7 @@ function renderStatus(){
  else if(e?.status==='ready'||e?.status==='partial'){
   title=fresh.length?'공식 가격 자료 확인':'최신 가격 확인이 필요해요';cls=fresh.length?'':'pending';
   description=`수집 ${formatTime(e.fetchedAt,true)}${e.status==='partial'?' · 일부 조회 실패':''}`;
-  if(e.coverage?.kind==='sample_zones')description+=' · 지정 지역 일부 자료';else description+=' · 조회 범위 내 자료';
+  if(e.coverage?.kind==='nationwide')description+=' · 전국 일일 수집';else if(e.coverage?.kind==='sample_zones')description+=' · 지정 지역 일부 자료';else description+=' · 조회 범위 내 자료';
   if(!state.all.length){title='받은 가격 자료가 없어요';description=`마지막 조회 ${formatTime(e.lastAttempt?.at||e.fetchedAt,true)} · 가격 자료 0건`;}
  }
  $('data-status').innerHTML=`<span class="status-indicator ${cls}"></span><div><strong>${esc(title)}</strong><span>${esc(description)}</span></div><button class="icon-button${state.loading?' busy':''}" id="refresh" aria-label="가격 자료 새로고침"><span class="icon">${icon('refresh')}</span></button>`;

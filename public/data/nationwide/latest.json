@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "status": "awaiting_credentials",
+  "provider": "opinet-premium",
+  "dataGranularity": "station",
+  "fetchedAt": null,
+  "coverage": {
+    "kind": "nationwide",
+    "complete": false,
+    "regionCount": 0,
+    "description": "전국 일 단위 수집 파이프라인은 준비됐으며 오피넷 프리미엄 제휴 설정을 기다리고 있습니다."
+  },
+  "stations": [],
+  "warnings": [],
+  "error": {
+    "code": "OPINET_PREMIUM_CREDENTIALS_REQUIRED",
+    "message": "프리미엄 API 설정 전에는 기존 일반 오피넷 자료를 사용합니다."
+  }
+}

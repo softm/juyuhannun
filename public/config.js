@@ -4,6 +4,7 @@ export const APP_CONFIG = Object.freeze({
   naverClientId: "etfcybk8vf",
   apiBase: '',
   dataUrl: './data/stations.json',
+  nationwideDataUrl: './data/nationwide/latest.json',
   defaultCenter: { lat: 37.5665, lng: 126.978 },
   defaultZoom: 13,
   queryRadius: 5000,

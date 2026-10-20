@@ -1,0 +1,9 @@
+{
+  "version": 1,
+  "status": "awaiting_credentials",
+  "provider": "opinet-premium",
+  "fetchedAt": null,
+  "coverage": { "kind": "nationwide", "complete": false, "regionCount": 0 },
+  "stations": [],
+  "warnings": []
+}

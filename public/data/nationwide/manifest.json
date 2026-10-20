@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "status": "awaiting_credentials",
+  "provider": "opinet-premium",
+  "fetchedAt": null,
+  "stationCount": 0,
+  "regionCount": 0,
+  "latest": "./latest.json",
+  "master": "./master.json",
+  "history": null
+}
