@@ -117,7 +117,12 @@ export async function collectNationwide({outputDirectory=resolve(ROOT,'public/da
  const priced=all.filter(s=>Object.keys(s.prices||{}).length);
  if(priced.length<minRows)throw new Error(`Nationwide price row count too small: ${priced.length}`);
 
- const prior=[...(await readStations(resolve(outputDirectory,'master.json'))),...(await readStations(resolve(outputDirectory,'latest.json'))),...(await readStations(resolve(ROOT,'public/data/stations.json')))];
+ const prior=[
+  ...(await readStations(resolve(outputDirectory,'coordinate-seed.json'))),
+  ...(await readStations(resolve(outputDirectory,'master.json'))),
+  ...(await readStations(resolve(outputDirectory,'latest.json'))),
+  ...(await readStations(resolve(ROOT,'public/data/stations.json')))
+ ];
  let standard={status:'error',stations:[],calls:0};
  try{
   standard=await fetchStandardStationsPublic({fetchImpl});
@@ -144,7 +149,7 @@ export async function collectNationwide({outputDirectory=resolve(ROOT,'public/da
  const warnings=[];
  if(!serviceReady)warnings.push({code:'NATIONWIDE_COORDINATES_INCOMPLETE',message:'전국 가격은 수집했지만 지도 좌표 매칭이 아직 서비스 기준보다 적어 기존 지역 API 자료를 계속 표시합니다.'});
  else if(ratio<0.98)warnings.push({code:'NATIONWIDE_COORDINATES_PARTIAL',message:'전국 일일 가격 중 좌표가 확인된 주유소를 우선 표시합니다. 전체 주유소가 모두 지도에 포함된 것은 아닙니다.'});
- if(standard.status!=='ready')warnings.push({code:'STANDARD_COORDINATES_UNAVAILABLE',message:'공공데이터 전국주유소표준 좌표 보강이 연결되지 않았거나 실패했습니다.'});
+ if(standard.status!=='ready')warnings.push({code:'STANDARD_COORDINATES_USING_SEED',message:'공공데이터 최신 좌표 조회가 실패해 저장된 공개 표준 좌표 시드를 사용했습니다.'});
  const coverage={kind:'nationwide',complete:ratio>=0.98,serviceReady,totalPriceStations:priced.length,mappedPriceStations:mappedPriced.length,mappedRatio:Number(ratio.toFixed(4)),priceDate:targetDate.slice(0,4)+'-'+targetDate.slice(4,6)+'-'+targetDate.slice(6,8),description:'오피넷 유가내려받기의 사업자별 일일 판매가격 CSV를 공개 다운로드 화면에서 일 1회 수집하고 공공데이터 전국주유소표준 좌표를 병합합니다.'};
  const status=serviceReady&&ratio>=0.98?'ready':'partial';
  const latest={version:2,status,provider:'opinet-public-download',dataGranularity:'station',fetchedAt,source:SOURCE,coverage,stations:mappedPriced,cache:{hit:priceSource==='same_day_cache',ageSeconds:priceSource==='same_day_cache'&&Number.isFinite(Date.parse(fetchedAt))?Math.max(0,Math.floor((clock()-Date.parse(fetchedAt))/1000)):0,stale:false},warnings,lastAttempt:{at:attemptedAt,status,calls:(priceSource==='download'?1:0)+standard.calls}};
