@@ -40,7 +40,7 @@ function kstDate(now=Date.now()){
 }
 
 export class OpinetBrowserDownloadClient{
-  constructor({clock=Date.now,pageReadyTimeoutMs=180000,downloadTimeoutMs=300000}={}){this.clock=clock;this.pageReadyTimeoutMs=pageReadyTimeoutMs;this.downloadTimeoutMs=downloadTimeoutMs;}
+  constructor({clock=Date.now,pageReadyTimeoutMs=120000,downloadTimeoutMs=120000}={}){this.clock=clock;this.pageReadyTimeoutMs=pageReadyTimeoutMs;this.downloadTimeoutMs=downloadTimeoutMs;}
   async currentPrices({businessType='station'}={}){
     if(!['station','lpg'].includes(businessType))throw new ServiceError('OPINET_DOWNLOAD_REQUEST_INVALID','전국 현재가격 다운로드 업종을 확인해 주세요.',400);
     const path=await executablePath();let browser;let stage='launch';
@@ -50,14 +50,20 @@ export class OpinetBrowserDownloadClient{
     try{
       browser=await chromium.launch({executablePath:path,headless:true,downloadsPath:downloadDir,args:['--no-sandbox','--disable-dev-shm-usage','--disable-gpu','--no-zygote','--disable-extensions','--disable-background-networking']});
       stage='context';report(stage);
+      const browserCdp=await browser.newBrowserCDPSession().catch(()=>null);
+      if(browserCdp){
+        browserCdp.on('Browser.downloadWillBegin',event=>console.info(JSON.stringify({event:'opinet_public_download',stage:'download_will_begin',businessType,suggestedFilename:typeof event?.suggestedFilename==='string'?event.suggestedFilename.slice(0,120):null})));
+        browserCdp.on('Browser.downloadProgress',event=>{if(event?.state==='completed'||event?.state==='canceled')console.info(JSON.stringify({event:'opinet_public_download',stage:`download_${event.state}`,businessType}));});
+        await browserCdp.send('Browser.setDownloadBehavior',{behavior:'allowAndName',downloadPath:downloadDir,eventsEnabled:true});
+      }
       const context=await browser.newContext({
         userAgent:'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36',
         locale:'ko-KR',acceptDownloads:true,
       });
       const page=await context.newPage();
-      const cdp=await context.newCDPSession(page).catch(()=>null);
-      if(cdp){
-        await cdp.send('Browser.setDownloadBehavior',{behavior:'allow',downloadPath:downloadDir,eventsEnabled:true}).catch(async()=>cdp.send('Page.setDownloadBehavior',{behavior:'allow',downloadPath:downloadDir}).catch(()=>{}));
+      if(!browserCdp){
+        const pageCdp=await context.newCDPSession(page).catch(()=>null);
+        if(pageCdp)await pageCdp.send('Page.setDownloadBehavior',{behavior:'allow',downloadPath:downloadDir}).catch(()=>{});
       }
       page.on('dialog',dialog=>{report(`dialog_${dialog.type()}`);dialog.accept().catch(()=>{});});
       stage='goto';report(stage);
