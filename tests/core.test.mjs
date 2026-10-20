@@ -51,3 +51,13 @@ test('stale cheap station excluded by default; explicit stale view includes it',
  assert.deepEqual(filterStations(items,{...opts,freshOnly:false}).map(s=>s.id),['old','current']);
 });
 test('untrusted station labels are escaped',()=>assert.equal(escapeHTML('<img src=x onerror="x">'), '&lt;img src=x onerror=&quot;x&quot;&gt;'));
+
+test('daily current-price files are eligible without inventing a station report time',()=> {
+ const fetched='2026-10-19T14:00:00Z';
+ const current=freshness(null,fetched,now,'daily_current_file');
+ assert.equal(current.state,'daily'); assert.equal(current.eligible,true);
+ const stale=freshness(null,'2026-10-18T07:00:00Z',now,'daily_current_file');
+ assert.equal(stale.state,'stale'); assert.equal(stale.eligible,false);
+ const p=getFuelPrice({prices:{B027:{price:1700,fetchedAt:fetched,priceTimeStatus:'daily_current_file'}}},'B027');
+ assert.equal(p.priceTimeStatus,'daily_current_file');
+});

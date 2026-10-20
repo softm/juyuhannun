@@ -10,7 +10,7 @@ on:
     # KST 01:17, 02:17, 09:17, 12:17, 16:17, 19:17.
     # Actions schedules can be delayed; source timestamps remain authoritative.
     - cron: '17 0,3,7,10,16,17 * * *'
-    # KST 03:37 — nationwide daily snapshot when premium integration is configured.
+    # KST 03:37 — nationwide public download snapshot.
     - cron: '37 18 * * *'
 
 permissions:
@@ -79,16 +79,11 @@ jobs:
           OPINET_DIAGNOSTICS: '1'
           EX_API_KEY: ${{ secrets.EX_API_KEY }}
         run: npm run collect:energy
-      - name: Collect nationwide daily station snapshot
-        if: github.event_name != 'pull_request' && (github.event_name == 'workflow_dispatch' || github.event.schedule == '37 18 * * *')
+      - name: Collect nationwide daily public snapshot
+        if: github.event_name != 'pull_request' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch' || github.event.schedule == '37 18 * * *')
         continue-on-error: true
         env:
-          OPINET_API_KEY: ${{ secrets.OPINET_API_KEY }}
-          OPINET_PREMIUM_API_KEY: ${{ secrets.OPINET_PREMIUM_API_KEY }}
-          OPINET_PREMIUM_MASTER_URL: ${{ vars.OPINET_PREMIUM_MASTER_URL }}
-          OPINET_PREMIUM_PRICE_URL: ${{ vars.OPINET_PREMIUM_PRICE_URL }}
-          OPINET_PREMIUM_KEY_PARAM: ${{ vars.OPINET_PREMIUM_KEY_PARAM }}
-          OPINET_PREMIUM_AREA_PARAM: ${{ vars.OPINET_PREMIUM_AREA_PARAM }}
+          DATA_GO_KR_SERVICE_KEY: ${{ secrets.DATA_GO_KR_SERVICE_KEY }}
         run: npm run collect:nationwide
       - name: Save consumed quota even after collection failure
         if: always() && github.event_name != 'pull_request'
@@ -129,7 +124,7 @@ jobs:
           node --input-type=module <<'JS'
           import {readFile,appendFile} from 'node:fs/promises';
           let report='## 주유한눈 데이터 상태\n\n| 자료 | 상태 | 건수 | 마지막 성공 수집 | 이전 자료 보존 |\n|---|---|---:|---|---|\n';
-          for(const [name,file,field] of [['주변 주유소','stations','stations'],['평균 유가','averages','benchmarks'],['고속도로 주유소','highway','stations']]){
+          for(const [name,file,field] of [['주변 주유소','stations','stations'],['전국 일괄가격','nationwide/latest','stations'],['평균 유가','averages','benchmarks'],['고속도로 주유소','highway','stations']]){
             const d=JSON.parse(await readFile(`public/data/${file}.json`,'utf8'));
             report+=`| ${name} | ${d.status} | ${d[field].length} | ${d.fetchedAt??'없음'} | ${d.cache?.stale?'예':'아니요'} |\n`;
           }

@@ -1,9 +1,11 @@
 {
-  "version": 1,
-  "mode": "premium-region-daily",
+  "version": 2,
+  "mode": "public-download-daily",
   "historyDays": 31,
-  "description": "전국 전체 주유소 기본정보와 판매가격을 지역별 전체 프리미엄 API로 매일 1회 수집합니다. 프리미엄 계약 전에는 기존 일반 API 자료를 서비스 폴백으로 유지합니다.",
-  "requiredSecrets": ["OPINET_API_KEY", "OPINET_PREMIUM_API_KEY"],
-  "requiredVariables": ["OPINET_PREMIUM_MASTER_URL", "OPINET_PREMIUM_PRICE_URL"],
-  "optionalVariables": ["OPINET_PREMIUM_KEY_PARAM", "OPINET_PREMIUM_AREA_PARAM"]
+  "activationMappedRatio": 0.8,
+  "description": "오피넷 유가내려받기 공개 CSV로 전국 현재 판매가격을 하루 1회 수집하고, 전국주유소표준데이터 좌표를 병합합니다.",
+  "optionalSecrets": ["DATA_GO_KR_SERVICE_KEY"],
+  "priceSource": "https://www.opinet.co.kr/user/opdown/opDownload.do",
+  "publicDataCatalog": "https://www.data.go.kr/data/15044646/fileData.do",
+  "coordinateCatalog": "https://www.data.go.kr/data/15129441/standard.do"
 }
