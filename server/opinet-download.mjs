@@ -61,6 +61,31 @@ export function parseCsv(text) {
   return rows.filter(r=>r.some(v=>String(v).trim()!==''));
 }
 
+export function parseDailyPriceCsv(text) {
+  const rows=parseCsv(text);
+  const out=[];
+  for(const row of rows){
+    if(row.length<11)continue;
+    const [id,region,name,address,date,brand,self,premium,gasoline,diesel,kerosene]=row.map(value=>String(value??'').trim());
+    if(!/^[A-Za-z0-9_-]{2,40}$/.test(id)||!/^\d{8}$/.test(date)||!name)continue;
+    out.push({
+      '고유번호':id,
+      '지역':region,
+      '상호':name,
+      '주소':address,
+      '기준일자':date,
+      '상표':brand,
+      '셀프여부':self,
+      '고급휘발유':premium,
+      '보통휘발유':gasoline,
+      '경유':diesel,
+      '실내등유':kerosene,
+    });
+  }
+  if(!out.length)throw new ServiceError('OPINET_DOWNLOAD_SCHEMA_ERROR','오피넷 일일가격 CSV의 고유번호·기준일자·가격 열을 확인할 수 없습니다.');
+  return out;
+}
+
 export function csvObjects(text) {
   const rows=parseCsv(text);
   const headerIndex=rows.findIndex(r=>r.some(v=>String(v).replace(/\s/g,'').includes('고유번호')));

@@ -19,14 +19,18 @@ export function getFuelPrice(station, fuel) {
   if (!p || (p.unit && p.unit !== 'KRW/L') || !finite(p.price) || p.price <= 0) return null;
   return { price: p.price, priceUpdatedAt: p.priceUpdatedAt ?? null, fetchedAt: p.fetchedAt ?? station.fetchedAt ?? null, priceTimeStatus: p.priceTimeStatus ?? station.priceTimeStatus ?? null, sourceDate: p.sourceDate ?? null };
 }
-export function freshness(priceUpdatedAt, fetchedAt, now = Date.now(), priceTimeStatus = null) {
+export function freshness(priceUpdatedAt, fetchedAt, now = Date.now(), priceTimeStatus = null, sourceDate = null) {
   const source = typeof priceUpdatedAt==='string' ? Date.parse(priceUpdatedAt) : NaN;
   const fetched = typeof fetchedAt==='string' ? Date.parse(fetchedAt) : NaN;
-  if (!Number.isFinite(source) && priceTimeStatus === 'daily_current_file') {
+  if (!Number.isFinite(source) && ['daily_current_file','daily_price_file'].includes(priceTimeStatus)) {
     if (!Number.isFinite(fetched) || fetched > now + 300000) return {state:'unknown',label:'일간자료 수집시각 확인 필요',eligible:false,ageHours:null};
-    const fetchAge = Math.max(0,(now-fetched)/3600000);
-    if (fetchAge>30) return {state:'stale',label:'일간자료 30시간 경과',eligible:false,ageHours:fetchAge};
-    return {state:'daily',label:'당일 일괄자료 · 개별시각 미제공',eligible:true,ageHours:fetchAge};
+    const fetchAge=Math.max(0,(now-fetched)/3600000);
+    const day=/^\d{4}-\d{2}-\d{2}$/.test(String(sourceDate||''))?String(sourceDate):null;
+    const today=new Date(now+9*60*60*1000).toISOString().slice(0,10);
+    const yesterday=new Date(now+9*60*60*1000-24*60*60*1000).toISOString().slice(0,10);
+    if(fetchAge>30||(day&&day!==today&&day!==yesterday))return {state:'stale',label:'일간가격 기준일 경과',eligible:false,ageHours:fetchAge};
+    const prefix=day===yesterday?'전일':'당일';
+    return {state:day===yesterday?'aging':'daily',label:`${prefix} 일괄가격 · 개별시각 미제공`,eligible:true,ageHours:fetchAge};
   }
   if (!Number.isFinite(source)) return {state:'unknown',label:'가격 시각 미확인',eligible:false,ageHours:null};
   if (source>now+300000 || (Number.isFinite(fetched) && source>fetched+300000)) return {state:'invalid',label:'가격 시각 확인 필요',eligible:false,ageHours:null};
@@ -63,7 +67,7 @@ export function filterStations(stations, {fuel,center,radius=5000,query='',brand
   const q=query.trim().toLocaleLowerCase('ko-KR');
   return stations.map(station=> {
     const p=getFuelPrice(station,fuel);
-    return {...station,currentPrice:p,confidence:p?freshness(p.priceUpdatedAt,p.fetchedAt,now,p.priceTimeStatus):{state:'unknown',label:'가격 미제공',eligible:false},distance:distanceMeters(center,station)};
+    return {...station,currentPrice:p,confidence:p?freshness(p.priceUpdatedAt,p.fetchedAt,now,p.priceTimeStatus,p.sourceDate):{state:'unknown',label:'가격 미제공',eligible:false},distance:distanceMeters(center,station)};
   }).filter(s=>s.currentPrice && s.distance<=radius && (!brand||s.brand===brand) && (!self||s.facilities?.self===true) && (!freshOnly||s.confidence.eligible) && (!favorites||favorites.has(s.id)) && (!q||[s.name,s.address,s.roadAddress,BRANDS[s.brand]].filter(Boolean).join(' ').toLocaleLowerCase('ko-KR').includes(q)))
     .sort((a,b)=>sort==='distance'?a.distance-b.distance||a.currentPrice.price-b.currentPrice.price:a.currentPrice.price-b.currentPrice.price||a.distance-b.distance);
 }

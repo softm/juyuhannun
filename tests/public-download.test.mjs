@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { extractDownloadForm, parseCsv, decodeKoreanCsv, OpinetDownloadClient } from '../server/opinet-download.mjs';
+import { extractDownloadForm, parseCsv, parseDailyPriceCsv, decodeKoreanCsv, OpinetDownloadClient } from '../server/opinet-download.mjs';
 import { normalizeStandardStation } from '../server/data-go-stations.mjs';
 
 test('download form parser keeps hidden fields and CSV parser handles quoted commas',()=>{
@@ -17,4 +17,14 @@ test('download client GETs form first, carries cookie, and posts type 5 for curr
 test('standard station normalizer accepts documented coordinate fields',()=>{
  const s=normalizeStandardStation({conmNm:'테스트',lat:'37.5',lot:'127.1',lctnRoadNm:'서울 테스트로 1',telno:'02-1'});
  assert.equal(s.name,'테스트');assert.equal(s.lat,37.5);assert.equal(s.lng,127.1);
+});
+
+test('historical daily CSV parser keeps the documented nationwide price column order',()=>{
+ const csv='제목\r\n"고유번호","지역","상호","주소","기준일자","상표","셀프","고급휘발유","보통휘발유","경유","등유"\r\n"A001","서울 중구","테스트주유소","서울 중구 테스트로 1","20261020","SK","셀프","1999","1799","1699","1399"\r\n';
+ const rows=parseDailyPriceCsv(csv);
+ assert.equal(rows.length,1);
+ assert.equal(rows[0]['고유번호'],'A001');
+ assert.equal(rows[0]['기준일자'],'20261020');
+ assert.equal(rows[0]['보통휘발유'],'1799');
+ assert.equal(rows[0]['경유'],'1699');
 });

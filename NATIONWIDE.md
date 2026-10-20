@@ -4,12 +4,12 @@
 
 프리미엄 API를 기본 전제로 하지 않는다. 한국석유공사 오피넷의 공개 **유가내려받기** 화면에서 로그인 없이 제공되는 CSV를 하루 1회 받아 전국 개별 판매가격을 만든다.
 
-- 현재 판매가격(주유소): `POST https://www.opinet.co.kr/user/opdown/opDownload.do`, CSV `type=5`, `searchCond=1`
-- 사업자 기본정보(주유소): 같은 주소, CSV `type=4`, `searchCond=1`
-- 자동차충전소(LPG)도 `searchCond=2`로 같은 방식으로 받는다.
+- 전국 가격은 **사업자별 과거 판매가격 CSV**의 일일유가를 사용한다: `fn_Download(6)`, 주유소 `rdo3=A`, 일일유가 `rdo4=X`, 시작일=종료일.
+- 매일 수집 시 오늘 날짜를 먼저 요청하고, 제공기관이 아직 당일 파일을 만들지 않았으면 전일 파일로 한 번 폴백한다.
+- 이 방식은 공개 페이지의 로그인 없는 CSV 다운로드를 사용하며 일반 `OPINET_API_KEY` 호출량을 소비하지 않는다.
 - 공공데이터포털 데이터셋: https://www.data.go.kr/data/15044646/fileData.do
 
-다운로드 전 GET으로 `commonForm`과 세션 쿠키를 받고, 그 폼의 숨은 필드를 그대로 보존한 뒤 CSV 타입만 덮어쓴다. 화면 개편으로 CSV 대신 HTML이나 비정상적으로 작은 파일이 오면 기존 정상 nationwide 파일을 덮어쓰지 않는다.
+Playwright가 공개 다운로드 화면의 NetFunnel/페이지 초기화를 통과한 뒤 날짜 필드를 설정하고 `download` 이벤트와 `fn_Download(6)`을 동시에 기다린다. CSV 기준일이 요청일과 다르거나 행 수가 비정상적으로 적으면 기존 정상 nationwide 파일을 덮어쓰지 않는다.
 
 ## 좌표
 
@@ -33,7 +33,7 @@
 
 ## 가격 기준
 
-일괄 CSV는 개별 주유소의 정확한 보고 시각을 제공하지 않으므로 `priceUpdatedAt`을 임의 생성하지 않는다. 대신 `priceTimeStatus=daily_current_file`과 실제 파일 수집시각을 보관한다. 화면에는 **당일 일괄자료 · 개별시각 미제공**으로 표시한다.
+일괄 CSV는 개별 주유소의 정확한 보고 시각을 제공하지 않으므로 `priceUpdatedAt`을 임의 생성하지 않는다. 대신 `priceTimeStatus=daily_price_file`, CSV의 `sourceDate`, 실제 파일 수집시각을 보관한다. 화면에는 **당일/전일 일괄가격 · 개별시각 미제공**으로 명확히 표시한다.
 
 ## 실행
 
@@ -41,4 +41,4 @@
 npm run collect:nationwide
 ```
 
-GitHub Actions는 KST 03:37에 매일 실행하며 수동 실행과 코드 push 때도 수집기를 검증한다. 일반 `OPINET_API_KEY` 300회/일은 이 전국 CSV 다운로드에 사용하지 않는다.
+GitHub Actions는 KST 20:37에 매일 실행하며 수동 실행과 코드 push 때도 수집기를 검증한다. 일반 `OPINET_API_KEY` 300회/일은 이 전국 CSV 다운로드에 사용하지 않는다.

@@ -1,7 +1,7 @@
 import { readFile, readdir, unlink } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { OpinetBrowserDownloadClient, kstDate } from '../server/opinet-browser-download.mjs';
+import { OpinetBrowserDownloadClient, kstDate, previousKstDate } from '../server/opinet-browser-download.mjs';
 import { fetchStandardStations } from '../server/data-go-stations.mjs';
 import { atomicWriteJson, seoulDay } from '../server/quota.mjs';
 import { publicError } from '../server/errors.mjs';
@@ -18,21 +18,21 @@ const normalAddress=v=>text(v).toLocaleLowerCase('ko-KR').replace(/\([^)]*\)/g,'
 const normalPhone=v=>text(v).replace(/\D/g,'');
 const normalName=v=>text(v).toLocaleLowerCase('ko-KR').replace(/\(주\)|주식회사|㈜/g,'').replace(/\s/g,'').replace(/주유소|충전소/g,'');
 
-function parseOpinetRow(row,{fetchedAt,kind}={}){
+function parseOpinetRow(row,{fetchedAt,kind,sourceDate=null}={}){
  const id=value(row,['고유번호','상호고유번호','주유소고유번호','충전소고유번호','uni_id','uniid']);
  const name=value(row,['상호','상호명','주유소명','충전소명']);
  if(!id||!name)return null;
  const prices={};
  for(const [fuel,aliases] of Object.entries({B034:['고급휘발유'],B027:['보통휘발유','휘발유'],D047:['자동차용경유','경유'],K015:['자동차부탄','LPG','엘피지']})){
-  const p=money(value(row,aliases));if(p!==null)prices[fuel]={price:p,unit:'KRW/L',priceUpdatedAt:null,priceTimeStatus:'daily_current_file',fetchedAt};
+  const p=money(value(row,aliases));if(p!==null){const rowDate=value(row,['기준일자','기준일','date'])||sourceDate;prices[fuel]={price:p,unit:'KRW/L',priceUpdatedAt:null,priceTimeStatus:'daily_price_file',sourceDate:/^\d{8}$/.test(rowDate)?`${rowDate.slice(0,4)}-${rowDate.slice(4,6)}-${rowDate.slice(6,8)}`:rowDate||null,fetchedAt};}
  }
  return {id,name,dataGranularity:'station',kind,brand:brand(value(row,['상표','상표명'])),brandName:value(row,['상표','상표명'])||null,address:value(row,['주소','소재지주소','소재지'])||null,roadAddress:value(row,['도로명주소'])||null,phone:value(row,['전화번호','전화'])||null,region:value(row,['지역','시도'])||null,facilities:{self:self(value(row,['셀프여부','셀프구분','셀프']))},prices,fetchedAt,source:SOURCE};
 }
 
-function mergeBasicAndPrice(basicRows,currentRows,{fetchedAt,kind}){
+function mergeBasicAndPrice(basicRows,currentRows,{fetchedAt,kind,sourceDate=null}){
  const byId=new Map();
- for(const row of basicRows){const s=parseOpinetRow(row,{fetchedAt,kind});if(s)byId.set(s.id,s);}
- for(const row of currentRows){const s=parseOpinetRow(row,{fetchedAt,kind});if(!s)continue;const old=byId.get(s.id);byId.set(s.id,old?{...old,...s,address:s.address??old.address,roadAddress:s.roadAddress??old.roadAddress,phone:s.phone??old.phone,prices:{...old.prices,...s.prices},facilities:{...old.facilities,...s.facilities}}:s);}
+ for(const row of basicRows){const s=parseOpinetRow(row,{fetchedAt,kind,sourceDate});if(s)byId.set(s.id,s);}
+ for(const row of currentRows){const s=parseOpinetRow(row,{fetchedAt,kind,sourceDate});if(!s)continue;const old=byId.get(s.id);byId.set(s.id,old?{...old,...s,address:s.address??old.address,roadAddress:s.roadAddress??old.roadAddress,phone:s.phone??old.phone,prices:{...old.prices,...s.prices},facilities:{...old.facilities,...s.facilities}}:s);}
  return byId;
 }
 function coordinateIndex(rows){
@@ -51,9 +51,16 @@ async function prune(dir,keep){let names=[];try{names=(await readdir(dir)).filte
 
 export async function collectNationwide({outputDirectory=resolve(ROOT,'public/data/nationwide'),serviceKey=process.env.DATA_GO_KR_SERVICE_KEY||'',fetchImpl=fetch,clock=Date.now,historyDays=31,minRows=1000}={}){
  const fetchedAt=new Date(clock()).toISOString();const client=new OpinetBrowserDownloadClient({clock});
- const targetDate=kstDate(clock());
- const gasPrice=await client.currentPrices({businessType:'station'});
- const byId=mergeBasicAndPrice([],gasPrice.rows,{fetchedAt,kind:'station'});
+ let targetDate=kstDate(clock()),gasPrice;
+ try{gasPrice=await client.dailyPrices({businessType:'station',targetDate});}
+ catch(firstError){
+  const fallbackDate=previousKstDate(clock());
+  if(fallbackDate===targetDate)throw firstError;
+  console.info(JSON.stringify({event:'opinet_public_download_fallback',from:targetDate,to:fallbackDate,reason:firstError?.code||'download_failed'}));
+  targetDate=fallbackDate;
+  gasPrice=await client.dailyPrices({businessType:'station',targetDate});
+ }
+ const byId=mergeBasicAndPrice([],gasPrice.rows,{fetchedAt,kind:'station',sourceDate:gasPrice.sourceDate||targetDate});
  const all=[...byId.values()],priced=all.filter(s=>Object.keys(s.prices).length);
  if(priced.length<minRows)throw new Error(`Nationwide price row count too small: ${priced.length}`);
 
@@ -72,7 +79,7 @@ export async function collectNationwide({outputDirectory=resolve(ROOT,'public/da
  const warnings=[];
  if(!serviceReady)warnings.push({code:'NATIONWIDE_COORDINATES_INCOMPLETE',message:'전국 가격은 수집했지만 지도 좌표 매칭이 충분하지 않아 기존 지역 API 자료를 계속 표시합니다.'});
  if(standard.status!=='ready')warnings.push({code:'STANDARD_COORDINATES_UNAVAILABLE',message:'공공데이터 전국주유소표준 좌표 보강이 연결되지 않았거나 실패했습니다.'});
- const coverage={kind:'nationwide',complete:ratio>=0.98,serviceReady,totalPriceStations:priced.length,mappedPriceStations:mappedPriced.length,mappedRatio:Number(ratio.toFixed(4)),priceDate:targetDate.slice(0,4)+'-'+targetDate.slice(4,6)+'-'+targetDate.slice(6,8),description:'오피넷 유가내려받기의 현재 판매가격 CSV를 공개 다운로드 화면에서 일 1회 수집하고 공공데이터 전국주유소표준 좌표를 병합합니다.'};
+ const coverage={kind:'nationwide',complete:ratio>=0.98,serviceReady,totalPriceStations:priced.length,mappedPriceStations:mappedPriced.length,mappedRatio:Number(ratio.toFixed(4)),priceDate:targetDate.slice(0,4)+'-'+targetDate.slice(4,6)+'-'+targetDate.slice(6,8),description:'오피넷 유가내려받기의 사업자별 일일 판매가격 CSV를 공개 다운로드 화면에서 일 1회 수집하고 공공데이터 전국주유소표준 좌표를 병합합니다.'};
  const status=serviceReady&&ratio>=0.98?'ready':'partial';
  const latest={version:2,status,provider:'opinet-public-download',dataGranularity:'station',fetchedAt,source:SOURCE,coverage,stations:mappedPriced,cache:{hit:false,ageSeconds:0,stale:false},warnings,lastAttempt:{at:fetchedAt,status,calls:1+standard.calls}};
  const master={version:2,status,provider:'opinet-public-download',fetchedAt,source:SOURCE,coverage,stations:all.map(({prices,...s})=>s),warnings};
