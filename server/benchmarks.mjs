@@ -116,6 +116,12 @@ export function normalizeBenchmark(row, { scope, sido = null, fetchedAt } = {}) 
 }
 
 function normalizeDataset(rows, { scope, sido, fetchedAt }) {
+  // These unfiltered endpoints describe all products nationwide or across
+  // provinces. An empty provider response cannot confirm data readiness or
+  // replace a previous successful snapshot. Local filters run separately.
+  if (rows.length === 0 && (scope === 'national' || scope === 'sido')) {
+    throw new ServiceError('OPINET_BENCHMARK_EMPTY_RESPONSE', '오피넷이 평균가격을 빈 응답으로 반환했습니다. 인증키의 발급처·사용 상태와 제공기관 응답을 확인해 주세요.');
+  }
   const byId = new Map();
   const conflicts = new Set();
   let rejected = 0;

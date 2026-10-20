@@ -6,12 +6,16 @@ import { DailyQuota, RunQuota, atomicWriteJson } from '../server/quota.mjs';
 import { publicError, ServiceError } from '../server/errors.mjs';
 
 const PROJECT_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+const hasPrice = value => Number.isFinite(value?.price) && value.price > 0 && value.price <= 100_000;
 
 export function mergeStationRecords(previous, incoming) {
   if (!previous) return structuredClone(incoming);
   const prices = { ...previous.prices };
   for (const [fuel, price] of Object.entries(incoming.prices ?? {})) {
     const old = prices[fuel];
+    // A missing/invalid observation is not a new selling price. Preserve the
+    // last valid price with its original observation and source timestamps.
+    if (hasPrice(old) && !hasPrice(price)) continue;
     // An unchanged undated observation can keep the older, independently
     // documented observation, with its OLD fetchedAt and source timestamp.
     if (old?.priceUpdatedAt && !price.priceUpdatedAt && old.price === price.price) continue;

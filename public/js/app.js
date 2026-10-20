@@ -67,6 +67,7 @@ function renderStatus(){
   title=fresh.length?'공식 가격 자료 확인':'최신 가격 확인이 필요해요';cls=fresh.length?'':'pending';
   description=`수집 ${formatTime(e.fetchedAt,true)}${e.status==='partial'?' · 일부 조회 실패':''}`;
   if(e.coverage?.kind==='sample_zones')description+=' · 지정 지역 일부 자료';else description+=' · 조회 범위 내 자료';
+  if(!state.all.length){title='받은 가격 자료가 없어요';description=`마지막 조회 ${formatTime(e.lastAttempt?.at||e.fetchedAt,true)} · 가격 자료 0건`;}
  }
  $('data-status').innerHTML=`<span class="status-indicator ${cls}"></span><div><strong>${esc(title)}</strong><span>${esc(description)}</span></div><button class="icon-button${state.loading?' busy':''}" id="refresh" aria-label="가격 자료 새로고침"><span class="icon">${icon('refresh')}</span></button>`;
  $('refresh').addEventListener('click',loadData);
@@ -80,6 +81,7 @@ function renderEmpty(){
  if(e?.status==='awaiting_credentials'||!e){title='정확한 가격을 준비하고 있어요';desc='아직 연결된 공식 가격 자료가 없습니다.<br>현재 가격은 오피넷에서 확인해 주세요.';buttons='<a class="small-button" href="https://www.opinet.co.kr/" target="_blank" rel="noopener noreferrer">오피넷에서 가격 확인 ↗</a><button class="small-button secondary" data-action="calculator">절약액 계산</button>';}
  else if(e.status==='error'&&!state.all.length){title='가격 자료를 가져오지 못했어요';desc='연결 상태를 확인한 뒤 다시 시도해 주세요.';buttons='<button class="small-button" data-action="retry">다시 시도</button>';}
  else if(state.view==='saved'){title=state.favorites.size?'이 조건에 맞는 찜한 곳이 없어요':'자주 가는 주유소를 모아 보세요';desc=state.favorites.size?'다른 지역으로 이동하거나 유종·필터를 확인해 주세요.':'주유소의 하트를 누르면 여기에 저장됩니다.';}
+ else if(!state.all.length&&e.coverage?.kind==='sample_zones'){title='수집된 주유소 가격이 없어요';desc='지정한 수집 지역에서 가격 자료를 받지 못했습니다.<br>잠시 후 다시 확인하거나 오피넷을 이용해 주세요.';buttons='<button class="small-button" data-action="retry">다시 확인</button><a class="small-button secondary" href="https://www.opinet.co.kr/" target="_blank" rel="noopener noreferrer">오피넷에서 확인 ↗</a>';}
  else if(state.freshOnly&&state.all.some(s=>distanceMeters(state.center,s)<=state.radius&&getFuelPrice(s,state.fuel))){title='최신 시각을 확인한 가격이 없어요';desc='오래된 가격이나 기준시각이 없는 자료는<br>기본 비교에서 제외됩니다.';buttons='<button class="small-button" data-action="show-old">오래된 가격도 살펴보기</button>';}
  else if(e.coverage?.kind==='sample_zones'){title='아직 가격이 수집되지 않은 지역이에요';desc='현재는 지정한 지역의 일부 자료를 제공합니다.<br>지도 중심을 수집 지역으로 이동해 보세요.';const zones=(e.coverage.zones||[]).filter((z,i,a)=>a.findIndex(x=>x.id===z.id)===i).slice(0,5);buttons=zones.map(z=>`<button class="small-button" data-action="zone" data-zone="${esc(z.id)}">${esc(z.name||z.id)}</button>`).join('')||'<a class="small-button" href="https://www.opinet.co.kr/" target="_blank" rel="noopener noreferrer">오피넷에서 확인 ↗</a>';}
  $('results').innerHTML=`<div class="empty-state"><div class="empty-icon">${icon(state.view==='saved'?'heart':'pump')}</div><h3>${title}</h3><p>${desc}</p><div class="empty-actions">${buttons}</div>${e?.status==='awaiting_credentials'?'<p class="note">가격 기준시각이 확인되는 자료만 비교합니다.</p>':''}</div>`;

@@ -241,6 +241,38 @@ test('entirely malformed averages return an error, and conflicting duplicate pri
   assert.ok(result.warnings.some(item => item.code === 'BENCHMARK_ROWS_OMITTED'));
 });
 
+test('empty unfiltered averages are unavailable, preserve old observations, and differ from an empty local filter', async () => {
+  for (const rows of [[], null, '']) {
+    const { benchmarks } = fixtureClient({ fetchImpl: async () => json(rows) });
+    const result = await benchmarks.snapshot();
+    assert.equal(result.status, 'error');
+    assert.equal(result.error.code, 'OPINET_BENCHMARK_EMPTY_RESPONSE');
+    assert.equal(result.fetchedAt, null);
+    assert.deepEqual(result.benchmarks, []);
+    assert.ok(result.datasets.every(item => item.status === 'error'));
+  }
+
+  let now = clock();
+  let empty = false;
+  const { benchmarks } = fixtureClient({ clock: () => now, ttlMs: 30_000, fetchImpl: async url => {
+    if (empty) return json([]);
+    return json(new URL(url).pathname.endsWith('avgAllPrice.do') ? national : provinces);
+  } });
+  const previous = await benchmarks.snapshot();
+  const filtered = await benchmarks.snapshot({ fuel: 'K015' });
+  assert.equal(filtered.status, 'ready');
+  assert.deepEqual(filtered.benchmarks, []);
+  assert.ok(filtered.datasets.every(item => item.loadedCount > 0));
+  now += 40_000;
+  empty = true;
+  const stale = await benchmarks.snapshot();
+  assert.equal(stale.status, 'partial');
+  assert.equal(stale.cache.stale, true);
+  assert.equal(stale.fetchedAt, previous.fetchedAt);
+  assert.deepEqual(stale.benchmarks, previous.benchmarks);
+  assert.ok(stale.datasets.every(item => item.error.code === 'OPINET_BENCHMARK_EMPTY_RESPONSE'));
+});
+
 test('future nationwide dates are reported as partial, never as recently collected current prices', async () => {
   const { benchmarks } = fixtureClient({ fetchImpl: async url => json(new URL(url).pathname.endsWith('avgAllPrice.do')
     ? [{ ...national[0], TRADE_DT: 20990101 }] : provinces) });

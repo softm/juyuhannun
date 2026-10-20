@@ -1,6 +1,7 @@
 import { ServiceError, publicError, readJsonResponse } from './errors.mjs';
 import { MemoryCache, SingleFlight } from './cache.mjs';
 import { wgs84ToKatec, katecToWgs84 } from './coordinates.mjs';
+import { logOpinetDiagnostic } from './opinet-diagnostics.mjs';
 
 export const FUELS = Object.freeze({ B027: 'gasoline', D047: 'diesel', B034: 'premium', K015: 'lpg' });
 export const OPINET_SOURCE = Object.freeze({ name: '한국석유공사 오피넷', url: 'https://www.opinet.co.kr/' });
@@ -101,7 +102,9 @@ export class OpinetClient {
     url.search = new URLSearchParams({ ...parameters, out: 'json', certkey: this.apiKey }).toString();
     try {
       const response = await this.fetchImpl(url, { headers: { Accept: 'application/json' }, signal: AbortSignal.timeout(this.timeoutMs) });
-      return extractOil(await readJsonResponse(response, 'OPINET'));
+      const payload = await readJsonResponse(response, 'OPINET');
+      logOpinetDiagnostic({ endpoint, httpStatus: response.status, payload, apiKey: this.apiKey });
+      return extractOil(payload);
     } catch (error) {
       if (error instanceof ServiceError) throw error;
       // Fetch exceptions can contain the complete URL, including certkey. Never expose them.
@@ -169,8 +172,23 @@ export class OpinetClient {
         if (detailConflicts.has(stations[index].id)) continue;
         try {
           const details = await this.detail(stations[index].id, search.fuel);
-          if (details.status !== 'ready') { detailFailure = true; continue; }
           const base = stations[index];
+          if (details.status !== 'ready') {
+            detailFailure = true;
+            // Missing/invalid prices and stale detail fallbacks cannot erase
+            // the current nearby observation or lend it another price's time.
+            if (details.station) {
+              const metadata = details.station;
+              stations[index] = {
+                ...base, address: metadata.address ?? base.address,
+                roadAddress: metadata.roadAddress ?? base.roadAddress,
+                phone: metadata.phone ?? base.phone, brand: metadata.brand ?? base.brand,
+                facilities: { ...base.facilities, ...Object.fromEntries(Object.entries(metadata.facilities ?? {}).filter(([, value]) => value !== null)) },
+                metadataFetchedAt: metadata.fetchedAt,
+              };
+            }
+            continue;
+          }
           stations[index] = { ...details.station, distanceMeters: base.distanceMeters, distanceType: base.distanceType };
         } catch (error) {
           detailFailure = true;
@@ -197,7 +215,14 @@ export class OpinetClient {
       if (!station) throw new ServiceError('OPINET_SCHEMA_ERROR', '주유소 상세 응답의 위치를 확인할 수 없습니다.');
       return { status: 'ready', provider: 'opinet', station, fetchedAt, warnings: [] };
     });
-    const selected = envelope.station.prices[fuel];
-    return { ...envelope, station: { ...envelope.station, fuel, price: selected?.price ?? null, priceUpdatedAt: selected?.priceUpdatedAt ?? null, priceTimeStatus: selected?.priceUpdatedAt ? 'reported' : 'unknown' } };
+    // Omit unavailable products so consumers merging all fuel entries cannot
+    // replace a valid observation with null while opening a different fuel.
+    const prices = Object.fromEntries(Object.entries(envelope.station.prices).filter(([, value]) => positivePrice(value?.price) !== null));
+    const selected = prices[fuel];
+    return {
+      ...envelope, status: selected ? envelope.status : 'partial',
+      warnings: selected ? envelope.warnings : [...envelope.warnings, { code: 'DETAIL_PRICE_UNAVAILABLE', message: '선택한 유종의 상세 가격을 확인할 수 없습니다.' }],
+      station: { ...envelope.station, prices, fuel, price: selected?.price ?? null, priceUpdatedAt: selected?.priceUpdatedAt ?? null, priceTimeStatus: selected?.priceUpdatedAt ? 'reported' : 'unknown' },
+    };
   }
 }

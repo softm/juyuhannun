@@ -167,6 +167,64 @@ test('a fresh nearby price invalidates conflicting older detail cache, including
   }
 });
 
+test('incomplete detail prices cannot erase nearby or collected observations, including cached failures', async () => {
+  for (const missingPrice of [undefined, 0, null, '']) {
+    let now = clock(); let failDetail = false; let nearbyPrice = 1800;
+    const oilPrices = [detailRow.OIL_PRICE[1]];
+    if (missingPrice !== undefined) oilPrices.push({ PRODCD: 'B027', PRICE: missingPrice, TRADE_DT: '20261019', TRADE_TM: '140001' });
+    const incomplete = { ...detailRow, OIL_PRICE: oilPrices };
+    const client = new OpinetClient({ apiKey: 'fixture-only', clock: () => now, detailLimit: 1, fetchImpl: async url => {
+      if (new URL(url).pathname.endsWith('detailById.do')) {
+        if (failDetail) throw new Error('temporary provider failure');
+        now += 1000;
+        return json({ RESULT: { OIL: [incomplete] } });
+      }
+      return json({ RESULT: { OIL: [{ ...nearbyRow, PRICE: nearbyPrice }] } });
+    } });
+    const first = await client.nearby(search);
+    const station = first.stations[0];
+    assert.equal(first.status, 'partial');
+    assert.equal(station.price, 1800);
+    assert.equal(station.priceUpdatedAt, null);
+    assert.equal(station.prices.B027.priceUpdatedAt, null);
+    assert.equal(station.prices.B027.fetchedAt, new Date(clock()).toISOString());
+    assert.equal(station.prices.B027.sourceDate, undefined);
+    assert.equal(station.roadAddress, detailRow.NEW_ADR);
+    assert.equal(station.facilities.carWash, true);
+    assert.equal(station.metadataFetchedAt, new Date(now).toISOString());
+
+    // Popup's ready-only merge must not consume a missing selected price.
+    const selected = await client.detail(nearbyRow.UNI_ID, 'B027');
+    assert.equal(selected.cache.hit, true);
+    assert.equal(selected.status, 'partial');
+    assert.equal(selected.station.priceUpdatedAt, null);
+    assert.equal(selected.station.prices.B027, undefined);
+    // A valid other fuel must not carry null prices that erase stored fuels.
+    const diesel = await client.detail(nearbyRow.UNI_ID, 'D047');
+    assert.equal(diesel.status, 'ready');
+    assert.equal(diesel.station.prices.D047.price, 1629);
+    assert.equal(({ ...station.prices, ...diesel.station.prices }).B027.price, 1800);
+
+    const known = normalizeDetail(detailRow, { fetchedAt: '2025-07-23T06:00:00Z' });
+    const incoming = normalizeDetail(incomplete, { fuel: 'B027', fetchedAt: new Date(now).toISOString() });
+    const merged = mergeStationRecords(known, incoming);
+    assert.deepEqual(merged.prices.B027, known.prices.B027);
+    assert.equal(merged.price, known.price);
+    assert.equal(merged.priceUpdatedAt, known.priceUpdatedAt);
+
+    // An expired detail followed by a provider failure still cannot roll the
+    // newly observed price back, or mark it with a stale detail timestamp.
+    now += 601_000; failDetail = true; nearbyPrice = 1810;
+    const later = await client.nearby(search);
+    assert.equal(later.stations[0].price, 1810);
+    assert.equal(later.stations[0].priceUpdatedAt, null);
+    assert.equal(later.stations[0].prices.B027.fetchedAt, new Date(now).toISOString());
+    const [reopened] = await Promise.allSettled([client.detail(nearbyRow.UNI_ID, 'B027')]);
+    if (reopened.status === 'fulfilled') assert.notEqual(reopened.value.status, 'ready');
+    else assert.equal(reopened.reason.code, 'OPINET_NETWORK_ERROR');
+  }
+});
+
 test('durable quota prevents races/restarts and resets on the Korean calendar day', async t => {
   const dir = await temporary(t); const ledgerPath = join(dir, 'quota.json');
   let now = Date.parse('2026-10-19T14:59:59Z');

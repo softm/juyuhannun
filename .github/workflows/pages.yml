@@ -20,6 +20,8 @@ concurrency:
 
 jobs:
   build:
+    outputs:
+      pages_artifact: github-pages-${{ github.run_id }}-${{ github.run_attempt }}
     permissions:
       contents: read
       pages: read
@@ -64,12 +66,14 @@ jobs:
         continue-on-error: true
         env:
           OPINET_API_KEY: ${{ secrets.OPINET_API_KEY }}
+          OPINET_DIAGNOSTICS: '1'
         run: node scripts/collect.mjs --output public/data/stations.json --ledger .cache/opinet-quota.json
       - name: Collect regional averages and highway fuel data
         if: github.event_name != 'pull_request'
         continue-on-error: true
         env:
           OPINET_API_KEY: ${{ secrets.OPINET_API_KEY }}
+          OPINET_DIAGNOSTICS: '1'
           EX_API_KEY: ${{ secrets.EX_API_KEY }}
         run: npm run collect:energy
       - name: Save consumed quota even after collection failure
@@ -102,6 +106,7 @@ jobs:
         if: github.event_name != 'pull_request'
         uses: actions/upload-pages-artifact@v4
         with:
+          name: github-pages-${{ github.run_id }}-${{ github.run_attempt }}
           path: dist
       - name: Report data readiness
         if: github.event_name != 'pull_request'
@@ -131,3 +136,5 @@ jobs:
       - name: Deploy website
         id: deployment
         uses: actions/deploy-pages@v4
+        with:
+          artifact_name: ${{ needs.build.outputs.pages_artifact }}
