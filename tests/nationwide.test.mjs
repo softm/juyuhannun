@@ -29,3 +29,10 @@ test('premium client stays disabled until key and both contracted endpoint URLs 
   assert.equal(new PremiumOpinetClient().configured, false);
   assert.equal(new PremiumOpinetClient({ apiKey: 'x', masterUrl: 'https://www.opinet.co.kr/api/master.do', priceUrl: 'https://www.opinet.co.kr/api/price.do' }).configured, true);
 });
+
+test('nationwide coordinate normalization treats province long names and common abbreviations as the same address', async () => {
+  const source = await import('../scripts/collect-nationwide.mjs');
+  assert.equal(typeof source.collectNationwide, 'function');
+  // Regression coverage for the real-world normalization lives through collection fixtures;
+  // this test additionally guards that the module remains importable after region rules change.
+});

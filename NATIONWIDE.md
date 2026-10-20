@@ -22,7 +22,7 @@ Playwright가 공개 다운로드 화면의 NetFunnel/페이지 초기화를 통
 표준데이터 API: `https://api.data.go.kr/openapi/tn_pubr_public_conm_api`  
 개발계정은 페이지당 최대 1000건이며 공공데이터포털 안내상 개발계정 신청 가능 트래픽은 10,000이다.
 
-좌표는 공공데이터포털 화면이 CSV를 만들 때 사용하는 **키 없는 공개 JSON**을 직접 사용한다. `/download/columList.json?pk=15129441&ext=CSV`에서 스키마·건수를 확인하고 `/download/standard.json`을 페이지 단위로 읽는다. 2026-10-20 확인 시 5,433건이 반환됐다. 이 공개 경로가 실패한 경우에만 Repository Secret `DATA_GO_KR_SERVICE_KEY`의 공식 API `tn_pubr_public_conm_api`로 폴백한다. 좌표 매칭률이 충분하지 않으면 기존 일반 Opinet 반경 자료를 계속 표시한다.
+좌표는 공공데이터포털 화면이 CSV를 만들 때 사용하는 **키 없는 공개 JSON**을 직접 사용한다. `/download/columList.json?pk=15129441&ext=CSV`에서 스키마·건수를 확인하고 `/download/standard.json`을 페이지 단위로 읽는다. 2026-10-20 확인 시 5,433건이 반환됐다. 이 공개 경로가 실패한 경우에만 Repository Secret `DATA_GO_KR_SERVICE_KEY`의 공식 API `tn_pubr_public_conm_api`로 폴백한다. 현재 공개 표준데이터 자체가 오피넷 전체 가격 주유소보다 적기 때문에, 주소·상호 정규화 후 **전국 가격의 40% 이상이면서 4,000곳 이상**이 좌표 확인되면 전국 부분 지도를 우선 사용한다. 이때 `coverage.complete=false`이며 화면에 전체 주유소가 아님을 표시한다. 그 기준에도 못 미치면 기존 일반 Opinet 반경 자료를 계속 표시한다.
 
 ## 생성 파일
 
@@ -42,3 +42,8 @@ npm run collect:nationwide
 ```
 
 GitHub Actions는 KST 20:37에 매일 실행하며 수동 실행과 코드 push 때도 수집기를 검증한다. 일반 `OPINET_API_KEY` 300회/일은 이 전국 CSV 다운로드에 사용하지 않는다.
+
+
+## 주소 정규화
+
+오피넷 일일 CSV와 공공데이터 표준자료는 동일 주소도 `강원` / `강원도` / `강원특별자치도`, `부산` / `부산광역시`처럼 다르게 기록한다. 매칭 전에 17개 시도 표기를 공통 약칭으로 정규화하고 괄호 동명·공백·번지/호 표기를 제거한다. 상호도 법인표시, `셀프`, `주유소` 등의 표현 차이를 정규화한 뒤 **전화번호 → 상호+도로명주소 → 유일 도로명주소 → 상호+지역** 순으로만 매칭한다. 중복 키는 자동 배제해 잘못된 좌표 결합을 피한다.

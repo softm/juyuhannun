@@ -14,7 +14,18 @@ const value=(row,aliases)=>{const lookup=new Map(Object.entries(row??{}).map(([k
 const money=v=>{const n=Number(text(v).replaceAll(',',''));return Number.isFinite(n)&&n>0&&n<=100000?n:null;};
 const self=v=>/^(y|예|셀프|1)$/i.test(text(v))?true:/^(n|아니오|일반|0)$/i.test(text(v))?false:null;
 const brand=v=>{const s=text(v).toUpperCase();if(/SK가스/.test(s))return'SKG';if(/^E1|E1/.test(s))return'E1G';if(/SK/.test(s))return'SKE';if(/GS/.test(s))return'GSC';if(/현대|HD/.test(s))return'HDO';if(/S[- ]?OIL/.test(s))return'SOL';if(/EX/.test(s))return'RTX';if(/NH|농협/.test(s))return'NHO';if(/알뜰/.test(s))return'RTE';return s?'ETC':null;};
-const normalAddress=v=>text(v).toLocaleLowerCase('ko-KR').replace(/\([^)]*\)/g,'').replace(/[\s,._-]/g,'').replace(/번지/g,'').replace(/호/g,'');
+const normalizeRegionText=v=>{
+ let s=text(v).toLocaleLowerCase('ko-KR');
+ for(const [pattern,replacement] of [
+  [/서울특별시|서울시|서울/g,'서울'],[/부산광역시|부산시|부산/g,'부산'],[/대구광역시|대구시|대구/g,'대구'],[/인천광역시|인천시|인천/g,'인천'],
+  [/광주광역시|광주시|광주/g,'광주'],[/대전광역시|대전시|대전/g,'대전'],[/울산광역시|울산시|울산/g,'울산'],[/세종특별자치시|세종시|세종/g,'세종'],
+  [/경기도|경기/g,'경기'],[/강원특별자치도|강원도|강원/g,'강원'],[/충청북도|충북/g,'충북'],[/충청남도|충남/g,'충남'],
+  [/전북특별자치도|전라북도|전북/g,'전북'],[/전남광주통합특별시|전라남도|전남/g,'전남'],[/경상북도|경북/g,'경북'],[/경상남도|경남/g,'경남'],
+  [/제주특별자치도|제주도|제주/g,'제주'],
+ ])s=s.replace(pattern,replacement);
+ return s;
+};
+const normalAddress=v=>normalizeRegionText(v).replace(/\([^)]*\)/g,'').replace(/번지|번|호/g,'').replace(/[\s,._\-·]/g,'');
 const normalPhone=v=>text(v).replace(/\D/g,'');
 const normalName=v=>text(v).toLocaleLowerCase('ko-KR').replace(/\(주\)|주식회사|㈜/g,'').replace(/\s/g,'').replace(/주유소|충전소/g,'');
 
@@ -38,7 +49,7 @@ function mergeBasicAndPrice(basicRows,currentRows,{fetchedAt,kind,sourceDate=nul
 function coordinateIndex(rows){
  const add=(map,k,v)=>{if(!k)return;if(map.has(k))map.set(k,null);else map.set(k,v);};
  const phone=new Map(),address=new Map(),nameAddress=new Map(),nameRegion=new Map();
- const regionKey=v=>text(v).toLocaleLowerCase('ko-KR').replace(/[(),]/g,' ').trim().split(/\s+/).slice(0,2).join('');
+ const regionKey=v=>normalizeRegionText(v).replace(/[(),]/g,' ').trim().split(/\s+/).slice(0,2).join('');
  for(const r of rows){
   if(!Number.isFinite(r?.lat)||!Number.isFinite(r?.lng))continue;
   const loc={lat:r.lat,lng:r.lng,roadAddress:r.roadAddress??null,address:r.address??null,phone:r.phone??null};
@@ -98,9 +109,14 @@ export async function collectNationwide({outputDirectory=resolve(ROOT,'public/da
   else{s.lat=null;s.lng=null;}
  }
  const mappedPriced=priced.filter(s=>Number.isFinite(s.lat)&&Number.isFinite(s.lng));
- const ratio=priced.length?mappedPriced.length/priced.length:0,serviceReady=ratio>=0.8&&mappedPriced.length>=1000;
+ const ratio=priced.length?mappedPriced.length/priced.length:0;
+ // The public standard master currently covers only part of Opinet's full nationwide price roster.
+ // Prefer this nationwide partial map once it contains a broad, geographically distributed base;
+ // coverage.complete remains false and the UI explicitly says it is not every station.
+ const serviceReady=ratio>=0.4&&mappedPriced.length>=4000;
  const warnings=[];
- if(!serviceReady)warnings.push({code:'NATIONWIDE_COORDINATES_INCOMPLETE',message:'전국 가격은 수집했지만 지도 좌표 매칭이 충분하지 않아 기존 지역 API 자료를 계속 표시합니다.'});
+ if(!serviceReady)warnings.push({code:'NATIONWIDE_COORDINATES_INCOMPLETE',message:'전국 가격은 수집했지만 지도 좌표 매칭이 아직 서비스 기준보다 적어 기존 지역 API 자료를 계속 표시합니다.'});
+ else if(ratio<0.98)warnings.push({code:'NATIONWIDE_COORDINATES_PARTIAL',message:'전국 일일 가격 중 좌표가 확인된 주유소를 우선 표시합니다. 전체 주유소가 모두 지도에 포함된 것은 아닙니다.'});
  if(standard.status!=='ready')warnings.push({code:'STANDARD_COORDINATES_UNAVAILABLE',message:'공공데이터 전국주유소표준 좌표 보강이 연결되지 않았거나 실패했습니다.'});
  const coverage={kind:'nationwide',complete:ratio>=0.98,serviceReady,totalPriceStations:priced.length,mappedPriceStations:mappedPriced.length,mappedRatio:Number(ratio.toFixed(4)),priceDate:targetDate.slice(0,4)+'-'+targetDate.slice(4,6)+'-'+targetDate.slice(6,8),description:'오피넷 유가내려받기의 사업자별 일일 판매가격 CSV를 공개 다운로드 화면에서 일 1회 수집하고 공공데이터 전국주유소표준 좌표를 병합합니다.'};
  const status=serviceReady&&ratio>=0.98?'ready':'partial';
