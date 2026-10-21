@@ -434,9 +434,9 @@ export class MapController {
       const started = performance.now();
       let count = 0;
       // Bound SDK/DOM work per frame, including removal. A new view cancels old work.
-      while (count++ < 64 && performance.now() - started < 6) {
-        if (removeIndex < removed.length) this._parkMarker(removed[removeIndex++]);
-        else if (rowIndex < rows.length) this._upsertMarker(rows[rowIndex++], now);
+      while (count < 64 && performance.now() - started < 6) {
+        if (removeIndex < removed.length) { this._parkMarker(removed[removeIndex++]); count++; }
+        else if (rowIndex < rows.length) { if (this._upsertMarker(rows[rowIndex++], now)) count++; }
         else {
           this._markerFrame = null;
           this._layoutLabels();
@@ -469,7 +469,7 @@ export class MapController {
     const info = getFuelPrice(row, this._fuel);
     const presentation = this.markerPresentation?.(row, { fuel: this._fuel });
     const sourceKey = JSON.stringify([point, row.name, row.brand, row.facilities?.self, row.roadAddress, row.address, this._fuel, selected, info, presentation, Math.floor(now / 60000)]);
-    if (cached && previous?.sourceKey === sourceKey) return;
+    if (cached && previous?.sourceKey === sourceKey) return false;
     const price = presentation ? String(presentation.value ?? '미확인') : info ? markerPriceFormat.format(info.price) : '미확인';
     const fuelName = FUEL_TYPES.find(item => item.code === this._fuel)?.name || '유종';
     const confidence = info ? freshness(info.priceUpdatedAt, info.fetchedAt, now, info.priceTimeStatus, info.sourceDate) : { eligible: false, label: '가격 미제공' };
@@ -513,6 +513,7 @@ export class MapController {
     }
     this._markers.set(id, marker);
     this._markerState.set(id, { content, lat: point.lat, lng: point.lng, zIndex, sourceKey });
+    return !cached || changed || moved || previous?.zIndex !== zIndex;
   }
 
   _layoutLabels() {
