@@ -1,3 +1,4 @@
+import {hasMapCoordinates,getFuelPrice} from './core.js';
 const cache=new Map();
 export async function loadStaticJSON(url,{signal,fetchImpl=fetch,now=Date.now(),cacheMs=60000}={}){
  const key=String(url),cached=cache.get(key);
@@ -21,6 +22,6 @@ export async function loadStaticJSON(url,{signal,fetchImpl=fetch,now=Date.now(),
  if(cacheMs>0){if(cache.size>=8)cache.delete(cache.keys().next().value);cache.set(key,{at:now,data});}
  return data;
 }
-export function useNationwideData(data,fuel,{nationalSearch=false}={}){
- return Boolean(data&&['ready','partial'].includes(data.status)&&(data.coverage?.serviceReady!==false||(nationalSearch&&data.coverage?.searchIncludesUnmapped===true))&&Array.isArray(data.stations)&&data.stations.some(s=>Number.isFinite(s?.prices?.[fuel]?.price)&&s.prices[fuel].price>0));
+export function useNationwideData(data,fuel){
+ return Boolean(data&&['ready','partial'].includes(data.status)&&Array.isArray(data.stations)&&data.stations.some(s=>hasMapCoordinates(s)&&getFuelPrice(s,fuel)));
 }

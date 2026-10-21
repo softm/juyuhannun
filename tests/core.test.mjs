@@ -46,7 +46,7 @@ test('geo distances are in metres; invalid coordinate never matches viewport',()
 test('stale cheap station excluded by default; explicit stale view includes it',()=>{
  const mk=(id,price,t)=>({id,name:id,lat:37.5,lng:127,brand:'SOL',fuel:'B027',price,priceUpdatedAt:t,fetchedAt:'2026-10-19T14:00:00Z'});
  const items=[mk('old',1000,'2026-10-17T00:00:00Z'),mk('current',1600,'2026-10-19T13:00:00Z')];
- const opts={fuel:'B027',center:{lat:37.5,lng:127},now};
+ const opts={fuel:'B027',center:{lat:37.5,lng:127},bounds:{south:37,north:38,west:126,east:128},now};
  assert.deepEqual(filterStations(items,opts).map(s=>s.id),['current']);
  assert.deepEqual(filterStations(items,{...opts,freshOnly:false}).map(s=>s.id),['old','current']);
 });

@@ -152,10 +152,11 @@ function installMarkerStyles() {
  * setCenter/focus/locate/showRoute do not call onCenterChange.
  */
 export class MapController {
-  constructor(container, { onCenterChange = () => {}, onSelect = () => {}, onPick = null, onState = () => {}, markerPresentation = null } = {}) {
+  constructor(container, { onCenterChange = () => {}, onViewportChange = () => {}, onSelect = () => {}, onPick = null, onState = () => {}, markerPresentation = null } = {}) {
     this.container = typeof container === 'string' ? document.querySelector(container) : container;
     if (!this.container) throw new Error('지도를 표시할 영역이 없습니다.');
     this.onCenterChange = onCenterChange;
+    this.onViewportChange = onViewportChange;
     this.onSelect = onSelect;
     this.onPick = onPick;
     this.onState = onState;
@@ -245,6 +246,7 @@ export class MapController {
           } else this.map.invalidateSize({ animate: false, pan: false });
         });
         this._scheduleMarkers();
+        this._scheduleViewportChange();
       });
       this._resizeObserver.observe(this.container);
     }
@@ -356,6 +358,7 @@ export class MapController {
     if (!this.map || this._destroyed) return;
     this._center = this.getCenter();
     this._scheduleMarkers();
+    this._scheduleViewportChange();
     if (!this._userIntent || Date.now() < this._suppressUntil) return;
     clearTimeout(this._centerTimer);
     this._centerTimer = setTimeout(() => {
@@ -369,6 +372,20 @@ export class MapController {
       this._queryCenter = { ...center };
       this.onCenterChange(center, { zoomOnly });
     }, 450);
+  }
+
+  _scheduleViewportChange() {
+    clearTimeout(this._viewportTimer);
+    this._viewportTimer = setTimeout(() => {
+      if (!this.map || !this.ready || this._destroyed) return;
+      const center = this.getCenter(), bounds = this.getBounds(), zoom = this.map.getZoom();
+      if (!bounds) return;
+      const signature = [center.lat,center.lng,zoom,bounds.south,bounds.north,bounds.west,bounds.east].map(n=>Number(n).toFixed(6)).join(',');
+      if (signature === this._lastViewport) return;
+      this._lastViewport = signature;
+      // Bounds changes include pure zoom, programmatic focus and container resizing.
+      this.onViewportChange({ center, bounds, zoom });
+    }, 120);
   }
 
   getCenter() {
@@ -544,7 +561,7 @@ export class MapController {
         label.style.transform = 'translateX(-50%)';
       }
       const candidates = ids.map(id => ({ id, node: byId.get(id) })).filter(item => item.node);
-      const controls = [...this.container.parentElement.querySelectorAll('.map-top,.map-bottom,.map-actions,.search-area,.map-notice,[data-map-overlay]')]
+      const controls = [...this.container.parentElement.querySelectorAll('.map-top,.map-bottom,.map-actions,.map-notice,[data-map-overlay]')]
         .filter(node => !node.hidden).map(node => node.getBoundingClientRect()).filter(rect => rect.width && rect.height);
       // Batch style writes and measurements by level to avoid per-label forced layouts.
       candidates.forEach(item => item.node.classList.add('label-measure'));
@@ -703,6 +720,8 @@ export class MapController {
 
   _disposeMap() {
     clearTimeout(this._centerTimer);
+    clearTimeout(this._viewportTimer);
+    this._lastViewport = null;
     cancelAnimationFrame(this._labelFrame);
     cancelAnimationFrame(this._markerFrame);
     this._renderRevision++;

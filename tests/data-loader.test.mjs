@@ -19,7 +19,8 @@ test('a missing or invalid gzip falls back to JSON; aborts do not start a fallba
  assert.equal(calls,1);
 });
 test('LPG uses regional observations when the nationwide daily file only includes liquid fuels',()=>{
- const data={status:'partial',coverage:{serviceReady:true},stations:[{prices:{B027:{price:1750}}}]};
+ const data={status:'partial',coverage:{serviceReady:true},stations:[{lat:37.5,lng:127,prices:{B027:{price:1750}}}]};
  assert.equal(useNationwideData(data,'B027'),true);assert.equal(useNationwideData(data,'K015'),false);
- assert.equal(useNationwideData({...data,coverage:{serviceReady:false}},'B027'),false);
+ assert.equal(useNationwideData({...data,coverage:{serviceReady:false}},'B027'),true);
+ assert.equal(useNationwideData({...data,stations:[{lat:null,lng:null,prices:{B027:{price:1750}}}]},'B027'),false);
 });

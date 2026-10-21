@@ -66,11 +66,21 @@ export function calculateSavings({unitPrice,referencePrice,liters,kmPerLiter,rou
   const netSavings=grossSavings-fuelCost-tollCost-timeCost;
   return {eligible:true,reason:null,grossSavings,fuelCost,tollCost,timeCost,netSavings,extraDistanceMeters,extraDurationSeconds,breakEvenLiters:referencePrice>unitPrice?Math.max(0,(fuelCost+tollCost+timeCost)/(referencePrice-unitPrice)):null};
 }
-export function filterStations(stations, {fuel,center,radius=5000,scope='nearby',query='',brand='',self=false,freshOnly=true,favorites=null,sort='price',now=Date.now()}) {
+export function validMapBounds(bounds) {
+  return Boolean(bounds && ['south','north','west','east'].every(key=>finite(bounds[key])) && bounds.south < bounds.north && bounds.west < bounds.east);
+}
+export function isWithinMapBounds(point,bounds) {
+  return validMapBounds(bounds) && finite(point?.lat) && finite(point?.lng) &&
+    point.lat>=bounds.south && point.lat<=bounds.north && point.lng>=bounds.west && point.lng<=bounds.east;
+}
+export function filterStations(stations, {fuel,center,bounds,query='',brand='',self=false,freshOnly=true,favorites=null,sort='price',now=Date.now()}) {
+  if(!validMapBounds(bounds))return [];
   const terms=normalizeSearchText(query).trim().split(/\s+/).filter(Boolean);
-  return stations.map(station=> {
-    const p=getFuelPrice(station,fuel);
-    return {...station,currentPrice:p,confidence:p?freshness(p.priceUpdatedAt,p.fetchedAt,now,p.priceTimeStatus,p.sourceDate):{state:'unknown',label:'가격 미제공',eligible:false},distance:hasMapCoordinates(station)?distanceMeters(center,station):Infinity};
-  }).filter(s=>s.currentPrice && (scope==='national'||s.distance<=radius) && (!brand||s.brand===brand) && (!self||s.facilities?.self===true) && (!freshOnly||s.confidence.eligible) && (!favorites||favorites.has(s.id)) && terms.every(term=>normalizeSearchText([s.name,s.address,s.roadAddress,BRANDS[s.brand]].filter(Boolean).join(' ')).includes(term)))
+  // Reject offscreen rows before price/freshness calculations and sorting.
+  return stations.filter(s=>hasMapCoordinates(s) && isWithinMapBounds(s,bounds) && (!brand||s.brand===brand) && (!self||s.facilities?.self===true) && (!favorites||favorites.has(s.id)) && terms.every(term=>normalizeSearchText([s.name,s.address,s.roadAddress,BRANDS[s.brand]].filter(Boolean).join(' ')).includes(term)))
+    .map(station=> {
+      const p=getFuelPrice(station,fuel);
+      return {...station,currentPrice:p,confidence:p?freshness(p.priceUpdatedAt,p.fetchedAt,now,p.priceTimeStatus,p.sourceDate):{state:'unknown',label:'가격 미제공',eligible:false},distance:distanceMeters(center,station)};
+    }).filter(s=>s.currentPrice && (!freshOnly||s.confidence.eligible))
     .sort((a,b)=>sort==='distance'?a.distance-b.distance||a.currentPrice.price-b.currentPrice.price:a.currentPrice.price-b.currentPrice.price||a.distance-b.distance);
 }
