@@ -10,8 +10,9 @@ on:
     # KST 01:17, 02:17, 09:17, 12:17, 16:17, 19:17.
     # Actions schedules can be delayed; source timestamps remain authoritative.
     - cron: '17 0,3,7,10,16,17 * * *'
-    # KST 20:37 — after the daytime Opinet updates, collect the daily nationwide snapshot.
-    - cron: '37 11 * * *'
+    # KST 20:37 primary collection, 22:37 and 00:37 follow-up checks.
+    # Every run evaluates the source date; retries preserve the original observation time.
+    - cron: '37 11,13,15 * * *'
 
 permissions:
   contents: read
@@ -42,6 +43,7 @@ jobs:
       - name: Verify core, data and route behaviour
         run: npm test
       - name: Restore last collected data
+        id: restore_data
         if: github.event_name != 'pull_request'
         uses: actions/cache/restore@v6
         with:
@@ -66,7 +68,7 @@ jobs:
             fuel-quota-v2-
             opinet-quota-v1-
       - name: Collect official prices or preserve explicit unavailable state
-        if: github.event_name != 'pull_request'
+        if: github.event_name != 'pull_request' && (github.event_name != 'schedule' || github.event.schedule == '17 0,3,7,10,16,17 * * *')
         id: collect
         continue-on-error: true
         env:
@@ -81,12 +83,19 @@ jobs:
           OPINET_DIAGNOSTICS: '1'
           EX_API_KEY: ${{ secrets.EX_API_KEY }}
         run: npm run collect:energy
-      - name: Collect nationwide daily public snapshot
-        if: github.event_name != 'pull_request' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch' || github.event.schedule == '37 11 * * *')
+      - name: Enrich missing station coordinates within the shared daily quota
+        if: github.event_name != 'pull_request'
+        continue-on-error: true
+        env:
+          OPINET_API_KEY: ${{ secrets.OPINET_API_KEY }}
+        run: node scripts/enrich-coordinates.mjs
+      - name: Check nationwide source date and collect when due
+        if: github.event_name != 'pull_request'
+        id: nationwide
         continue-on-error: true
         env:
           DATA_GO_KR_SERVICE_KEY: ${{ secrets.DATA_GO_KR_SERVICE_KEY }}
-          NATIONWIDE_FORCE_REFRESH: ${{ (github.event_name == 'workflow_dispatch' || github.event.schedule == '37 11 * * *') && '1' || '0' }}
+          NATIONWIDE_FORCE_REFRESH: ${{ github.event_name == 'workflow_dispatch' && '1' || '0' }}
         run: npm run collect:nationwide
       - name: Save consumed quota even after collection failure
         if: always() && github.event_name != 'pull_request'
@@ -96,10 +105,8 @@ jobs:
             .cache/opinet-quota.json
             .cache/ex-quota.json
           key: fuel-quota-v2-${{ github.run_id }}-${{ github.run_attempt }}
-      - name: Validate deployable assets and data
-        run: npm run check
       - name: Preserve last collection result
-        if: github.event_name != 'pull_request'
+        if: always() && github.event_name != 'pull_request' && steps.restore_data.outcome == 'success'
         uses: actions/cache/save@v6
         with:
           path: |
@@ -108,6 +115,11 @@ jobs:
             public/data/highway.json
             public/data/nationwide
           key: fuel-data-v2-${{ github.run_id }}-${{ github.run_attempt }}
+      - name: Validate deployable assets and data
+        run: npm run check
+      - name: Verify actual map availability and price freshness
+        if: github.event_name != 'pull_request'
+        run: node scripts/verify-published-data.mjs
       - name: Build for project root
         env:
           PUBLIC_API_BASE: ${{ vars.PUBLIC_API_BASE }}
@@ -126,14 +138,22 @@ jobs:
         run: |
           node --input-type=module <<'JS'
           import {readFile,appendFile} from 'node:fs/promises';
-          let report='## 주유한눈 데이터 상태\n\n[수집 현황 페이지](https://softm.github.io/juyuhannun/data-status.html)\n\n| 자료 | 상태 | 건수 | 마지막 성공 수집 | 이전 자료 보존 |\n|---|---|---:|---|---|\n';
-          for(const [name,file,field] of [['주변 주유소','stations','stations'],['전국 일괄가격','nationwide/latest','stations'],['평균 유가','averages','benchmarks'],['고속도로 주유소','highway','stations']]){
-            const d=JSON.parse(await readFile(`public/data/${file}.json`,'utf8'));
-            report+=`| ${name} | ${d.status} | ${d[field].length} | ${d.fetchedAt??'없음'} | ${d.cache?.stale?'예':'아니요'} |\n`;
-          }
-          const manifest=JSON.parse(await readFile('public/data/nationwide/manifest.json','utf8'));
-          report+=`\n전국 가격 ${manifest.priceStationCount??0}곳 · 지도 좌표 ${manifest.mappedPriceStationCount??0}곳 · 좌표 미확보 ${Math.max(0,(manifest.priceStationCount??0)-(manifest.mappedPriceStationCount??0))}곳 · 가격 기준일 ${manifest.priceDate??'미확인'}\n`;
-          report+='\n가격 기준시각은 유종별 priceUpdatedAt, 평균 기준일은 asOfDate를 확인합니다. 수소 자료는 직전월 평균의 공식 안내입니다. API 미연결 상태의 배포 성공은 실가격 연동 성공을 뜻하지 않습니다.\n';
+          const d=JSON.parse(await readFile('dist/data/status.json','utf8'));
+          const time=value=>value?new Intl.DateTimeFormat('ko-KR',{timeZone:'Asia/Seoul',dateStyle:'short',timeStyle:'short',hour12:false}).format(new Date(value)):'미확인';
+          let report='## 주유한눈 데이터 상태\n\n[수집 현황 페이지](https://softm.github.io/juyuhannun/data-status.html) · 모든 시각은 한국시간\n\n';
+          report+=`**전국 수집 예정 20:37 · 재확인 22:37 / 다음 날 00:37**\n\n**마지막 성공 수집 ${time(d.nationwide.fetchedAt)} · 실제 가격 기준일 ${d.nationwide.priceDate??'미확인'}**\n\n`;
+          report+='| 자료 | 상태 | 건수 | 마지막 성공 수집 | 이전 자료 보존 |\n|---|---|---:|---|---|\n';
+          for(const row of d.collections)report+=`| ${row.name} | ${row.status} | ${row.count} | ${time(row.fetchedAt)} | ${row.retained?'예':'아니요'} |\n`;
+          const c=d.nationwide;
+          report+=`\n전국 가격 ${c.totalPriceStations}곳 · 전국 지도 좌표 ${c.mappedPriceStations}곳 · 좌표 미확보 ${c.unmappedPriceStations}곳 · 지역 자료 병합 후 지도 표시 ${d.availability.displayableStationCount}곳\n\n`;
+          report+='| 유종 | 지도 표시 | 현재 비교 가능 | 참고 가격 |\n|---|---:|---:|---:|\n';
+          const names={B027:'휘발유',D047:'경유',B034:'고급휘발유',K015:'LPG'};
+          for(const row of d.fuels)report+=`| ${names[row.code]} | ${row.mappedStationCount} | ${row.comparableStationCount} | ${row.historicalStationCount} |\n`;
+          if(c.collection)report+=`\n전국 파일 최근 다운로드 결과: ${c.collection.lastDownloadStatus??'미확인'} · 재시도 가능 ${time(c.collection.nextRetryAt)}\n`;
+          const e=d.coordinates;
+          report+=`\n좌표 보완 ${e.status} · 누적 ${e.queue?.enrichedCount??0}곳 · 이번 ${e.lastAttempt?.successCount??0}곳 / ${e.lastAttempt?.calls??0}회 · 오늘 ${e.dayBudget?.used??0} / ${e.dayBudget?.limit??80}회\n`;
+          if(d.quota)report+=`\n공유 오피넷 예산 ${d.quota.day}: ${d.quota.used} / ${d.quota.limit}회 · 남은 ${d.quota.remaining}회\n`;
+          report+='\n참고 가격은 기본 지도·목록에 남지만 최저가·절약액 계산에서는 제외합니다. 일일 파일은 개별 보고 시각을 제공하지 않으며 가격 기준일·원래 수집 시각을 유지합니다. 배포 성공은 최신 가격 수집 성공을 보장하지 않습니다.\n';
           await appendFile(process.env.GITHUB_STEP_SUMMARY,report);
           JS
 
@@ -153,3 +173,4 @@ jobs:
         uses: actions/deploy-pages@v4
         with:
           artifact_name: ${{ needs.build.outputs.pages_artifact }}
+

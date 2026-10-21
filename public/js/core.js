@@ -20,7 +20,7 @@ export function getFuelPrice(station, fuel) {
   if (station?.unit && station.unit !== 'KRW/L') return null;
   const p = station?.prices?.[fuel] || (station?.fuel === fuel ? station : null);
   if (!p || (p.unit && p.unit !== 'KRW/L') || !finite(p.price) || p.price <= 0) return null;
-  return { price: p.price, priceUpdatedAt: p.priceUpdatedAt ?? null, fetchedAt: p.fetchedAt ?? station.fetchedAt ?? null, priceTimeStatus: p.priceTimeStatus ?? station.priceTimeStatus ?? null, sourceDate: p.sourceDate ?? null };
+  return { price: p.price, priceUpdatedAt: p.priceUpdatedAt ?? null, fetchedAt: p.fetchedAt ?? station.fetchedAt ?? null, priceTimeStatus: p.priceTimeStatus ?? station.priceTimeStatus ?? null, sourceDate: p.sourceDate ?? null, source: p.source ?? station.source ?? null, provider: p.provider ?? station.provider ?? null };
 }
 export function freshness(priceUpdatedAt, fetchedAt, now = Date.now(), priceTimeStatus = null, sourceDate = null) {
   const source = typeof priceUpdatedAt==='string' ? Date.parse(priceUpdatedAt) : NaN;
@@ -29,9 +29,10 @@ export function freshness(priceUpdatedAt, fetchedAt, now = Date.now(), priceTime
     if (!Number.isFinite(fetched) || fetched > now + 300000) return {state:'unknown',label:'일간자료 수집시각 확인 필요',eligible:false,ageHours:null};
     const fetchAge=Math.max(0,(now-fetched)/3600000);
     const day=/^\d{4}-\d{2}-\d{2}$/.test(String(sourceDate||''))?String(sourceDate):null;
+    if(!day)return {state:'unknown',label:'일간가격 기준일 미확인',eligible:false,ageHours:fetchAge};
     const today=new Date(now+9*60*60*1000).toISOString().slice(0,10);
     const yesterday=new Date(now+9*60*60*1000-24*60*60*1000).toISOString().slice(0,10);
-    if(fetchAge>30||(day&&day!==today&&day!==yesterday))return {state:'stale',label:'일간가격 기준일 경과',eligible:false,ageHours:fetchAge};
+    if(fetchAge>30||(day!==today&&day!==yesterday))return {state:'stale',label:'일간가격 기준일 경과',eligible:false,ageHours:fetchAge};
     const prefix=day===yesterday?'전일':'당일';
     return {state:day===yesterday?'aging':'daily',label:`${prefix} 일괄가격 · 개별시각 미제공`,eligible:true,ageHours:fetchAge};
   }
@@ -73,7 +74,7 @@ export function isWithinMapBounds(point,bounds) {
   return validMapBounds(bounds) && finite(point?.lat) && finite(point?.lng) &&
     point.lat>=bounds.south && point.lat<=bounds.north && point.lng>=bounds.west && point.lng<=bounds.east;
 }
-export function filterStations(stations, {fuel,center,bounds,query='',brand='',self=false,freshOnly=true,favorites=null,sort='price',now=Date.now()}) {
+export function filterStations(stations, {fuel,center,bounds,query='',brand='',self=false,freshOnly=false,favorites=null,sort='price',now=Date.now()}) {
   if(!validMapBounds(bounds))return [];
   const terms=normalizeSearchText(query).trim().split(/\s+/).filter(Boolean);
   // Reject offscreen rows before price/freshness calculations and sorting.
@@ -84,3 +85,8 @@ export function filterStations(stations, {fuel,center,bounds,query='',brand='',s
     }).filter(s=>s.currentPrice && (!freshOnly||s.confidence.eligible))
     .sort((a,b)=>sort==='distance'?a.distance-b.distance||a.currentPrice.price-b.currentPrice.price:a.currentPrice.price-b.currentPrice.price||a.distance-b.distance);
 }
+export function summarizeVisiblePrices(stations) {
+  const comparable = stations.filter(s=>s.confidence?.eligible && finite(s.currentPrice?.price) && s.currentPrice.price>0);
+  return {total:stations.length,comparable:comparable.length,reference:stations.length-comparable.length,lowest:comparable.length?Math.min(...comparable.map(s=>s.currentPrice.price)):null};
+}
+

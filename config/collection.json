@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "description": "전국 자료가 아닌 공공 장소 중심의 제한된 서비스 검증 범위입니다. 전국 가격 제공은 오피넷 제휴 계약과 수집 서버 구성을 확인한 뒤 별도로 확대해야 합니다.",
+  "description": "서울시청·대전역 주변 일반 API 가격·상세 보강 범위입니다. 전국 공개 일일 판매가격 파일과 주유소 ID·유종별로 병합하며, 이 설정은 앱 전체의 수집 범위를 뜻하지 않습니다.",
   "dailyCallLimit": 300,
   "maxCallsPerRun": 36,
   "detailLimitPerSearch": 3,
@@ -10,3 +10,4 @@
     { "id": "daejeon-station", "name": "대전역 주변", "lat": 36.3322, "lng": 127.4346, "radius": 3000 }
   ]
 }
+

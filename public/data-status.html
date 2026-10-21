@@ -3,24 +3,30 @@
 <head>
  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
  <meta name="theme-color" content="#124d42"><title>데이터 수집 현황 — 주유한눈</title>
- <meta name="description" content="주유한눈의 전국 가격 수집 건수, 지도 좌표 확보율, 가격 기준일과 자동 갱신 결과를 확인합니다.">
+ <meta name="description" content="주유한눈의 전국 가격 수집 시각, 현재 비교 가능한 가격, 지도 좌표 보완과 자동 재시도 결과를 확인합니다.">
  <link rel="icon" type="image/svg+xml" href="./assets/icon.svg"><link rel="stylesheet" href="./data-status.css">
  <script type="module" src="./js/data-status.js"></script>
 </head>
 <body>
- <header><a class="brand" href="./"><img src="./assets/icon.svg" alt="" width="36" height="36">주유한눈</a><nav aria-label="주유한눈 메뉴"><a href="./?scope=all">전국 목록 검색</a><a href="./">지도에서 찾기</a><a href="./energy.html">평균유가·고속도로</a></nav></header>
+ <header><a class="brand" href="./"><img src="./assets/icon.svg" alt="" width="36" height="36">주유한눈</a><nav aria-label="주유한눈 메뉴"><a href="./">지도·목록에서 찾기</a><a href="./energy.html">평균유가·고속도로</a></nav></header>
  <main>
-  <div class="heading"><div><p class="eyebrow">DATA STATUS</p><h1>데이터 수집 현황</h1><p class="intro">수집된 가격과 지도에 표시할 수 있는 주유소를 구분해 확인하세요.</p></div><button id="reload" type="button">현황 새로고침 ↻</button></div>
+  <div class="heading"><div><p class="eyebrow">DATA STATUS</p><h1>데이터 수집 현황</h1><p class="intro">마지막 수집 시각과 현재 비교 가능한 가격을 함께 확인하세요. 모든 시각은 한국시간입니다.</p></div><button id="reload" type="button">현황 새로고침 ↻</button></div>
   <p id="notice" class="notice" role="status">수집 결과를 확인하고 있습니다.</p>
+  <section class="timing" aria-label="전국 가격 갱신 시각">
+   <article><h2>전국 가격 수집 예정</h2><strong>매일 20:37</strong><p>재확인 22:37 · 다음 날 00:37<br>예약 실행은 지연될 수 있습니다.</p></article>
+   <article><h2>마지막 성공 수집</h2><strong id="last-success">—</strong><p id="price-date">가격 기준일 확인 중</p></article>
+   <article><h2>다음 수집 확인</h2><strong id="next-retry">—</strong><p id="collection-state">전국 파일의 실제 기준일을 확인합니다.</p></article>
+  </section>
   <section class="metrics" aria-label="전국 수집 건수">
    <article><h2>전국 가격 수집</h2><strong id="total">—</strong><p>가격이 있는 주유소</p></article>
-   <article><h2>지도 표시 가능</h2><strong id="mapped">—</strong><p>가격과 좌표가 연결된 주유소</p></article>
+   <article><h2>전국 자료 중 지도 표시 가능</h2><strong id="mapped">—</strong><p>가격과 좌표가 연결된 주유소</p></article>
    <article><h2>좌표 보완 필요</h2><strong id="unmapped">—</strong><p>가격은 수집, 지도 좌표 미확보</p></article>
-   <article><h2>좌표 확보율</h2><strong id="ratio">—</strong><p id="price-date">가격 기준일 확인 중</p></article>
+   <article><h2>전국 좌표 확보율</h2><strong id="ratio">—</strong><p>전국 가격 수집 건수 대비</p></article>
   </section>
-  <section class="panel"><h2>자료별 갱신 결과</h2><p>수집 시각은 자료를 가져온 시각입니다. 일괄가격은 주유소별 보고 시각을 제공하지 않습니다.</p><div class="table-wrap"><table><caption class="sr-only">자료별 수집 상태와 갱신 일정</caption><thead><tr><th>자료</th><th>상태</th><th>건수</th><th>마지막 성공 수집</th><th>최근 시도</th><th>갱신 일정 · 한국시간</th></tr></thead><tbody id="collections"></tbody></table></div><ul id="issues" class="issues"></ul></section>
-  <section class="panel"><h2>유종별 지도 자료</h2><div id="fuels" class="fuels"></div><p>LPG 일괄가격은 현재 전국 수집 대상에 포함되지 않습니다. 지역 API에서 확보한 LPG 자료만 별도로 표시합니다.</p></section>
-  <section class="panel"><h2>수집 기준</h2><dl><dt>전국 일일가격</dt><dd>오피넷 공개 유가내려받기에서 일 1회 수집합니다. 당일 파일이 준비되지 않으면 전일 자료를 사용하며 실제 기준일을 표시합니다.</dd><dt>지도 좌표</dt><dd>전국주유소표준데이터와 이전에 확보한 좌표를 결합합니다. 좌표가 확인된 일부 주유소만 지도에 표시합니다.</dd><dt>자동 갱신</dt><dd>GitHub Actions 예약 실행으로 갱신합니다. 실행이 지연되거나 수집이 실패하면 마지막 정상 자료와 원래 기준시각을 보존합니다.</dd><dt>무료 API 사용량</dt><dd id="quota">현황 확인 중</dd></dl><div id="sources" class="sources"></div></section>
+  <section class="panel"><h2>현재 지도에서 비교할 수 있는 가격</h2><p>전국 일일가격과 지역 API 자료를 주유소·유종별로 합칩니다. 기본 지도·목록에는 마지막 확인 가격도 표시하며, 기준을 지난 가격은 최저가·절약액 계산에서 제외합니다.</p><div id="fuels" class="fuels"></div><p id="eligibility-time"></p><p>LPG는 지역 API에서 확보한 자료만 표시합니다. 지도와 목록은 현재 지도 범위에 있는 주유소를 함께 보여줍니다.</p></section>
+  <section class="panel"><h2>자료별 갱신 결과</h2><p>수집 시각은 자료를 가져온 시각입니다. 일괄가격은 주유소별 보고 시각을 제공하지 않으며, 기존 자료 재사용 시 원래 수집 시각을 유지합니다.</p><div class="table-wrap"><table><caption class="sr-only">자료별 수집 상태와 갱신 일정</caption><thead><tr><th>자료</th><th>상태</th><th>건수</th><th>마지막 성공 수집</th><th>최근 확인</th><th>갱신 일정 · 한국시간</th></tr></thead><tbody id="collections"></tbody></table></div><ul id="issues" class="issues"></ul></section>
+  <section class="panel"><h2>지도 좌표 보완 진행</h2><p id="coordinate-state">보완 기록을 확인하고 있습니다.</p><div id="coordinate-progress" class="coordinate-progress"></div><p id="coordinate-budget"></p></section>
+  <section class="panel"><h2>수집·비교 기준</h2><dl><dt>전국 일일가격</dt><dd>오피넷 공개 유가내려받기의 실제 가격 기준일을 확인합니다. 당일 자료가 준비되지 않으면 전일 자료를 보존하고 재시도하며, 다운로드 실패를 숨기지 않습니다.</dd><dt>가격 비교 가능</dt><dd>개별 보고 가격은 보고·수집 모두 24시간 이내여야 합니다. 일일파일은 오늘·어제 기준일이고 수집 후 30시간 이내여야 합니다. 시각이나 기준일이 확인되지 않은 가격은 비교에서 제외합니다.</dd><dt>지도 좌표</dt><dd>공개 표준데이터와 이전에 확인한 좌표를 사용하고, 미확보 주유소는 공식 ID 상세 조회로 차례로 보완합니다. 좌표가 없는 주유소는 지도·목록에 표시되지 않습니다.</dd><dt>자동 갱신</dt><dd>가격 기준일과 실패 여부에 따라 수집을 재시도합니다. 화면을 열어 둔 동안에도 5분마다 배포된 자료를 다시 읽으며, 실패하면 마지막 정상 자료와 원래 시각을 보존합니다.</dd><dt>무료 API 사용량</dt><dd id="quota">현황 확인 중</dd></dl><div id="sources" class="sources"></div></section>
   <footer><span id="generated">현황 생성 시각 확인 중</span><a href="https://github.com/softm/juyuhannun/actions" target="_blank" rel="noopener noreferrer">수집 실행 기록 ↗</a></footer>
  </main>
 </body>

@@ -88,3 +88,14 @@ body:not(.energy-page) .app-header{height:66px;padding:0 24px}
  .workspace.list-expanded .sidebar{inset:14% 0 0}
  .workspace.list-expanded .map-section{height:14%}
 }
+
+
+/* Last observed prices remain visible without looking like current bargains. */
+.workspace .station-card.is-reference .card-price{color:#82705b}
+.workspace .station-card.is-reference{border-color:#e4dfd5;background:#fffefa}
+.workspace .station-card.is-reference.selected{border-color:var(--green)}
+.workspace .confidence.stale,.workspace .confidence.unknown,.workspace .confidence.invalid{color:#786347;background:#f4efe5}
+.workspace .data-status{max-width:520px}
+.workspace .data-status>div{min-width:0}
+.workspace .data-status div>span{overflow-wrap:anywhere}
+@media(max-width:760px){.workspace .data-status{max-width:100%}.workspace .extra-filters p{line-height:1.6}}

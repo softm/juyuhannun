@@ -42,8 +42,8 @@ test('text, fuel, freshness, brand, self-service and favorites remain within the
  assert.deepEqual(filterStations(rows,{...opts,bounds:wide,brand:'SOL',self:true}).map(s=>s.id),['A1']);
  assert.deepEqual(filterStations(rows,{...opts,bounds:wide,favorites:new Set(['A2'])}).map(s=>s.id),['A2']);
  const stale={...seosan,prices:{B027:{...price,sourceDate:'2026-10-15'}}};
- assert.equal(filterStations([stale],{...opts,bounds:wide}).length,0);
- assert.equal(filterStations([stale],{...opts,bounds:wide,freshOnly:false}).length,1);
+ assert.equal(filterStations([stale],{...opts,bounds:wide,freshOnly:true}).length,0);
+ assert.equal(filterStations([stale],{...opts,bounds:wide}).length,1);
 });
 test('partial coordinate coverage can populate the viewport without requiring a national search mode',()=>{
  const data={status:'partial',coverage:{serviceReady:false,searchIncludesUnmapped:true},stations:[seoul,unmapped]};
@@ -65,3 +65,4 @@ test('viewport callbacks include zoom-only, programmatic and resized maps and co
  bounds={...wide,north:38};c._scheduleViewportChange();t.mock.timers.tick(120);assert.equal(events.length,3);
  c._scheduleViewportChange();c._destroyed=true;t.mock.timers.tick(120);assert.equal(events.length,3);
 });
+
