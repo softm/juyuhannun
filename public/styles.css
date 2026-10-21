@@ -22,3 +22,58 @@ dialog{padding:34px;border:1px solid #dce6d6;border-radius:20px;background:#fff;
 @media(max-width:760px){.app-header:has(.open-energy-link){gap:8px}.app-header:has(.open-energy-link) .header-actions{gap:4px}.open-energy-link{font-size:10px;padding:7px}.app-header:has(.open-energy-link) .brand small{letter-spacing:.3px}.app-header:has(.open-energy-link) .text-button .icon{display:none}}
 
 @media(max-width:760px){.app-header:has(.open-energy-link) .text-button{padding:8px}.app-header:has(.open-energy-link) .text-button .icon{display:inline-flex}.app-header:has(.open-energy-link) .text-button>span:last-child{display:none}}
+
+/* Compact comparison list: keep names, address, other fuel prices and source age visible. */
+body:not(.energy-page) .app-header{height:66px;padding:0 24px}
+.workspace{height:calc(100dvh - 66px)}
+.workspace .view-tabs{padding:0 16px}
+.workspace .view-tab{padding-top:13px;padding-bottom:13px}
+.workspace .search-block{padding:12px 16px 10px}
+.scope-tabs{display:flex;gap:5px;padding:3px;background:#f0f4ef;border-radius:7px;margin-bottom:9px}
+.scope-tabs button{flex:1;padding:6px 8px;font-size:11px;font-weight:600;border-radius:5px;color:#6e8075;min-height:30px}
+.scope-tabs button.active{background:#fff;color:#124d42;box-shadow:0 1px 4px #183b2414}
+.workspace .search-box{height:44px}
+.workspace .fuel-tabs{margin-top:10px;margin-bottom:10px}
+.workspace .fuel-tabs button{padding:7px 5px;font-size:11px;min-height:33px}
+.workspace .filter-line{gap:7px}
+.workspace .filter-line select,.workspace .filter-button{height:33px;font-size:11px}
+.workspace .results-header{padding:10px 16px 9px}
+.coverage-hint{padding:8px 16px;background:#fcf8ed;color:#896932;border-bottom:1px solid #efe7d6;font-size:10px;line-height:1.5;flex:none}
+.search-nationwide{margin:0 16px 9px;padding:7px 9px;border:1px solid #d8e5d8;background:#f7faf5;color:#356549;border-radius:6px;font-size:11px;text-align:left;flex:none}
+.workspace .results{padding:0 12px 14px}
+.workspace .station-card{border-radius:8px;margin-bottom:7px}
+.workspace .card-main{padding:10px 11px 5px}
+.workspace .card-top{align-items:center;gap:6px}
+.workspace .station-number{font-size:10px;min-width:20px;width:20px;height:22px;flex:none}
+.workspace .station-name{font-size:12px;line-height:1.5;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.workspace .card-price{font-size:21px;line-height:1.2;white-space:nowrap;flex:none;letter-spacing:-.7px}
+.workspace .card-price small{font-size:9px;margin-left:3px;font-weight:400;color:#859181}
+.workspace .card-sub{font-size:10px;line-height:1.5;gap:8px;margin:4px 0}
+.workspace .card-sub .distance-label{margin-left:auto;font-size:10px}
+.card-address{font-size:10px;line-height:1.6;color:#6e8075;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.card-other-prices{font-size:10px;line-height:1.6;color:#5e786a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px}
+.card-other-prices small{font-size:8px;color:#8b998e}
+.workspace .card-bottom{padding:2px 8px 3px 11px;border-top:0;min-height:29px}
+.workspace .card-actions button{padding:4px;min-width:28px;min-height:28px}
+.workspace .card-actions svg{width:16px;height:16px}
+.workspace .confidence{font-size:9px}
+.load-more{display:block;width:100%;border:1px solid #dce7d9;background:#f5f8f1;color:#426547;border-radius:7px;padding:11px;margin-top:10px;font-size:12px}
+.workspace .price-summary{padding:11px 15px;max-width:295px;border-radius:10px}
+.workspace .price-summary>div{gap:7px;margin:3px 0}
+.workspace .price-summary strong{font-size:28px}
+@media(max-width:760px){
+ body:not(.energy-page) .app-header{height:60px;padding:0 16px}
+ .workspace{height:calc(100dvh - 60px)}
+ .workspace .search-block{padding:7px 12px}
+ .workspace .scope-tabs{margin-bottom:6px}
+ .workspace .search-box{height:37px}
+ .workspace .fuel-tabs{margin-top:6px;margin-bottom:6px}
+ .workspace .view-tab{padding-top:10px;padding-bottom:10px}
+ .coverage-hint{padding:5px 13px;font-size:9px}
+ .workspace .results-header{padding:8px 13px}
+ .search-nationwide{margin:0 12px 7px;padding:6px 8px;font-size:10px}
+ .workspace .station-name{font-size:11px}
+ .workspace .card-price{font-size:19px}
+ .workspace .card-main{padding:8px 10px 3px}
+ .workspace .price-summary{padding:8px 11px;max-width:260px}
+}

@@ -23,6 +23,7 @@
     <aside class="sidebar" aria-label="주유소 검색과 비교">
       <nav class="view-tabs" aria-label="보기 선택"><button class="view-tab active" data-view="nearby" aria-current="page"><span class="icon" data-icon="pin"></span>주변 주유소</button><button class="view-tab" data-view="route"><span class="icon" data-icon="route"></span>경로 비용 비교</button><button class="view-tab" data-view="saved"><span class="icon" data-icon="heart"></span>찜한 곳</button></nav>
       <div class="search-block">
+        <div class="scope-tabs" role="group" aria-label="검색 범위"><button type="button" data-scope="nearby" class="active" aria-pressed="true">지도 주변</button><button type="button" data-scope="national" aria-pressed="false">전국 검색</button></div>
         <form id="search-form" class="search-box" role="search"><span class="icon" data-icon="search"></span><input id="query" type="search" placeholder="지역, 주소 또는 주유소 검색" aria-label="지역, 주소 또는 주유소 검색" autocomplete="off" maxlength="100"><button type="submit" class="icon-button" aria-label="검색"><span class="icon" data-icon="arrow"></span></button></form>
         <div id="search-candidates" class="search-candidates" hidden></div>
         <div class="fuel-tabs" id="fuel-tabs" aria-label="유종 선택"><button data-fuel="B027" class="active" aria-pressed="true">휘발유</button><button data-fuel="D047" aria-pressed="false">경유</button><button data-fuel="B034" aria-pressed="false">고급휘발유</button><button data-fuel="K015" aria-pressed="false">LPG</button></div>
@@ -39,7 +40,9 @@
         <details class="time-option"><summary>시간 비용도 반영하기</summary><label>시간당 비용<span class="number-field"><input id="hourly-value" type="number" value="0" min="0" max="1000000" step="1000" inputmode="numeric"><span>원/시간</span></span></label><p>0원이면 연료비와 추가 통행료만 반영합니다.</p></details>
         <p id="route-help" class="route-help">주유소를 선택하면 경유 경로를 비교할 수 있습니다.</p>
       </section>
+      <p id="coverage-hint" class="coverage-hint" aria-live="polite">검색 범위를 확인하고 있습니다.</p>
       <div class="results-header"><div><h2 id="results-title">주변 주유소</h2><span id="result-count" class="count">0</span></div><label><span class="sr-only">정렬 기준</span><select id="sort"><option value="price">가격 낮은순</option><option value="distance">가까운순 · 직선</option><option value="savings">확인된 절약액순</option></select></label></div>
+      <button type="button" id="search-nationwide" class="search-nationwide" hidden>전국에서 검색</button>
       <section id="results" class="results" aria-label="검색 결과" aria-live="polite" aria-busy="true"><div class="loading-state"><div class="spinner"></div><h3>가격 자료를 확인하고 있어요</h3><p>가격과 기준시각을 함께 확인합니다.</p></div></section>
       <footer class="sidebar-footer"><span class="source-dot"></span>자료 출처 <a href="https://www.opinet.co.kr/" target="_blank" rel="noopener noreferrer">한국석유공사 오피넷 <span aria-hidden="true">↗</span></a><a href="./data-status.html">수집 현황</a><button id="footer-info">기준시각 안내</button></footer>
     </aside>

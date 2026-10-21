@@ -21,6 +21,6 @@ export async function loadStaticJSON(url,{signal,fetchImpl=fetch,now=Date.now(),
  if(cacheMs>0){if(cache.size>=8)cache.delete(cache.keys().next().value);cache.set(key,{at:now,data});}
  return data;
 }
-export function useNationwideData(data,fuel){
- return Boolean(data&&['ready','partial'].includes(data.status)&&data.coverage?.serviceReady!==false&&Array.isArray(data.stations)&&data.stations.some(s=>Number.isFinite(s?.prices?.[fuel]?.price)&&s.prices[fuel].price>0));
+export function useNationwideData(data,fuel,{nationalSearch=false}={}){
+ return Boolean(data&&['ready','partial'].includes(data.status)&&(data.coverage?.serviceReady!==false||(nationalSearch&&data.coverage?.searchIncludesUnmapped===true))&&Array.isArray(data.stations)&&data.stations.some(s=>Number.isFinite(s?.prices?.[fuel]?.price)&&s.prices[fuel].price>0));
 }

@@ -8,7 +8,7 @@ await rm(`${root}dist`,{recursive:true,force:true});
 await mkdir(`${root}dist`,{recursive:true});
 await cp(`${root}public`,`${root}dist`,{recursive:true});
 await writeDataStatus(`${root}dist/data`);
-for(const name of ['stations','nationwide/latest']){
+for(const name of ['stations','nationwide/latest','nationwide/search']){
  const path=`${root}dist/data/${name}.json`;
  const compact=JSON.stringify(JSON.parse(await readFile(path,'utf8')));
  await writeFile(`${path}.gz`,gzipSync(compact,{level:9}));

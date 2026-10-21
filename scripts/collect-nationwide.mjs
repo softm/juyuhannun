@@ -164,6 +164,9 @@ async function collectNationwideSnapshot({outputDirectory=resolve(ROOT,'public/d
  const master={version:2,status,provider:'opinet-public-download',fetchedAt,source:SOURCE,coverage,stations:all.map(({prices,...s})=>s),warnings};
  const history={version:2,date:day,provider:'opinet-public-download',fetchedAt,stations:priced.map(s=>({id:s.id,prices:s.prices}))};
  const manifest={version:2,status,provider:'opinet-public-download',fetchedAt,lastAttempt:latest.lastAttempt,stationCount:all.length,priceStationCount:priced.length,mappedPriceStationCount:mappedPriced.length,mappedRatio:coverage.mappedRatio,serviceReady,standardDataStatus:standard.status,standardCalls:standard.calls,priceDate:coverage.priceDate,downloadBytes,priceSource,historyDate:day,latest:'./latest.json',master:'./master.json',history:`./history/${day}.json`,sources:[SOURCE,{name:'전국주유소표준데이터',url:'https://www.data.go.kr/data/15129441/standard.do'}]};
+ // List search retains every priced station; missing coordinates only exclude a map marker.
+ const searchable={...latest,coverage:{...coverage,searchIncludesUnmapped:true},stations:priced};
+ await atomicWriteJson(resolve(outputDirectory,'search.json'),searchable);
  await atomicWriteJson(resolve(outputDirectory,'latest.json'),latest);await atomicWriteJson(resolve(outputDirectory,'master.json'),master);await atomicWriteJson(resolve(outputDirectory,'manifest.json'),manifest);await atomicWriteJson(resolve(outputDirectory,'history',`${day}.json`),history);await prune(resolve(outputDirectory,'history'),historyDays);
  return {status,count:mappedPriced.length,total:priced.length,mappedRatio:coverage.mappedRatio,serviceReady,priceDate:coverage.priceDate,downloadBytes,priceSource,standardStatus:standard.status,standardCalls:standard.calls,fetchedAt};
 }
@@ -174,10 +177,10 @@ export async function collectNationwide(options={}){
   const at=new Date((options.clock??Date.now)()).toISOString();
   const lastAttempt={at,status:'error',error:publicError(error)};
   // A failed download must be visible while retaining original observations.
-  for(const name of ['latest','manifest']){
+  for(const name of ['latest','search','manifest']){
    const previous=await readJson(resolve(dir,`${name}.json`));
-   const retained=name==='latest'?Boolean(previous?.stations?.length):Boolean(previous?.priceStationCount);
-   await atomicWriteJson(resolve(dir,`${name}.json`),{...(previous??{version:2,provider:'opinet-public-download',fetchedAt:null,...(name==='latest'?{stations:[],coverage:{kind:'nationwide',complete:false,serviceReady:false}}:{stationCount:0,priceStationCount:0,mappedPriceStationCount:0,serviceReady:false})}),status:retained?'partial':'error',cache:{...previous?.cache,stale:true},lastAttempt});
+   const retained=name!=='manifest'?Boolean(previous?.stations?.length):Boolean(previous?.priceStationCount);
+   await atomicWriteJson(resolve(dir,`${name}.json`),{...(previous??{version:2,provider:'opinet-public-download',fetchedAt:null,...(name!=='manifest'?{stations:[],coverage:{kind:'nationwide',complete:false,serviceReady:false}}:{stationCount:0,priceStationCount:0,mappedPriceStationCount:0,serviceReady:false})}),status:retained?'partial':'error',cache:{...previous?.cache,stale:true},lastAttempt});
   }
   throw error;
  }

@@ -5,6 +5,9 @@ export const FUEL_TYPES = [
 export const BRANDS = { SKE: 'SK에너지', GSC: 'GS칼텍스', HDO: 'HD현대오일뱅크', SOL: 'S-OIL', RTE: '알뜰주유소', RTX: '고속도로 알뜰', NHO: '농협 알뜰', ETC: '자가상표', E1G: 'E1', SKG: 'SK가스' };
 export const escapeHTML = (value) => String(value ?? '').replace(/[&<>"']/g, (v) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[v]));
 export const finite = (v) => typeof v === 'number' && Number.isFinite(v);
+export const hasMapCoordinates = s => finite(s?.lat) && finite(s?.lng) && s.lat>=32 && s.lat<=40 && s.lng>=123 && s.lng<=133;
+export function stationNavigationURL(s){return hasMapCoordinates(s)?`https://map.kakao.com/link/to/${encodeURIComponent(s.name)},${s.lat},${s.lng}`:`https://map.kakao.com/link/search/${encodeURIComponent(s.roadAddress||s.address||s.name)}`;}
+export function normalizeSearchText(v){let s=String(v||'').toLocaleLowerCase('ko-KR');for(const [from,to] of [['서울특별시','서울'],['부산광역시','부산'],['대구광역시','대구'],['인천광역시','인천'],['광주광역시','광주'],['대전광역시','대전'],['울산광역시','울산'],['세종특별자치시','세종'],['경기도','경기'],['강원특별자치도','강원'],['강원도','강원'],['충청북도','충북'],['충청남도','충남'],['전북특별자치도','전북'],['전라북도','전북'],['전라남도','전남'],['경상북도','경북'],['경상남도','경남'],['제주특별자치도','제주']])s=s.replaceAll(from,to);return s;}
 export const money = (value) => finite(value) ? Math.round(value).toLocaleString('ko-KR') : '—';
 export function distanceMeters(a, b) {
   if (!a || !b || ![a.lat,a.lng,b.lat,b.lng].every(finite) || Math.abs(a.lat)>90 || Math.abs(b.lat)>90 || Math.abs(a.lng)>180 || Math.abs(b.lng)>180) return Infinity;
@@ -63,11 +66,11 @@ export function calculateSavings({unitPrice,referencePrice,liters,kmPerLiter,rou
   const netSavings=grossSavings-fuelCost-tollCost-timeCost;
   return {eligible:true,reason:null,grossSavings,fuelCost,tollCost,timeCost,netSavings,extraDistanceMeters,extraDurationSeconds,breakEvenLiters:referencePrice>unitPrice?Math.max(0,(fuelCost+tollCost+timeCost)/(referencePrice-unitPrice)):null};
 }
-export function filterStations(stations, {fuel,center,radius=5000,query='',brand='',self=false,freshOnly=true,favorites=null,sort='price',now=Date.now()}) {
-  const q=query.trim().toLocaleLowerCase('ko-KR');
+export function filterStations(stations, {fuel,center,radius=5000,scope='nearby',query='',brand='',self=false,freshOnly=true,favorites=null,sort='price',now=Date.now()}) {
+  const terms=normalizeSearchText(query).trim().split(/\s+/).filter(Boolean);
   return stations.map(station=> {
     const p=getFuelPrice(station,fuel);
-    return {...station,currentPrice:p,confidence:p?freshness(p.priceUpdatedAt,p.fetchedAt,now,p.priceTimeStatus,p.sourceDate):{state:'unknown',label:'가격 미제공',eligible:false},distance:distanceMeters(center,station)};
-  }).filter(s=>s.currentPrice && s.distance<=radius && (!brand||s.brand===brand) && (!self||s.facilities?.self===true) && (!freshOnly||s.confidence.eligible) && (!favorites||favorites.has(s.id)) && (!q||[s.name,s.address,s.roadAddress,BRANDS[s.brand]].filter(Boolean).join(' ').toLocaleLowerCase('ko-KR').includes(q)))
+    return {...station,currentPrice:p,confidence:p?freshness(p.priceUpdatedAt,p.fetchedAt,now,p.priceTimeStatus,p.sourceDate):{state:'unknown',label:'가격 미제공',eligible:false},distance:hasMapCoordinates(station)?distanceMeters(center,station):Infinity};
+  }).filter(s=>s.currentPrice && (scope==='national'||s.distance<=radius) && (!brand||s.brand===brand) && (!self||s.facilities?.self===true) && (!freshOnly||s.confidence.eligible) && (!favorites||favorites.has(s.id)) && terms.every(term=>normalizeSearchText([s.name,s.address,s.roadAddress,BRANDS[s.brand]].filter(Boolean).join(' ')).includes(term)))
     .sort((a,b)=>sort==='distance'?a.distance-b.distance||a.currentPrice.price-b.currentPrice.price:a.currentPrice.price-b.currentPrice.price||a.distance-b.distance);
 }
