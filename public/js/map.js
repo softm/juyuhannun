@@ -137,6 +137,7 @@ function installMarkerStyles() {
     '.map-surface[data-marker-scale="dot"] .price-pin:not(.selected) .price-label-value,.map-surface[data-marker-scale="pin"] .price-pin:not(.selected) .price-label-value,.map-surface.dense-markers .price-pin:not(.selected) .price-label-value{display:block;color:#17633d;font-weight:800;margin-top:2px}',
     '.map-surface[data-marker-scale="dot"] .price-pin:not(.selected).is-stale,.map-surface.dense-markers .price-pin:not(.selected).is-stale{background:#929b93}',
     '.map-surface.dense-markers .price-pin:not(.selected){box-shadow:none}',
+    '.map-surface[data-marker-size="small"] .price-pin:not(.selected){min-width:8px;width:8px;min-height:8px;height:8px;bottom:-4px;border-width:1px}',
     '.station-marker .price-pin.selected .price-pin-name{transform:translateX(-50%);border-color:#146d45;background:#f0faf3}',
     '.map-you{display:block;width:18px;height:18px;border:3px solid #fff;border-radius:50%;background:#2674db;box-shadow:0 0 0 7px #2674db30,0 2px 8px #193a6040}',
     '.juyuhannun-map .leaflet-control-attribution{font-size:10px;background:rgba(255,255,255,.92)}',
@@ -405,8 +406,9 @@ export class MapController {
 
   _updateMarkerScale() {
     if (!this.map) return;
-    const scale = markerScale(this.map.getZoom());
-    if (this.canvas.dataset.markerScale === scale) return;
+    const zoom = this.map.getZoom(), scale = markerScale(zoom), size = zoom < 12 ? 'small' : 'normal';
+    if (this.canvas.dataset.markerScale === scale && this.canvas.dataset.markerSize === size) return;
+    this.canvas.dataset.markerSize = size;
     // CSS changes the shape at the existing anchor; zoom never replaces SDK icons.
     this.canvas.dataset.markerScale = scale;
     this._layoutLabels();
@@ -485,7 +487,7 @@ export class MapController {
       escapeHTML(row.name || '주유소') + '</span><span class="price-label-value">' + escapeHTML(price + unit) +
       '</span><span class="price-label-detail">' + escapeHTML(facts) + '<span>' + escapeHTML(row.roadAddress || row.address || '') + '</span></span></span></button></div>';
     let marker = this._markers.get(id) || this._markerPool.get(id);
-    const zIndex = selected ? 5000 : 100;
+    const zIndex = selected ? 5000 : this._retainedLabels.has(id) ? 1000 : 100;
     const changed = !previous || previous.content !== content;
     const moved = !previous || previous.lat !== point.lat || previous.lng !== point.lng;
     const makeIcon = () => this.provider === 'naver'
@@ -514,6 +516,15 @@ export class MapController {
     this._markers.set(id, marker);
     this._markerState.set(id, { content, lat: point.lat, lng: point.lng, zIndex, sourceKey });
     return !cached || changed || moved || previous?.zIndex !== zIndex;
+  }
+
+  _setMarkerLayer(id, emphasized) {
+    const marker = this._markers.get(id), state = this._markerState.get(id);
+    const zIndex = id === this._selectedId ? 5000 : emphasized ? 1000 : 100;
+    if (!marker || !state || state.zIndex === zIndex) return;
+    if (this.provider === 'naver') marker.setZIndex(zIndex);
+    else marker.setZIndexOffset(zIndex);
+    state.zIndex = zIndex;
   }
 
   _layoutLabels() {
@@ -563,6 +574,8 @@ export class MapController {
         retained.set(item.id, placement?.side || 'top');
         if (!selected) remaining--;
       }
+      // SDK overlays form separate stacking contexts; a label needs its marker above dots.
+      for (const id of new Set([...this._retainedLabels.keys(), ...retained.keys()])) this._setMarkerLayer(id, retained.has(id));
       this._retainedLabels = retained;
     });
   }

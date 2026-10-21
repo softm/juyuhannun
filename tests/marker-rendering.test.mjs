@@ -99,3 +99,15 @@ test('pool does not retain all nationwide overlays and custom presentation stays
   c.setStations([row('highway')]);h.flush();
   const content=c._markerState.get('highway').content;assert.match(content,/수집 중/);assert.match(content,/is-stale/);assert.match(content,/고속도로 이전 수집자료/);
 });
+
+
+test('name labels sit above location dots and keep that layer across unchanged renders',()=>{
+  const h=harness(),c=h.controller;c.setStations([row('a'),row('b')]);h.flush();
+  c._setMarkerLayer('a',true);c._retainedLabels.set('a','top');
+  assert.equal(c._markerState.get('a').zIndex,1000);
+  const before=h.counts.z;c.setStations(c._stations);h.flush();assert.equal(h.counts.z,before);
+  c._setMarkerLayer('a',false);assert.equal(c._markerState.get('a').zIndex,100);
+  c.setStations(c._stations,'b');h.flush();c._setMarkerLayer('b',false);assert.equal(c._markerState.get('b').zIndex,5000);
+  h.zoom(7);c._updateMarkerScale();assert.equal(c.canvas.dataset.markerSize,'small');
+  h.zoom(13);c._updateMarkerScale();assert.equal(c.canvas.dataset.markerSize,'normal');
+});
