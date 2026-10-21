@@ -136,6 +136,9 @@ function installMarkerStyles() {
     '.map-surface[data-marker-scale="pin"]:not(.dense-markers) .price-pin:not(.selected) .price-pin-glyph{display:block}',
     '.map-surface[data-marker-scale="dot"] .price-pin:not(.selected) .price-label-value,.map-surface[data-marker-scale="pin"] .price-pin:not(.selected) .price-label-value,.map-surface.dense-markers .price-pin:not(.selected) .price-label-value{display:block;color:#17633d;font-weight:800;margin-top:2px}',
     '.map-surface[data-marker-scale="dot"] .price-pin:not(.selected).is-stale,.map-surface.dense-markers .price-pin:not(.selected).is-stale{background:#929b93}',
+    '.map-surface .price-pin.is-stale:not(.selected){border-style:dashed;color:#786b5b}',
+    '.map-surface .price-pin.is-stale:not(.selected) .price-pin-name{border-style:dashed;border-color:#a49a8c}',
+    '.map-surface .price-pin.is-stale:not(.selected) .price-label-value{color:#786b5b}',
     '.map-surface.dense-markers .price-pin:not(.selected){box-shadow:none}',
     '.map-surface[data-marker-size="small"] .price-pin:not(.selected){min-width:8px;width:8px;min-height:8px;height:8px;bottom:-4px;border-width:1px}',
     '.station-marker .price-pin.selected .price-pin-name{transform:translateX(-50%);border-color:#146d45;background:#f0faf3}',
@@ -753,3 +756,4 @@ export class MapController {
     this.notice.remove();
   }
 }
+
