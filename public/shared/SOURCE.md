@@ -67,3 +67,16 @@ onCenterChange({lat,lng})는 사용자 이동이 끝난 뒤 450ms 동안 추가 
 onState는 {status,provider,message,ready}를 전달합니다. provider는 naver·leaflet·none이며 status는 loading·ready·fallback-loading·fallback·tile-error·error 등이 됩니다. fallback 자체가 주유소 가격의 최신성 또는 경로 데이터 상태를 의미하지 않습니다.
 
 지도는 가격을 생성하거나 보정하지 않습니다. 가격 시각 판정, 조회 응답의 세대 토큰, 재시도·갱신 상태, 실제 추가 주행비 계산은 앱과 서버의 데이터 로직에서 처리합니다.
+
+## 배율별 주유소 표시와 대량 렌더링 (2026-10-21)
+
+[돌봄한눈 cadd491](https://github.com/softm/homecare-nationwide-care-services-map/commit/cadd491849a0cec9223a37295339eec03157c002)의 [map-marker-labels.js](https://github.com/softm/homecare-nationwide-care-services-map/blob/cadd491849a0cec9223a37295339eec03157c002/map-marker-labels.js), map-marker-density.css, index.html의 loadMarkers·clearQueryMarkers를 확인해 적용했습니다. 아래 기능은 주유소 데이터·두 지도 제공자에 맞게 구현한 것이며 원본 바이트 복사본이 아닙니다.
+
+- public/js/marker-display.js: 원본의 배율 14·16·18 경계, 화면 면적별 이름표 예산(최대 6·12·24·40), 밀도 기준(면적/9000, 12~80), 선택·기존 이름·ID 순서 우선순위.
+- public/js/map.js: 14 미만 위치점, 14~15 주유소 핀, 16~17 가격·이름, 18 이상 가격·이름·정유사·셀프·가격 기준일·주소. 밀집 화면은 일반 마커를 위치점으로 간소화하고 가격·이름표는 예산과 충돌 검사로 배치합니다. 선택 마커는 항상 가격·이름을 강조합니다.
+- 배율 변경은 호스트의 data-marker-scale 속성만 바꿔 기존 DOM과 좌표 앵커를 유지합니다. 모든 배율에서 일부 일반 이름·가격을 남기며, 이름표 측정 후보는 화면 예산의 3배 이내입니다.
+- 화면 경계 안의 모든 유효 주유소를 표시하며 표본 추출로 결과를 누락하지 않습니다. 목록은 화면 마커 수와 별도로 전체 검색 결과를 유지합니다. 화면 밖 마커는 SDK에서 분리하고 재방문 캐시는 800개로 제한합니다.
+- 생성·삭제·변경을 한 프레임당 최대 64개/6ms 작업으로 분할합니다(단일 SDK 호출의 실행 시간은 SDK에 의존). 새 조회가 들어오면 이전 예약 작업을 취소합니다. 아이콘 내용·좌표·선택 상태가 달라진 경우에만 SDK를 갱신합니다.
+- 확대·축소만으로 목록 재생성이나 가격 파일 재요청을 하지 않습니다. 지도 자동 검색을 꺼도 배율별 모양 전환과 화면 안 마커 갱신은 동작합니다.
+
+검증: tests/marker-rendering.test.mjs에서 배율 경계·이름표 예산·선택 우선순위·좌표 누락·중복·화면 경계·두 제공자의 5,000개 분할 렌더링·아이콘 재사용·필터 취소·캐시 제한·고속도로 사용자 지정 표시를 검증합니다. 이 SDK 대역 테스트의 실행 시간을 실제 브라우저 FPS로 해석하지 않습니다.

@@ -24,7 +24,7 @@ function toast(message){$('toast').textContent=message;$('toast').hidden=false;c
 function showDialog(id){const d=$(id);if(!d.open)d.showModal();}
 function closeDialog(id){$(id).close();}
 function setMapNotice(message){$('map-notice').textContent=message;$('map-notice').hidden=!message;}
-const map=new MapController($('map'),{onCenterChange:center=>{if($('auto-search').checked){state.center=center;if(state.scope==='national')render();else loadData();}else toast('이 지역에서 찾기를 눌러 새 중심에서 검색하세요.');},onSelect:id=>selectStation(id),onState:({provider,status,message})=>{if(status==='error'||provider==='leaflet')setMapNotice(message||'대체 지도에서 확인하고 있습니다.');}});
+const map=new MapController($('map'),{onCenterChange:(center,{zoomOnly=false}={})=>{if(zoomOnly)return;if($('auto-search').checked){state.center=center;if(state.scope==='national'||(!apiBase&&state.all.length))render();else loadData();}else toast('이 지역에서 찾기를 눌러 새 중심에서 검색하세요.');},onSelect:id=>selectStation(id),onState:({provider,status,message})=>{if(status==='error'||provider==='leaflet')setMapNotice(message||'대체 지도에서 확인하고 있습니다.');}});
 
 async function requestJSON(url,signal){const response=await fetch(url,{signal,cache:'no-store',credentials:'omit',headers:{Accept:'application/json'}});let data;try{data=await response.json();}catch{throw new Error('가격 서버에서 올바른 자료를 받지 못했습니다.');}if(!response.ok&&!data.status)throw new Error('자료를 가져오지 못했습니다. 잠시 후 다시 시도해 주세요.');return data;}
 async function loadData(){
@@ -71,7 +71,7 @@ function render(){
  $('search-nationwide').hidden=state.scope==='national'||state.loading;
  $('search-nationwide').textContent=state.query?`전국에서 “${state.query}” 검색`:'더 많은 주유소 · 전국에서 찾기';
  if(!filtered.length)renderEmpty();else $('results').innerHTML=filtered.slice(0,state.listLimit).map((s,i)=>card(s,i)).join('')+(filtered.length>state.listLimit?`<button class="load-more" data-action="load-more">${Math.min(60,filtered.length-state.listLimit)}곳 더 보기 · ${state.listLimit.toLocaleString('ko-KR')}/${filtered.length.toLocaleString('ko-KR')}곳</button>`:'');
- if(state.mapReady){const bounds=map.getBounds();map.setStations(filtered.filter(s=>hasMapCoordinates(s)&&(state.scope!=='national'||!bounds||(s.lat>=bounds.south&&s.lat<=bounds.north&&s.lng>=bounds.west&&s.lng<=bounds.east))),state.selected,state.fuel);}
+ if(state.mapReady)map.setStations(filtered,state.selected,state.fuel);
  const reliable=filtered.filter(s=>s.confidence.eligible);const cheapest=reliable.length?Math.min(...reliable.map(s=>s.currentPrice.price)):null;
  $('lowest-price').textContent=money(cheapest);$('summary-area').textContent=state.scope==='national'?'전국 검색 · 목록 조건 기준':`검색 중심 · 반경 ${state.radius/1000} km`;
  $('summary-caption').textContent=cheapest?`${FUEL_TYPES.find(f=>f.code===state.fuel).name} · 확인된 ${reliable.length}곳 내 비교${state.envelope?.coverage?.complete===false?' · 전체 주유소 아님':''}`:'비교 가능한 가격 자료를 기다리고 있습니다';

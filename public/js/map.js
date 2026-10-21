@@ -1,5 +1,6 @@
 import { APP_CONFIG } from '../config.js';
-import { escapeHTML, getFuelPrice, freshness, FUEL_TYPES } from './core.js';
+import { escapeHTML, getFuelPrice, freshness, FUEL_TYPES, BRANDS } from './core.js';
+import { markerScale, labelBudget, markerDensityLimit, visibleStations, labelCandidates } from './marker-display.js';
 import '../shared/care-location.js';
 import '../shared/care-popup-geometry.js';
 import '../shared/map-marker-placement.js';
@@ -7,6 +8,7 @@ import '../shared/map-marker-placement.js';
 const AUTH_EVENT = 'juyuhannun:naver-auth-failed';
 const LEAFLET_VERSION = '1.9.4';
 const SDK_TIMEOUT = 12000;
+const markerPriceFormat = new Intl.NumberFormat('ko-KR', { maximumFractionDigits: 1 });
 let naverTask;
 let leafletTask;
 let naverAuthFailed = false;
@@ -115,6 +117,27 @@ function installMarkerStyles() {
     '.price-pin-value{display:block}.price-pin-value small{font-size:10px;margin-left:2px;font-weight:600}',
     '.price-pin-name{display:none;position:absolute;left:50%;bottom:calc(100% + 10px);width:max-content;max-width:200px;margin-left:0;padding:6px 9px;border:1px solid #d8e3dc;border-radius:7px;background:#fff;color:#172e20;font:600 12px/1.35 system-ui,sans-serif;white-space:normal;box-shadow:0 3px 9px #0e241f20;pointer-events:none}',
     '.price-pin.selected .price-pin-name{display:block}',
+
+    '.station-marker{position:relative;width:72px;height:40px;pointer-events:none}',
+    '.station-marker .price-pin{position:absolute;left:36px;bottom:5px;box-sizing:border-box;transform:translateX(-50%);pointer-events:auto}',
+    '.price-pin-glyph{display:none;font-size:16px;line-height:1}',
+    '.price-pin-glyph svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:1.8}',
+    '.price-label-title{display:block;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}',
+    '.price-label-value,.price-label-detail{display:none}',
+    '.price-pin-name .price-label-detail{font-size:10px;font-weight:500;line-height:1.5;margin-top:4px;color:#53655f}',
+    '.price-label-detail>span{display:block;max-width:200px}',
+    '.price-pin.label-visible .price-pin-name,.price-pin.label-measure .price-pin-name{display:block;transform:translateX(-50%)}',
+    '.price-pin.label-measure .price-pin-name{visibility:hidden}',
+    '.price-pin.label-detail .price-label-detail{display:block}',
+    '.map-surface[data-marker-scale="dot"] .price-pin:not(.selected),.map-surface.dense-markers .price-pin:not(.selected){min-width:12px;width:12px;min-height:12px;height:12px;bottom:-6px;padding:0;border:2px solid #fff;border-radius:50%;background:#287b50;box-shadow:0 1px 3px #1236}',
+    '.map-surface[data-marker-scale="dot"] .price-pin:not(.selected):after,.map-surface.dense-markers .price-pin:not(.selected):after{display:none}',
+    '.map-surface[data-marker-scale="dot"] .price-pin:not(.selected) .price-pin-value,.map-surface[data-marker-scale="pin"] .price-pin:not(.selected) .price-pin-value,.map-surface.dense-markers .price-pin:not(.selected) .price-pin-value{display:none}',
+    '.map-surface[data-marker-scale="pin"]:not(.dense-markers) .price-pin:not(.selected){min-width:28px;min-height:28px;padding:5px;border-radius:10px}',
+    '.map-surface[data-marker-scale="pin"]:not(.dense-markers) .price-pin:not(.selected) .price-pin-glyph{display:block}',
+    '.map-surface[data-marker-scale="dot"] .price-pin:not(.selected) .price-label-value,.map-surface[data-marker-scale="pin"] .price-pin:not(.selected) .price-label-value,.map-surface.dense-markers .price-pin:not(.selected) .price-label-value{display:block;color:#17633d;font-weight:800;margin-top:2px}',
+    '.map-surface[data-marker-scale="dot"] .price-pin:not(.selected).is-stale,.map-surface.dense-markers .price-pin:not(.selected).is-stale{background:#929b93}',
+    '.map-surface.dense-markers .price-pin:not(.selected){box-shadow:none}',
+    '.station-marker .price-pin.selected .price-pin-name{transform:translateX(-50%);border-color:#146d45;background:#f0faf3}',
     '.map-you{display:block;width:18px;height:18px;border:3px solid #fff;border-radius:50%;background:#2674db;box-shadow:0 0 0 7px #2674db30,0 2px 8px #193a6040}',
     '.juyuhannun-map .leaflet-control-attribution{font-size:10px;background:rgba(255,255,255,.92)}',
     '@media(prefers-reduced-motion:reduce){.price-pin{transition:none}}'
@@ -144,6 +167,11 @@ export class MapController {
     this._selectedId = null;
     this._fuel = 'B027';
     this._markers = new Map();
+    this._markerPool = new Map();
+    this._markerState = new Map();
+    this._retainedLabels = new Map();
+    this._renderRevision = 0;
+    this._queryCenter = { ...this._center };
     this._routeCoords = [];
     this._listeners = [];
     this._userIntent = false;
@@ -215,7 +243,7 @@ export class MapController {
             this.map.setCenter(this._naverPoint(center));
           } else this.map.invalidateSize({ animate: false, pan: false });
         });
-        this._layoutLabels();
+        this._scheduleMarkers();
       });
       this._resizeObserver.observe(this.container);
     }
@@ -259,6 +287,7 @@ export class MapController {
     });
     const listen = (name, callback) => this._listeners.push(maps.Event.addListener(this.map, name, callback));
     listen('dragstart', () => { this._navigationRevision++; this._userIntent = true; this._suppressUntil = 0; clearTimeout(this._centerTimer); });
+    listen('zoom_changed', () => this._updateMarkerScale());
     listen('idle', () => this._idle());
     listen('click', event => {
       const point = { lat: event.coord?.lat(), lng: event.coord?.lng() };
@@ -296,6 +325,7 @@ export class MapController {
         }
       });
       this.map.on('dragstart', () => { this._navigationRevision++; this._userIntent = true; this._suppressUntil = 0; clearTimeout(this._centerTimer); });
+      this.map.on('zoom', () => this._updateMarkerScale());
       this.map.on('moveend zoomend', () => this._idle());
       this.map.on('click', event => this.onPick?.({ lat: event.latlng.lat, lng: event.latlng.lng }));
       this.ready = true;
@@ -324,7 +354,7 @@ export class MapController {
   _idle() {
     if (!this.map || this._destroyed) return;
     this._center = this.getCenter();
-    this._layoutLabels();
+    this._scheduleMarkers();
     if (!this._userIntent || Date.now() < this._suppressUntil) return;
     clearTimeout(this._centerTimer);
     this._centerTimer = setTimeout(() => {
@@ -334,7 +364,9 @@ export class MapController {
       const signature = [center.lat.toFixed(6), center.lng.toFixed(6), this.map.getZoom()].join(',');
       if (signature === this._lastNotified) return;
       this._lastNotified = signature;
-      this.onCenterChange(center);
+      const zoomOnly = Math.abs(center.lat - this._queryCenter.lat) < 0.000001 && Math.abs(center.lng - this._queryCenter.lng) < 0.000001;
+      this._queryCenter = { ...center };
+      this.onCenterChange(center, { zoomOnly });
     }, 450);
   }
 
@@ -356,6 +388,7 @@ export class MapController {
     if (!validPoint(point)) throw new Error('지도 좌표가 올바르지 않습니다.');
     this._navigationRevision++;
     this._center = { ...point };
+    this._queryCenter = { ...point };
     if (this.map) this._internal(() => {
       if (this.provider === 'naver') this.map.setCenter(this._naverPoint(point));
       else this.map.setView([point.lat, point.lng], this.map.getZoom(), { animate: false });
@@ -365,64 +398,171 @@ export class MapController {
 
   setStations(stations, selectedId = null, fuel = 'B027') {
     this._stations = Array.isArray(stations) ? stations : [];
-    this._selectedId = selectedId === null || selectedId === undefined ? null : String(selectedId);
+    this._selectedId = selectedId == null ? null : String(selectedId);
     this._fuel = fuel;
-    if (!this.map || !this.ready) return;
-    const rows = this._stations.filter(station => station?.id !== null && station?.id !== undefined && pointFor(station));
+    this._scheduleMarkers();
+  }
+
+  _updateMarkerScale() {
+    if (!this.map) return;
+    const scale = markerScale(this.map.getZoom());
+    if (this.canvas.dataset.markerScale === scale) return;
+    // CSS changes the shape at the existing anchor; zoom never replaces SDK icons.
+    this.canvas.dataset.markerScale = scale;
+    this._layoutLabels();
+  }
+
+  _scheduleMarkers() {
+    if (!this.map || !this.ready || this._destroyed) return;
+    this._updateMarkerScale();
+    const revision = ++this._renderRevision;
+    cancelAnimationFrame(this._markerFrame);
+    cancelAnimationFrame(this._labelFrame);
+    this._markerFrame = requestAnimationFrame(() => this._renderMarkers(revision));
+  }
+
+  _renderMarkers(revision) {
+    if (revision !== this._renderRevision || !this.ready || this._destroyed) return;
+    const rows = visibleStations(this._stations, this.getBounds(), this._selectedId);
     const ids = new Set(rows.map(row => String(row.id)));
-    for (const [id, marker] of this._markers) {
-      if (!ids.has(id)) { this._removeMarker(marker); this._markers.delete(id); }
+    this.canvas.classList.toggle('dense-markers', rows.length > markerDensityLimit(this.canvas.clientWidth, this.canvas.clientHeight));
+    const removed = [...this._markers.keys()].filter(id => !ids.has(id));
+    let removeIndex = 0, rowIndex = 0;
+    const now = Date.now();
+    const batch = () => {
+      if (revision !== this._renderRevision || !this.ready || this._destroyed) return;
+      const started = performance.now();
+      let count = 0;
+      // Bound SDK/DOM work per frame, including removal. A new view cancels old work.
+      while (count++ < 64 && performance.now() - started < 6) {
+        if (removeIndex < removed.length) this._parkMarker(removed[removeIndex++]);
+        else if (rowIndex < rows.length) this._upsertMarker(rows[rowIndex++], now);
+        else {
+          this._markerFrame = null;
+          this._layoutLabels();
+          return;
+        }
+      }
+      this._markerFrame = requestAnimationFrame(batch);
+    };
+    batch();
+  }
+
+  _parkMarker(id) {
+    const marker = this._markers.get(id);
+    if (!marker) return;
+    this._removeMarker(marker);
+    this._markers.delete(id);
+    this._markerPool.set(id, marker);
+    // Reuse nearby/filter return visits without retaining nationwide DOM overlays.
+    while (this._markerPool.size > 800) {
+      const oldest = this._markerPool.keys().next().value;
+      this._markerPool.delete(oldest);
+      this._markerState.delete(oldest);
     }
-    for (const row of rows) {
-      const id = String(row.id), point = pointFor(row), selected = id === this._selectedId;
-      const info = getFuelPrice(row, fuel);
-      const presentation = this.markerPresentation?.(row, { fuel });
-      const price = presentation ? String(presentation.value ?? '미확인') : info ? info.price.toLocaleString('ko-KR', { maximumFractionDigits: 1 }) : '미확인';
-      const fuelName = FUEL_TYPES.find(item => item.code === fuel)?.name || '유종';
-      const confidence = info ? freshness(info.priceUpdatedAt, info.fetchedAt, Date.now(), info.priceTimeStatus, info.sourceDate) : { eligible: false, label: '가격 미제공' };
-      const label = presentation ? String(presentation.label || row.name) : row.name + ', ' + fuelName + ' ' + (info ? price + '원' : '가격 미확인') + ', ' + confidence.label;
-      const stale = presentation ? presentation.stale !== false : !confidence.eligible;
-      const unit = presentation ? String(presentation.unit || '') : info ? '원' : '';
-      const content = '<button type="button" class="price-pin' + (selected ? ' selected' : '') +
-        (stale ? ' is-stale' : '') + '" data-station-id="' + escapeHTML(id) +
-        '" aria-label="' + escapeHTML(label) + '" aria-pressed="' + selected + '" title="' +
-        escapeHTML(label) + '"><span class="price-pin-value">' + escapeHTML(price) +
-        (unit ? '<small>' + escapeHTML(unit) + '</small>' : '') + '</span><span class="price-pin-name">' +
-        escapeHTML(row.name || '주유소') + '</span></button>';
-      let marker = this._markers.get(id);
-      if (this.provider === 'naver') {
-        const icon = { content, anchor: new globalThis.naver.maps.Point(36, 40) };
-        if (!marker) {
-          marker = new globalThis.naver.maps.Marker({ map: this.map, position: this._naverPoint(point), title: label, icon });
-          this._markers.set(id, marker);
-        } else { marker.setPosition(this._naverPoint(point)); marker.setIcon(icon); }
-        marker.setZIndex(selected ? 5000 : 100);
-      } else {
-        const icon = globalThis.L.divIcon({ className: 'price-marker-shell', html: content, iconSize: [72, 40], iconAnchor: [36, 40] });
-        if (!marker) {
-          marker = globalThis.L.marker([point.lat, point.lng], { icon, keyboard: false, bubblingMouseEvents: false, title: label }).addTo(this.map);
-          this._markers.set(id, marker);
-        } else { marker.setLatLng([point.lat, point.lng]); marker.setIcon(icon); }
-        marker.setZIndexOffset(selected ? 5000 : 100);
+  }
+
+  _upsertMarker(row, now) {
+    const id = String(row.id), point = pointFor(row), selected = id === this._selectedId;
+    const previous = this._markerState.get(id);
+    const cached = this._markers.get(id);
+    const info = getFuelPrice(row, this._fuel);
+    const presentation = this.markerPresentation?.(row, { fuel: this._fuel });
+    const sourceKey = JSON.stringify([point, row.name, row.brand, row.facilities?.self, row.roadAddress, row.address, this._fuel, selected, info, presentation, Math.floor(now / 60000)]);
+    if (cached && previous?.sourceKey === sourceKey) return;
+    const price = presentation ? String(presentation.value ?? '미확인') : info ? markerPriceFormat.format(info.price) : '미확인';
+    const fuelName = FUEL_TYPES.find(item => item.code === this._fuel)?.name || '유종';
+    const confidence = info ? freshness(info.priceUpdatedAt, info.fetchedAt, now, info.priceTimeStatus, info.sourceDate) : { eligible: false, label: '가격 미제공' };
+    const label = presentation ? String(presentation.label || row.name) : row.name + ', ' + fuelName + ' ' + (info ? price + '원' : '가격 미확인') + ', ' + confidence.label;
+    const stale = presentation ? presentation.stale !== false : !confidence.eligible;
+    const unit = presentation ? String(presentation.unit || '') : info ? '원' : '';
+    const facts = [BRANDS[row.brand] || row.brand, row.facilities?.self === true ? '셀프' : row.facilities?.self === false ? '일반' : null, info?.sourceDate ? info.sourceDate + ' 기준' : confidence.label].filter(Boolean).join(' · ');
+    const content = '<div class="station-marker"><button type="button" class="price-pin' + (selected ? ' selected' : '') +
+      (stale ? ' is-stale' : '') + '" data-station-id="' + escapeHTML(id) +
+      '" aria-label="' + escapeHTML(label) + '" aria-pressed="' + selected + '" title="' + escapeHTML(label) +
+      '"><span class="price-pin-glyph" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="12" height="17" rx="2"/><path d="M6 7h6v4H6ZM1 21h16m-2-8h2v5a2 2 0 0 0 4 0V8l-4-4m3 3v4h1"/></svg></span><span class="price-pin-value">' + escapeHTML(price) +
+      (unit ? '<small>' + escapeHTML(unit) + '</small>' : '') + '</span><span class="price-pin-name"><span class="price-label-title">' +
+      escapeHTML(row.name || '주유소') + '</span><span class="price-label-value">' + escapeHTML(price + unit) +
+      '</span><span class="price-label-detail">' + escapeHTML(facts) + '<span>' + escapeHTML(row.roadAddress || row.address || '') + '</span></span></span></button></div>';
+    let marker = this._markers.get(id) || this._markerPool.get(id);
+    const zIndex = selected ? 5000 : 100;
+    const changed = !previous || previous.content !== content;
+    const moved = !previous || previous.lat !== point.lat || previous.lng !== point.lng;
+    const makeIcon = () => this.provider === 'naver'
+      ? { content, anchor: new globalThis.naver.maps.Point(36, 40) }
+      : globalThis.L.divIcon({ className: 'price-marker-shell', html: content, iconSize: [72, 40], iconAnchor: [36, 40] });
+    if (!marker) {
+      marker = this.provider === 'naver'
+        ? new globalThis.naver.maps.Marker({ map: this.map, position: this._naverPoint(point), title: row.name, icon: makeIcon(), zIndex })
+        : globalThis.L.marker([point.lat, point.lng], { icon: makeIcon(), keyboard: false, bubblingMouseEvents: false, title: row.name, zIndexOffset: zIndex }).addTo(this.map);
+    } else {
+      if (moved) {
+        if (this.provider === 'naver') marker.setPosition(this._naverPoint(point));
+        else marker.setLatLng([point.lat, point.lng]);
+      }
+      if (changed) marker.setIcon(makeIcon());
+      if (previous?.zIndex !== zIndex) {
+        if (this.provider === 'naver') marker.setZIndex(zIndex);
+        else marker.setZIndexOffset(zIndex);
+      }
+      if (this._markerPool.has(id)) {
+        if (this.provider === 'naver') marker.setMap(this.map);
+        else marker.addTo(this.map);
+        this._markerPool.delete(id);
       }
     }
-    this._layoutLabels();
+    this._markers.set(id, marker);
+    this._markerState.set(id, { content, lat: point.lat, lng: point.lng, zIndex, sourceKey });
   }
 
   _layoutLabels() {
     cancelAnimationFrame(this._labelFrame);
     this._labelFrame = requestAnimationFrame(() => {
       if (!this.ready || this._destroyed) return;
-      const active = this.canvas.querySelector('.price-pin.selected');
-      const label = active?.querySelector('.price-pin-name');
-      if (!label) return;
-      label.style.transform = '';
-      label.style.marginLeft = (-label.offsetWidth / 2) + 'px';
-      const obstacles = [...this.canvas.querySelectorAll('.price-pin')].filter(pin => pin !== active).map(pin => pin.getBoundingClientRect());
-      const placement = globalThis.CareMarkerPlacement.fit(
-        [label.getBoundingClientRect()], active.getBoundingClientRect(), this.canvas.getBoundingClientRect(), obstacles, 'top'
-      );
-      if (placement) label.style.transform = 'translate(' + placement.dx + 'px,' + placement.dy + 'px)';
+      const bounds = this.canvas.getBoundingClientRect();
+      const zoom = this.map.getZoom(), budget = labelBudget(zoom, bounds.width, bounds.height);
+      const ids = labelCandidates(this._markers.keys(), this._selectedId, this._retainedLabels, budget);
+      // Only a bounded set of labels is measured, never every nationwide marker.
+      const wanted = new Set([...ids, ...this._retainedLabels.keys()]);
+      const nodes = [...this.canvas.querySelectorAll('[data-station-id]')].filter(node => wanted.has(node.dataset.stationId));
+      const byId = new Map(nodes.map(node => [node.dataset.stationId, node]));
+      for (const node of nodes) {
+        node.classList.remove('label-visible', 'label-measure', 'label-detail');
+        const label = node.querySelector('.price-pin-name');
+        label.style.transform = 'translateX(-50%)';
+      }
+      const candidates = ids.map(id => ({ id, node: byId.get(id) })).filter(item => item.node);
+      const controls = [...this.container.parentElement.querySelectorAll('.map-top,.map-bottom,.map-actions,.search-area,.map-notice,[data-map-overlay]')]
+        .filter(node => !node.hidden).map(node => node.getBoundingClientRect()).filter(rect => rect.width && rect.height);
+      // Batch style writes and measurements by level to avoid per-label forced layouts.
+      candidates.forEach(item => item.node.classList.add('label-measure'));
+      candidates.forEach(item => {
+        item.label = item.node.querySelector('.price-pin-name');
+        item.pin = item.node.getBoundingClientRect();
+        item.rects = [item.label.getBoundingClientRect()];
+      });
+      if (zoom >= 18) {
+        candidates.forEach(item => item.node.classList.add('label-detail'));
+        candidates.forEach(item => item.rects.push(item.label.getBoundingClientRect()));
+      }
+      candidates.forEach(item => item.node.classList.remove('label-measure', 'label-detail'));
+      const occupied = [...controls], retained = new Map();
+      let remaining = budget;
+      for (const item of candidates) {
+        const selected = item.id === this._selectedId;
+        if (!remaining && !selected) continue;
+        const placement = globalThis.CareMarkerPlacement.fit(item.rects, item.pin, bounds, occupied, this._retainedLabels.get(item.id) || 'top');
+        if (!placement && !selected) continue;
+        item.node.classList.add('label-visible');
+        if (placement?.level > 0) item.node.classList.add('label-detail');
+        if (placement) {
+          item.label.style.transform = 'translateX(-50%) translate(' + placement.dx + 'px,' + placement.dy + 'px)';
+          occupied.push(placement.rect);
+        } else occupied.push(item.rects[0]);
+        retained.set(item.id, placement?.side || 'top');
+        if (!selected) remaining--;
+      }
+      this._retainedLabels = retained;
     });
   }
 
@@ -448,6 +588,7 @@ export class MapController {
       });
     }
     this._center = target;
+    this._queryCenter = { ...target };
     return { ...point };
   }
 
@@ -549,6 +690,8 @@ export class MapController {
   _disposeMap() {
     clearTimeout(this._centerTimer);
     cancelAnimationFrame(this._labelFrame);
+    cancelAnimationFrame(this._markerFrame);
+    this._renderRevision++;
     if (this.provider === 'naver') {
       this._listeners.forEach(listener => globalThis.naver.maps.Event.removeListener(listener));
       this._listeners = [];
@@ -556,6 +699,9 @@ export class MapController {
     } else this.map?.remove?.();
     this.map = null;
     this._markers.clear();
+    this._markerPool.clear();
+    this._markerState.clear();
+    this._retainedLabels.clear();
     this._route = null;
     this._you = null;
     this.ready = false;
