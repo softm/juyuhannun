@@ -67,7 +67,7 @@ function render(){
  document.querySelectorAll('[data-scope]').forEach(b=>{const active=b.dataset.scope===state.scope;b.classList.toggle('active',active);b.setAttribute('aria-pressed',String(active));});
  $('radius').disabled=state.scope==='national';
  const total=state.envelope?.coverage?.totalPriceStations??state.all.length,mapped=state.all.filter(hasMapCoordinates).length;
- $('coverage-hint').textContent=state.scope==='national'?`전국 가격 ${total.toLocaleString('ko-KR')}곳 · 좌표 없는 곳도 목록 검색`:`반경 ${state.radius/1000}km · 지도 좌표 ${mapped.toLocaleString('ko-KR')}/${total.toLocaleString('ko-KR')}곳 확보`;
+ $('coverage-hint').textContent=state.scope==='national'?`전국 가격 ${total.toLocaleString('ko-KR')}곳 · 검색 ${filtered.length.toLocaleString('ko-KR')}곳(지도 좌표 ${filtered.filter(hasMapCoordinates).length.toLocaleString('ko-KR')}곳)`:`반경 ${state.radius/1000}km · 지도 좌표 ${mapped.toLocaleString('ko-KR')}/${total.toLocaleString('ko-KR')}곳 확보`;
  $('search-nationwide').hidden=state.scope==='national'||state.loading;
  $('search-nationwide').textContent=state.query?`전국에서 “${state.query}” 검색`:'더 많은 주유소 · 전국에서 찾기';
  if(!filtered.length)renderEmpty();else $('results').innerHTML=filtered.slice(0,state.listLimit).map((s,i)=>card(s,i)).join('')+(filtered.length>state.listLimit?`<button class="load-more" data-action="load-more">${Math.min(60,filtered.length-state.listLimit)}곳 더 보기 · ${state.listLimit.toLocaleString('ko-KR')}/${filtered.length.toLocaleString('ko-KR')}곳</button>`:'');
