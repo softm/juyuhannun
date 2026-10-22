@@ -184,6 +184,7 @@ export class MapController {
     this._navigationRevision = 0;
     this._locationRevision = 0;
     this._geocodeRevision = 0;
+    this._mapType = 'normal';
     this._destroyed = false;
     this._initTask = null;
     this._fallbackTask = null;
@@ -300,6 +301,7 @@ export class MapController {
   _initNaver() {
     const maps = globalThis.naver.maps;
     this.provider = 'naver';
+    this._mapType = 'normal';
     this.map = new maps.Map(this.canvas, {
       center: this._naverPoint(this._center), zoom: APP_CONFIG.defaultZoom,
       minZoom: 7, maxZoom: 19, mapTypeId: maps.MapTypeId.NORMAL,
@@ -326,6 +328,7 @@ export class MapController {
       if (this._destroyed) throw new Error('지도 열기가 취소되었습니다.');
       this._disposeMap();
       this.provider = 'leaflet';
+      this._mapType = 'normal';
       const L = globalThis.L;
       this.map = L.map(this.canvas, {
         center: [center.lat, center.lng], zoom: APP_CONFIG.defaultZoom,
@@ -430,6 +433,31 @@ export class MapController {
       else this.map.setView([point.lat, point.lng], this.map.getZoom(), { animate: false });
     });
     return { ...point };
+  }
+
+  zoomBy(delta = 1) {
+    if (!this.map || this._destroyed) return null;
+    const current = Number(this.map.getZoom());
+    if (!Number.isFinite(current)) return null;
+    const min = this.provider === 'naver' ? 7 : 5, max = 19;
+    const next = Math.max(min, Math.min(max, current + (Number(delta) || 0)));
+    if (next === current) return next;
+    this._navigationRevision++;
+    this._internal(() => {
+      if (this.provider === 'naver') this.map.setZoom(next);
+      else this.map.setZoom(next, { animate: false });
+    });
+    return next;
+  }
+
+  toggleMapType() {
+    if (!this.map || this._destroyed || this.provider !== 'naver') return { supported: false, type: this._mapType };
+    const maps = globalThis.naver?.maps;
+    if (!maps?.MapTypeId?.NORMAL || !maps?.MapTypeId?.SATELLITE || typeof this.map.setMapTypeId !== 'function') return { supported: false, type: this._mapType };
+    const next = this._mapType === 'satellite' ? 'normal' : 'satellite';
+    this.map.setMapTypeId(next === 'satellite' ? maps.MapTypeId.SATELLITE : maps.MapTypeId.NORMAL);
+    this._mapType = next;
+    return { supported: true, type: next };
   }
 
   setStations(stations, selectedId = null, fuel = 'B027') {
