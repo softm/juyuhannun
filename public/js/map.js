@@ -124,12 +124,12 @@ function markerPriceBands(stations, fuel, now = Date.now()) {
     if (status.eligible) prices.push(Number(info.price));
   }
   prices.sort((a,b)=>a-b);
-  if (!prices.length) return { count:0, low:null, high:null };
-  if (prices.length === 1) return { count:1, low:prices[0], high:prices[0] };
+  if (!prices.length) return { count:0, min:null, low:null, high:null };
+  if (prices.length === 1) return { count:1, min:prices[0], low:prices[0], high:prices[0] };
   const last = prices.length - 1;
   const lowIndex = Math.max(0, Math.floor(last / 3));
   const highIndex = Math.min(last, Math.ceil(last * 2 / 3));
-  return { count:prices.length, low:prices[lowIndex], high:prices[highIndex] };
+  return { count:prices.length, min:prices[0], low:prices[lowIndex], high:prices[highIndex] };
 }
 
 function markerTone(info, stale, bands) {
@@ -165,6 +165,11 @@ function installMarkerStyles() {
     '.station-marker .price-pin.selected:after{bottom:-10px;width:17px;height:17px;border-width:4px;background:var(--pin,#347ee8)}',
     '.station-marker .price-pin.selected .price-pin-glyph{display:none}',
     '.station-marker .price-pin.selected .price-pin-value{display:block}',
+    '@keyframes lowest-price-bounce{0%,100%{transform:translateX(-50%) translateY(0) scale(1)}18%{transform:translateX(-50%) translateY(-8px) scale(1.035)}36%{transform:translateX(-50%) translateY(0) scale(.99)}52%{transform:translateX(-50%) translateY(-4px) scale(1.018)}68%{transform:translateX(-50%) translateY(0) scale(1)}}',
+    '.lowest-price-badge{position:absolute;left:36px;bottom:45px;z-index:7;display:flex;align-items:center;gap:6px;width:max-content;min-width:94px;height:38px;padding:0 10px 0 7px;border:3px solid #fff;border-radius:20px;background:#159b72;color:#fff;box-shadow:0 6px 16px #173d3252;font:800 13px/1 system-ui,sans-serif;letter-spacing:-.3px;pointer-events:none;transform-origin:50% 100%;animation:lowest-price-bounce 1.45s cubic-bezier(.22,.8,.3,1) infinite}',
+    '.lowest-price-badge:after{content:"";position:absolute;left:50%;bottom:-7px;width:10px;height:10px;transform:translateX(-50%) rotate(45deg);border-right:3px solid #fff;border-bottom:3px solid #fff;background:#159b72;border-radius:0 0 2px 0}',
+    '.lowest-price-badge .lowest-tag{position:relative;z-index:2;padding:4px 6px;border-radius:999px;background:#d9f4e8;color:#087a58;font-size:10px;font-weight:900;letter-spacing:-.4px}',
+    '.lowest-price-badge strong{position:relative;z-index:2;font-size:14px;font-weight:900;white-space:nowrap}',
     '.price-pin.is-stale:not(.selected){filter:saturate(.55);opacity:.84}',
     '.selected-station-callout{position:absolute;left:48px;bottom:82px;transform:translateX(-50%);display:flex;align-items:center;gap:8px;width:max-content;max-width:240px;min-height:44px;padding:8px 12px 8px 9px;border:1px solid #d8e3dc;border-radius:14px;background:#fff;color:#173e34;box-shadow:0 7px 22px #102a2433;font:800 13px/1.25 system-ui,sans-serif;pointer-events:none;z-index:6}',
     '.selected-station-callout:after{content:"";position:absolute;left:50%;bottom:-7px;width:13px;height:13px;transform:translateX(-50%) rotate(45deg);border-right:1px solid #d8e3dc;border-bottom:1px solid #d8e3dc;background:#fff}',
@@ -184,8 +189,8 @@ function installMarkerStyles() {
     '.map-you.is-driving{width:30px;height:30px;border-width:4px;background:#1769d7;box-shadow:0 0 0 9px #2674db26,0 4px 14px #193a6050}',
     '.map-you.is-driving:before{content:"";position:absolute;left:50%;top:-15px;width:0;height:0;border-left:7px solid transparent;border-right:7px solid transparent;border-bottom:15px solid #1769d7;transform:translateX(-50%) rotate(var(--drive-heading,0deg));transform-origin:50% 30px;filter:drop-shadow(0 1px 1px #fff)}',
     '.juyuhannun-map .leaflet-control-attribution{font-size:10px;background:rgba(255,255,255,.92)}',
-    '@media(max-width:1000px){.station-marker .price-pin.selected{width:70px;height:70px;min-width:70px;min-height:70px}.selected-station-callout{font-size:14px;min-height:46px}}',
-    '@media(prefers-reduced-motion:reduce){.price-pin{transition:none}.station-marker .price-pin.selected{animation:none}}'
+    '@media(max-width:1000px){.station-marker .price-pin.selected{width:70px;height:70px;min-width:70px;min-height:70px}.selected-station-callout{font-size:14px;min-height:46px}.lowest-price-badge{height:40px;min-width:98px;font-size:14px}}',
+    '@media(prefers-reduced-motion:reduce){.price-pin{transition:none}.station-marker .price-pin.selected,.lowest-price-badge{animation:none}}'
   ].join('\n');
   document.head.append(style);
 }
@@ -602,17 +607,20 @@ export class MapController {
     const confidence = info ? freshness(info.priceUpdatedAt, info.fetchedAt, now, info.priceTimeStatus, info.sourceDate) : { eligible: false, label: '가격 미제공' };
     const stale = presentation ? presentation.stale !== false : !confidence.eligible;
     const tone = presentation ? (stale ? 'slate' : 'orange') : markerTone(info, stale, this._priceBands);
-    const sourceKey = JSON.stringify([point, row.name, row.brand, row.facilities?.self, row.roadAddress, row.address, this._fuel, selected, info, presentation, tone, this._priceBands, Math.floor(now / 60000)]);
+    const numericPrice=Number(info?.price);
+    const isLowest=!presentation&&!stale&&Number.isFinite(numericPrice)&&numericPrice>0&&this._priceBands?.min!=null&&numericPrice===this._priceBands.min;
+    const sourceKey = JSON.stringify([point, row.name, row.brand, row.facilities?.self, row.roadAddress, row.address, this._fuel, selected, isLowest, info, presentation, tone, this._priceBands, Math.floor(now / 60000)]);
     if (cached && previous?.sourceKey === sourceKey) return false;
-    const price = presentation ? String(presentation.value ?? '미확인') : info ? markerPriceFormat.format(info.price) : '미확인';
+    const price = presentation ? String(presentation.value ?? '미확인') : Number.isFinite(numericPrice) && numericPrice > 0 ? markerPriceFormat.format(numericPrice) : '미확인';
     const numericPresentation=Number(presentation?.value);
-    const visiblePrice=info?markerPriceFormat.format(info.price):(Number.isFinite(numericPresentation)&&numericPresentation>0?markerPriceFormat.format(numericPresentation):'—');
+    const visiblePrice=Number.isFinite(numericPrice)&&numericPrice>0?markerPriceFormat.format(numericPrice):(Number.isFinite(numericPresentation)&&numericPresentation>0?markerPriceFormat.format(numericPresentation):'—');
     const fuelName = FUEL_TYPES.find(item => item.code === this._fuel)?.name || '유종';
     const label = presentation ? String(presentation.label || row.name) : row.name + ', ' + fuelName + ' ' + (info ? price + '원' : '가격 미확인') + ', ' + confidence.label;
     const unit = presentation ? String(presentation.unit || '') : info ? '원' : '';
     const facts = [BRANDS[row.brand] || row.brand, row.facilities?.self === true ? '셀프' : row.facilities?.self === false ? '일반' : null, info?.sourceDate ? info.sourceDate + ' 기준' : confidence.label].filter(Boolean).join(' · ');
     const callout=selected?'<div class="selected-station-callout"><span class="callout-pump" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="12" height="17" rx="2"/><path d="M6 7h6v4H6ZM1 21h16m-2-8h2v5a2 2 0 0 0 4 0V8l-4-4m3 3v4h1"/></svg></span><strong>'+escapeHTML(row.name||'주유소')+'</strong><b aria-hidden="true">›</b></div>':'';
-    const content = '<div class="station-marker tone-' + tone + (selected ? ' is-selected' : '') + '">'+callout+'<button type="button" class="price-pin' + (selected ? ' selected' : '') +
+    const lowestBadge=isLowest&&!selected?'<div class="lowest-price-badge" aria-hidden="true"><span class="lowest-tag">최저</span><strong>'+escapeHTML(visiblePrice)+'원</strong></div>':'';
+    const content = '<div class="station-marker tone-' + tone + (selected ? ' is-selected' : '') + (isLowest ? ' is-lowest' : '') + '">'+lowestBadge+callout+'<button type="button" class="price-pin' + (selected ? ' selected' : '') +
       (stale ? ' is-stale' : '') + '" data-station-id="' + escapeHTML(id) +
       '" aria-label="' + escapeHTML(label) + '" aria-pressed="' + selected + '" title="' + escapeHTML(label) +
       '"><span class="price-pin-glyph" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="12" height="17" rx="2"/><path d="M6 7h6v4H6ZM1 21h16m-2-8h2v5a2 2 0 0 0 4 0V8l-4-4m3 3v4h1"/></svg></span><span class="price-pin-value">' + escapeHTML(visiblePrice) +
@@ -620,7 +628,7 @@ export class MapController {
       escapeHTML(row.name || '주유소') + '</span><span class="price-label-value">' + escapeHTML(visiblePrice+(visiblePrice!=='—'?unit:'')) +
       '</span><span class="price-label-detail">' + escapeHTML(facts) + '</span></span></button></div>';
     let marker = this._markers.get(id) || this._markerPool.get(id);
-    const zIndex = selected ? 5000 : this._retainedLabels.has(id) ? 1000 : 100;
+    const zIndex = selected ? 5000 : isLowest ? 4000 : this._retainedLabels.has(id) ? 1000 : 100;
     const changed = !previous || previous.content !== content;
     const moved = !previous || previous.lat !== point.lat || previous.lng !== point.lng;
     const makeIcon = () => {
@@ -651,13 +659,13 @@ export class MapController {
       }
     }
     this._markers.set(id, marker);
-    this._markerState.set(id, { content, lat: point.lat, lng: point.lng, zIndex, sourceKey });
+    this._markerState.set(id, { content, lat: point.lat, lng: point.lng, zIndex, sourceKey, lowest:isLowest });
     return !cached || changed || moved || previous?.zIndex !== zIndex;
   }
 
   _setMarkerLayer(id, emphasized) {
     const marker = this._markers.get(id), state = this._markerState.get(id);
-    const zIndex = id === this._selectedId ? 5000 : emphasized ? 1000 : 100;
+    const zIndex = id === this._selectedId ? 5000 : state?.lowest ? 4000 : emphasized ? 1000 : 100;
     if (!marker || !state || state.zIndex === zIndex) return;
     if (this.provider === 'naver') marker.setZIndex(zIndex);
     else marker.setZIndexOffset(zIndex);
