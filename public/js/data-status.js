@@ -16,6 +16,20 @@ function renderAvailability(){
 }
 function render(d){
  const c=d.nationwide,collection=c.collection||{};
+ const business=c.businessInfo||{};
+ $('business-info').innerHTML=[[
+  '사업자 기본정보 전체', n(business.count)+'곳'],
+  ['가격 파일과 ID 매칭', n(business.matchedPriceCount)+'곳'],
+  ['기본정보만 있음', n(business.businessWithoutPriceCount)+'곳'],
+  ['가격만 있고 기본정보 없음', n(business.priceWithoutBusinessCount)+'곳'],
+  ['마지막 기본정보 다운로드', formatTime(business.fetchedAt)],
+  ['다운로드 상태', business.status==='ready'?'정상':business.status==='partial'?'이전 자료 유지':'확인 필요']
+ ].map(([label,value])=>`<div><span>${esc(label)}</span><strong>${esc(value)}</strong></div>`).join('');
+ $('business-info-note').textContent=business.status==='ready'
+  ? '사업자 기본정보(현재기준)를 별도 파일로 정상 수집했습니다. 가격 자료와 주유소 고유번호 기준으로 결합합니다.'
+  : business.count
+    ? '이번 사업자 기본정보 다운로드가 실패해 이전 정상 기본정보를 유지하고 있습니다.'
+    : '사업자 기본정보 파일을 아직 확보하지 못했습니다. 다음 수집에서 다시 시도합니다.';
  for(const [id,value] of [['total',c.totalPriceStations],['mapped',c.mappedPriceStations],['unmapped',c.unmappedPriceStations]])$(id).textContent=n(value)+'곳';
  $('ratio').textContent=n(Math.round(c.mappedRatio*1000)/10)+'%';
  $('last-success').textContent=formatTime(c.fetchedAt);
