@@ -57,15 +57,16 @@ function render(d){
   : '현재 API 비교자료를 확보하지 못했습니다. 공개파일 수집은 계속 유지하며 다음 API 예산 회차에 다시 대조합니다.';
  const geo=d.addressGeocoding||{},geoQueue=geo.queue||{},geoAttempt=geo.lastAttempt||{};
  $('address-geocoding').innerHTML=[[
-  '사업자 전체', n(geoQueue.businessCount)+'곳'],
-  ['주소 좌표화 대상', n(geoQueue.targetCount)+'곳'],
-  ['누적 주소 좌표화', n(geoQueue.enrichedCount)+'곳'],
-  ['남은 대상', n(geoQueue.pendingCount)+'곳'],
-  ['최근 실행 신규', n(geoAttempt.added)+'곳'],
+  '사업자 전체', n(geoQueue.businessCount||business.count)+'곳'],
+  ['현재 지도 표시 가능', n(c.mappedPriceStations)+'곳'],
+  ['현재 좌표 미확보', n(c.unmappedPriceStations)+'곳'],
+  ['전체 좌표 확보율', n(Math.round(c.mappedRatio*1000)/10)+'%'],
+  ['주소 지오코딩 누적 성공', '+'+n(geoQueue.enrichedCount)+'곳'],
+  ['최근 실행 신규', '+'+n(geoAttempt.added)+'곳'],
   ['최근 실행 조회', n(geoAttempt.calls)+'회']
  ].map(([label,value])=>`<div><span>${esc(label)}</span><strong>${esc(value)}</strong></div>`).join('');
  $('address-geocoding-note').textContent=geo.status==='ready'||geo.status==='partial'
-  ? '주소 좌표화 최근 실행 '+formatTime(geoAttempt.completedAt||geoAttempt.at)+' · 캐시 재사용 '+n(geoAttempt.reused)+'곳 · 실패 '+n(geoAttempt.failed)+'곳.'
+  ? '주소 지오코딩 누적 '+n(geoQueue.enrichedCount)+'곳 · 최근 실행 신규 '+n(geoAttempt.added)+'곳 · 캐시 재사용 '+n(geoAttempt.reused)+'곳 · 실패 '+n(geoAttempt.failed)+'곳. 현재 지도 가능 '+n(c.mappedPriceStations)+'곳 / 전국 가격 '+n(c.totalPriceStations)+'곳이며, 남은 좌표 미확보는 '+n(c.unmappedPriceStations)+'곳입니다. 주소 지오코딩 수치는 네이버 주소 기반 확보분이고, 전체 지도 가능 수는 공공데이터·오피넷 상세 좌표까지 합친 값입니다.'
   : geo.status==='awaiting_credentials'
     ? 'NAVER Maps Geocoding 인증정보가 연결되면 주소가 있는 미매핑 주유소를 자동 좌표화합니다.'
     : '주소 좌표화 상태를 확인 중입니다.';
