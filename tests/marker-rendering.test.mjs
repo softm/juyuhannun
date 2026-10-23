@@ -97,7 +97,7 @@ test('pool does not retain all nationwide overlays and custom presentation stays
   c.setStations([]);h.flush();assert.equal(c._markerPool.size,800);assert.equal(c._markerState.size,800);
   c.markerPresentation=()=>({value:'수집 중',unit:'',stale:true,label:'고속도로 이전 수집자료'});
   c.setStations([row('highway')]);h.flush();
-  const content=c._markerState.get('highway').content;assert.match(content,/price-pin-value">—/);assert.match(content,/is-stale/);assert.match(content,/고속도로 이전 수집자료/);assert.doesNotMatch(content,/price-pin-value">수집 중/);
+  const content=c._markerState.get('highway').content;assert.match(content,/price-pin-value">1,700/);assert.match(content,/is-stale/);assert.match(content,/고속도로 이전 수집자료/);assert.doesNotMatch(content,/price-pin-value">수집 중/);assert.doesNotMatch(content,/서울|주소|도로명/);
 });
 
 
