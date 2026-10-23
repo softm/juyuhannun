@@ -259,7 +259,7 @@ function startDrivingMode(){
  }
 }
 $('drive-mode').addEventListener('click',()=>{if(state.driving.active)stopDrivingMode({message:'주행 추적을 종료했습니다.'});else startDrivingMode();});
-$('reset-map').addEventListener('click',()=>{if(state.driving.active)stopDrivingMode();state.center={...APP_CONFIG.defaultCenter};if(state.mapReady){map.setCenter(state.center);map.setZoom(mobileMapView.isMobile()?(APP_CONFIG.mobileDefaultZoom||15):APP_CONFIG.defaultZoom);}});
+$('reset-map').addEventListener('click',()=>{if(state.driving.active)stopDrivingMode();state.center={...APP_CONFIG.defaultCenter};if(state.mapReady){map.setCenter(state.center);map.setZoom(mobileMapView.isMobile()?(APP_CONFIG.mobileDefaultZoom||13):APP_CONFIG.defaultZoom);}});
 $('zoom-in').addEventListener('click',()=>{if(state.mapReady)map.zoomBy(1);});
 $('zoom-out').addEventListener('click',()=>{if(state.mapReady)map.zoomBy(-1);});
 $('map-type-toggle').addEventListener('click',()=>{const b=$('map-type-toggle');if(!state.mapReady)return;const result=map.toggleMapType();if(!result.supported){b.hidden=true;return;}const satellite=result.type==='satellite';b.setAttribute('aria-pressed',String(satellite));b.setAttribute('aria-label',satellite?'일반 지도 보기':'위성 지도 보기');b.title=satellite?'일반 지도 보기':'위성 지도 보기';});
