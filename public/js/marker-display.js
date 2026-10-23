@@ -1,5 +1,7 @@
 // Adapted from 돌봄한눈 CareMarkerLabels (cadd491): scale, area budget and stable priority.
-export const markerScale = zoom => zoom < 14 ? 'dot' : zoom < 16 ? 'pin' : zoom < 18 ? 'name' : 'detail';
+// At zoom 10+ the map is already at a regional driving scale where the price itself
+// is more useful than a generic dot. Keep dots only for wider province/nation views.
+export const markerScale = zoom => zoom < 10 ? 'dot' : zoom < 16 ? 'pin' : zoom < 18 ? 'name' : 'detail';
 export function labelBudget(zoom, width, height) {
   const area = Math.max(0, width) * Math.max(0, height);
   if (!area) return 0;
