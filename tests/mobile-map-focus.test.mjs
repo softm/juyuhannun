@@ -24,7 +24,7 @@ test('mobile map view models focus, expanded tools, full map and history exit', 
   for (const state of ['focus-detail', 'expanded-tools', 'map-browse', 'map-collapsed']) assert.match(view, new RegExp(state));
   assert.match(view, /history\.pushState/);
   assert.match(view, /window\.addEventListener\('popstate'/);
-  assert.match(view, /sidebar\.inert = next === 'focus-detail' \|\| next === 'full-map'/);
+  assert.match(view, /sidebar\.inert=next==='focus-detail'\|\|next==='map-collapsed'/);
   assert.match(view, /detailExpandButton/);
 });
 
@@ -57,8 +57,8 @@ test('detail sheet handle is interactive and snaps focus modes', () => {
   assert.match(view, /pointerdown/);
   assert.match(view, /pointermove/);
   assert.match(view, /finishHandleDrag/);
-  assert.match(view, /dy < -58/);
-  assert.match(view, /dy > 132/);
+  assert.match(view, /dy<-58/);
+  assert.match(view, /dy>132/);
   assert.match(view, /setDetailMode\('expanded-tools'\)/);
   assert.match(css, /--sheet-drag-y/);
   assert.match(css, /touch-action:none/);
@@ -96,8 +96,8 @@ test('five-state mobile focus flow includes map browse and draggable list sheet 
   for (const state of ['map-browse','list-sheet','list-sheet-expanded']) assert.match(view, new RegExp(state));
   assert.match(view, /openListSheet/);
   assert.match(view, /finishListDrag/);
-  assert.match(view, /dy < -56/);
-  assert.match(view, /dy > 118/);
+  assert.match(view, /dy<-56/);
+  assert.match(view, /dy>118/);
   assert.match(html, /id="mobile-focus-dock"/);
   assert.match(html, /id="mobile-list-sheet-handle"/);
   assert.match(css, /body\.mobile-map-browse \.mobile-focus-dock/);
