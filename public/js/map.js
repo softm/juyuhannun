@@ -116,20 +116,20 @@ function installMarkerStyles() {
     '.station-marker{position:relative;width:72px;height:64px;pointer-events:none}',
     '.station-marker .price-pin{position:absolute;left:36px;bottom:7px;display:flex;align-items:center;justify-content:center;width:34px;height:34px;min-width:34px;min-height:34px;padding:0;border:3px solid #fff;border-radius:50%;background:var(--pin,#2f7df6);color:#fff;box-shadow:0 3px 10px #132b3c4a;cursor:pointer;pointer-events:auto}',
     '.station-marker .price-pin:after{content:"";position:absolute;left:50%;bottom:-7px;width:10px;height:10px;transform:translateX(-50%) rotate(45deg);border-right:3px solid #fff;border-bottom:3px solid #fff;background:var(--pin,#2f7df6);border-radius:0 0 2px 0}',
-    '.price-pin.tone-blue{--pin:#347ee8}.price-pin.tone-green{--pin:#16a077}.price-pin.tone-orange{--pin:#ed9815}.price-pin.tone-red{--pin:#e44f5e}.price-pin.tone-slate{--pin:#718397}',
+    '.station-marker.tone-blue{--pin:#347ee8}.station-marker.tone-green{--pin:#16a077}.station-marker.tone-orange{--pin:#ed9815}.station-marker.tone-red{--pin:#e44f5e}.station-marker.tone-slate{--pin:#718397}',
     '.price-pin:focus-visible{outline:3px solid #f6b632;outline-offset:3px}',
     '.price-pin-glyph{display:flex;align-items:center;justify-content:center;position:relative;z-index:2}',
     '.price-pin-glyph svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2}',
     '.price-pin-value{display:none;position:relative;z-index:2;font:800 18px/1 system-ui,sans-serif}.price-pin-value small{display:none}',
     '.station-marker.is-selected{width:96px;height:92px}',
-    '.station-marker .price-pin.selected{left:48px;bottom:5px;width:66px;height:66px;min-width:66px;min-height:66px;border-width:4px;background:#2f7df6;--pin:#2f7df6;box-shadow:0 0 0 3px #fff8,0 8px 22px #1767d266}',
-    '.station-marker .price-pin.selected:after{bottom:-10px;width:17px;height:17px;border-width:4px;background:#2f7df6}',
+    '.station-marker .price-pin.selected{left:48px;bottom:5px;width:66px;height:66px;min-width:66px;min-height:66px;border-width:4px;background:var(--pin,#347ee8);box-shadow:0 0 0 3px #fff8,0 8px 22px color-mix(in srgb,var(--pin,#347ee8) 45%,transparent)}',
+    '.station-marker .price-pin.selected:after{bottom:-10px;width:17px;height:17px;border-width:4px;background:var(--pin,#347ee8)}',
     '.station-marker .price-pin.selected .price-pin-glyph{display:none}',
     '.station-marker .price-pin.selected .price-pin-value{display:block}',
     '.price-pin.is-stale:not(.selected){filter:saturate(.55);opacity:.84}',
     '.selected-station-callout{position:absolute;left:48px;bottom:82px;transform:translateX(-50%);display:flex;align-items:center;gap:8px;width:max-content;max-width:240px;min-height:44px;padding:8px 12px 8px 9px;border:1px solid #d8e3dc;border-radius:14px;background:#fff;color:#173e34;box-shadow:0 7px 22px #102a2433;font:800 13px/1.25 system-ui,sans-serif;pointer-events:none;z-index:6}',
     '.selected-station-callout:after{content:"";position:absolute;left:50%;bottom:-7px;width:13px;height:13px;transform:translateX(-50%) rotate(45deg);border-right:1px solid #d8e3dc;border-bottom:1px solid #d8e3dc;background:#fff}',
-    '.selected-station-callout .callout-pump{display:flex;align-items:center;justify-content:center;width:29px;height:29px;border-radius:50%;background:#2f7df6;color:#fff;flex:none}',
+    '.selected-station-callout .callout-pump{display:flex;align-items:center;justify-content:center;width:29px;height:29px;border-radius:50%;background:var(--pin,#347ee8);color:#fff;flex:none}',
     '.selected-station-callout .callout-pump svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:2}',
     '.selected-station-callout strong{max-width:168px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.selected-station-callout b{font-size:18px;font-weight:500;color:#42675d}',
     '.price-pin-name{display:none!important}',
@@ -137,6 +137,10 @@ function installMarkerStyles() {
     '.map-surface[data-marker-scale="dot"] .price-pin:not(.selected):after,.map-surface.dense-markers .price-pin:not(.selected):after{display:none}',
     '.map-surface[data-marker-scale="dot"] .price-pin:not(.selected) .price-pin-glyph,.map-surface.dense-markers .price-pin:not(.selected) .price-pin-glyph{display:none}',
     '.map-surface[data-marker-size="small"] .price-pin:not(.selected){width:11px;height:11px;min-width:11px;min-height:11px;border-width:2px}',
+    '.map-surface[data-marker-scale="name"] .station-marker:not(.is-selected) .price-pin,.map-surface[data-marker-scale="detail"] .station-marker:not(.is-selected) .price-pin{width:58px;height:34px;min-width:58px;min-height:34px;padding:0 8px;border-radius:18px}',
+    '.map-surface[data-marker-scale="name"] .station-marker:not(.is-selected) .price-pin-glyph,.map-surface[data-marker-scale="detail"] .station-marker:not(.is-selected) .price-pin-glyph{display:none}',
+    '.map-surface[data-marker-scale="name"] .station-marker:not(.is-selected) .price-pin-value,.map-surface[data-marker-scale="detail"] .station-marker:not(.is-selected) .price-pin-value{display:block;font-size:12px;letter-spacing:-.3px}',
+    '.map-surface[data-marker-scale="detail"] .station-marker:not(.is-selected) .price-pin-value{font-size:13px}',
     '.map-you{display:block;width:18px;height:18px;border:3px solid #fff;border-radius:50%;background:#2674db;box-shadow:0 0 0 7px #2674db30,0 2px 8px #193a6040}',
     '.juyuhannun-map .leaflet-control-attribution{font-size:10px;background:rgba(255,255,255,.92)}',
     '@media(max-width:1000px){.station-marker .price-pin.selected{width:70px;height:70px;min-width:70px;min-height:70px}.selected-station-callout{font-size:14px;min-height:46px}}',
@@ -540,7 +544,7 @@ export class MapController {
     const facts = [BRANDS[row.brand] || row.brand, row.facilities?.self === true ? '셀프' : row.facilities?.self === false ? '일반' : null, info?.sourceDate ? info.sourceDate + ' 기준' : confidence.label].filter(Boolean).join(' · ');
     const tone=markerTone(row.brand,id);
     const callout=selected?'<div class="selected-station-callout"><span class="callout-pump" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="12" height="17" rx="2"/><path d="M6 7h6v4H6ZM1 21h16m-2-8h2v5a2 2 0 0 0 4 0V8l-4-4m3 3v4h1"/></svg></span><strong>'+escapeHTML(row.name||'주유소')+'</strong><b aria-hidden="true">›</b></div>':'';
-    const content = '<div class="station-marker' + (selected ? ' is-selected' : '') + '">'+callout+'<button type="button" class="price-pin tone-' + tone + (selected ? ' selected' : '') +
+    const content = '<div class="station-marker tone-' + tone + (selected ? ' is-selected' : '') + '">'+callout+'<button type="button" class="price-pin' + (selected ? ' selected' : '') +
       (stale ? ' is-stale' : '') + '" data-station-id="' + escapeHTML(id) +
       '" aria-label="' + escapeHTML(label) + '" aria-pressed="' + selected + '" title="' + escapeHTML(label) +
       '"><span class="price-pin-glyph" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="12" height="17" rx="2"/><path d="M6 7h6v4H6ZM1 21h16m-2-8h2v5a2 2 0 0 0 4 0V8l-4-4m3 3v4h1"/></svg></span><span class="price-pin-value">' + escapeHTML(price) +
