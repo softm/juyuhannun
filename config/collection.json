@@ -1,13 +1,46 @@
 {
   "version": 1,
-  "description": "서울시청·대전역 주변 일반 API 가격·상세 보강 범위입니다. 전국 공개 일일 판매가격 파일과 주유소 ID·유종별로 병합하며, 이 설정은 앱 전체의 수집 범위를 뜻하지 않습니다.",
+  "description": "전국 공개 일일 판매가격 파일을 주 데이터로 사용하고, 일반 API는 하루 3회 비교·검증·상세 보강에 사용합니다.",
   "dailyCallLimit": 300,
-  "maxCallsPerRun": 36,
-  "detailLimitPerSearch": 3,
-  "fuels": ["B027", "D047", "B034", "K015"],
+  "maxCallsPerRun": 60,
+  "detailLimitPerSearch": 5,
+  "fuels": [
+    "B027",
+    "D047",
+    "B034",
+    "K015"
+  ],
   "zones": [
-    { "id": "seoul-city-hall", "name": "서울시청 주변", "lat": 37.5665, "lng": 126.9780, "radius": 3000 },
-    { "id": "daejeon-station", "name": "대전역 주변", "lat": 36.3322, "lng": 127.4346, "radius": 3000 }
-  ]
+    {
+      "id": "seoul-city-hall",
+      "name": "서울시청 주변",
+      "lat": 37.5665,
+      "lng": 126.978,
+      "radius": 3000
+    },
+    {
+      "id": "daejeon-station",
+      "name": "대전역 주변",
+      "lat": 36.3322,
+      "lng": 127.4346,
+      "radius": 3000
+    }
+  ],
+  "scheduleKst": [
+    "08:17",
+    "14:17",
+    "20:17"
+  ],
+  "apiBudgetPolicy": {
+    "purpose": "공개파일 가격과 현재 API 가격 비교, 평균가/최저가 검증, 주유소 상세·좌표 보강",
+    "targetRunsPerDay": 3,
+    "reserveCalls": 60,
+    "coordinateDailyBudget": 60,
+    "lowestPriceComparisonFuels": [
+      "B027",
+      "D047",
+      "B034",
+      "K015"
+    ]
+  }
 }
-
