@@ -147,3 +147,26 @@ body:not(.energy-page) .app-header{height:66px;padding:0 24px}
 
 /* Driving-first UX: remove route-cost UI surfaces. */
 .route-panel,[data-view="route"],#open-calculator,.calculator-dialog{display:none!important}
+
+
+/* Clear filter semantics */
+.filter-popover{flex-direction:column;gap:10px}
+.filter-popover-head{display:flex;flex-direction:column;gap:3px;width:100%;padding-bottom:10px;border-bottom:1px solid #e7ece9}
+.filter-popover-head strong{font-size:15px;color:#173e34}
+.filter-popover-head span{font-size:11px;line-height:1.5;color:#7b8b84}
+.filter-option{display:grid!important;grid-template-columns:26px minmax(0,1fr);align-items:center!important;gap:10px!important;width:100%;padding:11px 12px;border:1px solid #e1e8e4;border-radius:12px;background:#fff}
+.filter-option input{width:22px!important;height:22px!important;margin:0;accent-color:#0f6b57}
+.filter-option span{display:block}
+.filter-option strong{display:block;font-size:14px;line-height:1.35;color:#173e34}
+.filter-option small{display:block;margin-top:4px;font-size:11px;line-height:1.45;color:#7c8b85}
+.marker-color-guide{width:100%;padding:12px;border-radius:12px;background:#f5f8f6}
+.marker-color-guide>strong{display:block;margin-bottom:9px;font-size:12px;color:#36594f}
+.marker-color-guide>div{display:flex;flex-wrap:wrap;gap:8px 14px}
+.marker-color-guide span{display:inline-flex;align-items:center;gap:6px;font-size:11px;color:#526b62}
+.marker-guide-dot{width:11px;height:11px;border-radius:50%;display:inline-block}
+.marker-guide-dot.low,.price-color-legend .legend-dot.low{background:#18a875}
+.marker-guide-dot.mid,.price-color-legend .legend-dot.mid{background:#efa516}
+.marker-guide-dot.high,.price-color-legend .legend-dot.high{background:#e4545d}
+.marker-guide-dot.stale,.price-color-legend .legend-dot.stale{background:#7d8b98}
+.price-color-legend{display:grid;grid-template-columns:repeat(2,max-content);gap:7px 14px}
+.price-color-legend small{grid-column:1/-1}

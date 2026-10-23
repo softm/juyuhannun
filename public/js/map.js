@@ -97,10 +97,28 @@ function loadLeaflet() {
   return leafletTask;
 }
 
-function markerTone(brand,id='') {
-  const tones={SKE:'blue',GSC:'green',HDO:'orange',SOL:'red',RTE:'green',RTX:'blue',NHO:'green',E1G:'orange',SKG:'blue',ETC:'slate'};
-  if(tones[brand])return tones[brand];
-  const palette=['blue','green','orange','red','slate'];let hash=0;for(const ch of String(id))hash=(hash*31+ch.charCodeAt(0))>>>0;return palette[hash%palette.length];
+function markerPriceBands(stations, fuel, now = Date.now()) {
+  const prices = [];
+  for (const station of Array.isArray(stations) ? stations : []) {
+    const info = getFuelPrice(station, fuel);
+    if (!info || !Number.isFinite(Number(info.price))) continue;
+    const status = freshness(info.priceUpdatedAt, info.fetchedAt, now, info.priceTimeStatus, info.sourceDate);
+    if (status.eligible) prices.push(Number(info.price));
+  }
+  prices.sort((a,b)=>a-b);
+  if (!prices.length) return { count:0, low:null, high:null };
+  if (prices.length === 1) return { count:1, low:prices[0], high:prices[0] };
+  const pick = ratio => prices[Math.max(0,Math.min(prices.length-1,Math.round((prices.length-1)*ratio)))];
+  return { count:prices.length, low:pick(1/3), high:pick(2/3) };
+}
+
+function markerTone(info, stale, bands) {
+  if (stale || !info || !Number.isFinite(Number(info.price))) return 'slate';
+  const price = Number(info.price);
+  if (!bands || bands.count < 2) return 'orange';
+  if (price <= bands.low) return 'green';
+  if (price >= bands.high) return 'red';
+  return 'orange';
 }
 
 function installMarkerStyles() {
@@ -116,7 +134,7 @@ function installMarkerStyles() {
     '.station-marker{position:relative;width:72px;height:64px;pointer-events:none}',
     '.station-marker .price-pin{position:absolute;left:36px;bottom:7px;display:flex;align-items:center;justify-content:center;width:34px;height:34px;min-width:34px;min-height:34px;padding:0;border:3px solid #fff;border-radius:50%;background:var(--pin,#2f7df6);color:#fff;box-shadow:0 3px 10px #132b3c4a;cursor:pointer;pointer-events:auto}',
     '.station-marker .price-pin:after{content:"";position:absolute;left:50%;bottom:-7px;width:10px;height:10px;transform:translateX(-50%) rotate(45deg);border-right:3px solid #fff;border-bottom:3px solid #fff;background:var(--pin,#2f7df6);border-radius:0 0 2px 0}',
-    '.station-marker.tone-blue{--pin:#347ee8}.station-marker.tone-green{--pin:#16a077}.station-marker.tone-orange{--pin:#ed9815}.station-marker.tone-red{--pin:#e44f5e}.station-marker.tone-slate{--pin:#718397}',
+    '.station-marker.tone-green{--pin:#18a875}.station-marker.tone-orange{--pin:#efa516}.station-marker.tone-red{--pin:#e4545d}.station-marker.tone-slate{--pin:#7d8b98}',
     '.price-pin:focus-visible{outline:3px solid #f6b632;outline-offset:3px}',
     '.price-pin-glyph{display:flex;align-items:center;justify-content:center;position:relative;z-index:2}',
     '.price-pin-glyph svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2}',
@@ -137,9 +155,9 @@ function installMarkerStyles() {
     '.map-surface[data-marker-scale="dot"] .price-pin:not(.selected):after,.map-surface.dense-markers .price-pin:not(.selected):after{display:none}',
     '.map-surface[data-marker-scale="dot"] .price-pin:not(.selected) .price-pin-glyph,.map-surface.dense-markers .price-pin:not(.selected) .price-pin-glyph{display:none}',
     '.map-surface[data-marker-size="small"] .price-pin:not(.selected){width:11px;height:11px;min-width:11px;min-height:11px;border-width:2px}',
-    '.map-surface[data-marker-scale="name"] .station-marker:not(.is-selected) .price-pin,.map-surface[data-marker-scale="detail"] .station-marker:not(.is-selected) .price-pin{width:58px;height:34px;min-width:58px;min-height:34px;padding:0 8px;border-radius:18px}',
-    '.map-surface[data-marker-scale="name"] .station-marker:not(.is-selected) .price-pin-glyph,.map-surface[data-marker-scale="detail"] .station-marker:not(.is-selected) .price-pin-glyph{display:none}',
-    '.map-surface[data-marker-scale="name"] .station-marker:not(.is-selected) .price-pin-value,.map-surface[data-marker-scale="detail"] .station-marker:not(.is-selected) .price-pin-value{display:block;font-size:12px;letter-spacing:-.3px}',
+    '.map-surface[data-marker-scale="pin"] .station-marker:not(.is-selected) .price-pin,.map-surface[data-marker-scale="name"] .station-marker:not(.is-selected) .price-pin,.map-surface[data-marker-scale="detail"] .station-marker:not(.is-selected) .price-pin{width:58px;height:34px;min-width:58px;min-height:34px;padding:0 8px;border-radius:18px}',
+    '.map-surface[data-marker-scale="pin"] .station-marker:not(.is-selected) .price-pin-glyph,.map-surface[data-marker-scale="name"] .station-marker:not(.is-selected) .price-pin-glyph,.map-surface[data-marker-scale="detail"] .station-marker:not(.is-selected) .price-pin-glyph{display:none}',
+    '.map-surface[data-marker-scale="pin"] .station-marker:not(.is-selected) .price-pin-value,.map-surface[data-marker-scale="name"] .station-marker:not(.is-selected) .price-pin-value,.map-surface[data-marker-scale="detail"] .station-marker:not(.is-selected) .price-pin-value{display:block;font-size:12px;letter-spacing:-.3px}',
     '.map-surface[data-marker-scale="detail"] .station-marker:not(.is-selected) .price-pin-value{font-size:13px}',
     '.map-you{display:block;width:18px;height:18px;border:3px solid #fff;border-radius:50%;background:#2674db;box-shadow:0 0 0 7px #2674db30,0 2px 8px #193a6040}',
     '.juyuhannun-map .leaflet-control-attribution{font-size:10px;background:rgba(255,255,255,.92)}',
@@ -464,6 +482,7 @@ export class MapController {
     this._stations = Array.isArray(stations) ? stations : [];
     this._selectedId = selectedId == null ? null : String(selectedId);
     this._fuel = fuel;
+    this._priceBands = markerPriceBands(this._stations, this._fuel);
     this._scheduleMarkers();
   }
 
@@ -533,16 +552,16 @@ export class MapController {
     const cached = this._markers.get(id);
     const info = getFuelPrice(row, this._fuel);
     const presentation = this.markerPresentation?.(row, { fuel: this._fuel });
-    const sourceKey = JSON.stringify([point, row.name, row.brand, row.facilities?.self, row.roadAddress, row.address, this._fuel, selected, info, presentation, Math.floor(now / 60000)]);
+    const confidence = info ? freshness(info.priceUpdatedAt, info.fetchedAt, now, info.priceTimeStatus, info.sourceDate) : { eligible: false, label: '가격 미제공' };
+    const stale = presentation ? presentation.stale !== false : !confidence.eligible;
+    const tone = presentation ? (stale ? 'slate' : 'orange') : markerTone(info, stale, this._priceBands);
+    const sourceKey = JSON.stringify([point, row.name, row.brand, row.facilities?.self, row.roadAddress, row.address, this._fuel, selected, info, presentation, tone, this._priceBands, Math.floor(now / 60000)]);
     if (cached && previous?.sourceKey === sourceKey) return false;
     const price = presentation ? String(presentation.value ?? '미확인') : info ? markerPriceFormat.format(info.price) : '미확인';
     const fuelName = FUEL_TYPES.find(item => item.code === this._fuel)?.name || '유종';
-    const confidence = info ? freshness(info.priceUpdatedAt, info.fetchedAt, now, info.priceTimeStatus, info.sourceDate) : { eligible: false, label: '가격 미제공' };
     const label = presentation ? String(presentation.label || row.name) : row.name + ', ' + fuelName + ' ' + (info ? price + '원' : '가격 미확인') + ', ' + confidence.label;
-    const stale = presentation ? presentation.stale !== false : !confidence.eligible;
     const unit = presentation ? String(presentation.unit || '') : info ? '원' : '';
     const facts = [BRANDS[row.brand] || row.brand, row.facilities?.self === true ? '셀프' : row.facilities?.self === false ? '일반' : null, info?.sourceDate ? info.sourceDate + ' 기준' : confidence.label].filter(Boolean).join(' · ');
-    const tone=markerTone(row.brand,id);
     const callout=selected?'<div class="selected-station-callout"><span class="callout-pump" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="12" height="17" rx="2"/><path d="M6 7h6v4H6ZM1 21h16m-2-8h2v5a2 2 0 0 0 4 0V8l-4-4m3 3v4h1"/></svg></span><strong>'+escapeHTML(row.name||'주유소')+'</strong><b aria-hidden="true">›</b></div>':'';
     const content = '<div class="station-marker tone-' + tone + (selected ? ' is-selected' : '') + '">'+callout+'<button type="button" class="price-pin' + (selected ? ' selected' : '') +
       (stale ? ' is-stale' : '') + '" data-station-id="' + escapeHTML(id) +

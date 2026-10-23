@@ -65,11 +65,14 @@ test('detail sheet handle is interactive and snaps focus modes', () => {
 });
 
 
-test('approved focus design renders branded marker tones, selected price pin and station callout', () => {
+test('approved focus design renders price-level marker tones, selected price pin and station callout', () => {
+  assert.match(map, /markerPriceBands\(/);
   assert.match(map, /markerTone\(/);
   assert.match(map, /selected-station-callout/);
-  assert.match(map, /tone-blue/);
-  assert.match(map, /#2f7df6/);
+  assert.match(map, /tone-green/);
+  assert.match(map, /tone-orange/);
+  assert.match(map, /tone-red/);
+  assert.match(map, /tone-slate/);
   assert.match(map, /station-marker\.is-selected/);
 });
 
@@ -145,4 +148,19 @@ test('detail expand control visibly includes the expansion icon on mobile', () =
 test('driving-first copy no longer advertises route-cost calculation', () => {
   assert.doesNotMatch(html, /경로 비용 비교|예상 절약액의 계산 기준|가격부터 이동 비용까지/);
   assert.doesNotMatch(app, /invalidateRoutes|routeGeneration|state\.routes/);
+});
+
+
+test('expanded mobile fuel selector exposes every fuel choice instead of hiding inactive fuels', () => {
+  assert.match(css, /fuel-tabs button\{[\s\S]*display:flex!important/);
+  for (const fuel of ['B027','D047','B034','K015']) assert.match(html,new RegExp('data-fuel="'+fuel+'"'));
+  assert.match(app, /render\(\);if\(\$\('detail-dialog'\)\.open\)renderDetail\(\)/);
+});
+
+test('filter popover explains each checkbox and marker color meaning clearly', () => {
+  assert.match(html, /셀프 주유소만 보기/);
+  assert.match(html, /최신 가격만 보기/);
+  assert.match(html, /마커 색상 = 현재 유종의 가격 수준/);
+  assert.match(styles, /\.filter-option strong\{[^}]*font-size:14px/);
+  assert.match(styles, /\.filter-option input\{[^}]*width:22px/);
 });

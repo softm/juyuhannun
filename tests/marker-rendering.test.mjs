@@ -113,16 +113,29 @@ test('name labels sit above location dots and keep that layer across unchanged r
 });
 
 
-test('selected marker keeps its base brand tone and zoomed markers show price inside',()=>{
+test('selected marker keeps its price-level tone and readable marker scales show price inside',()=>{
   const h=harness(),c=h.controller;
-  const station=row('brand',{brand:'SOL'});
-  c.setStations([station],'brand');h.flush();
-  const selected=c._markerState.get('brand').content;
-  assert.match(selected,/station-marker tone-red is-selected/);
-  assert.doesNotMatch(selected,/tone-blue selected/);
+  const rows=[
+    row('cheap',{prices:{B027:{price:1600,priceUpdatedAt:new Date().toISOString()}}}),
+    row('mid',{prices:{B027:{price:1700,priceUpdatedAt:new Date().toISOString()}}}),
+    row('high',{prices:{B027:{price:1900,priceUpdatedAt:new Date().toISOString()}}})
+  ];
+  c.setStations(rows,'high');h.flush();
+  assert.match(c._markerState.get('cheap').content,/station-marker tone-green/);
+  assert.match(c._markerState.get('mid').content,/station-marker tone-orange/);
+  assert.match(c._markerState.get('high').content,/station-marker tone-red is-selected/);
 
+  h.zoom(14);c._updateMarkerScale();
+  assert.equal(c.canvas.dataset.markerScale,'pin');
   h.zoom(16);c._updateMarkerScale();
   assert.equal(c.canvas.dataset.markerScale,'name');
   h.zoom(18);c._updateMarkerScale();
   assert.equal(c.canvas.dataset.markerScale,'detail');
+});
+
+
+test('stale or missing price markers use slate rather than price-level colors',()=>{
+  const h=harness(),c=h.controller;
+  c.setStations([row('stale',{prices:{B027:{price:1500,priceUpdatedAt:'2020-01-01T00:00:00Z'}}})]);h.flush();
+  assert.match(c._markerState.get('stale').content,/station-marker tone-slate/);
 });
