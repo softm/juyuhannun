@@ -551,9 +551,13 @@ export class MapController {
     const zIndex = selected ? 5000 : this._retainedLabels.has(id) ? 1000 : 100;
     const changed = !previous || previous.content !== content;
     const moved = !previous || previous.lat !== point.lat || previous.lng !== point.lng;
-    const makeIcon = () => this.provider === 'naver'
-      ? { content, anchor: new globalThis.naver.maps.Point(36, 40) }
-      : globalThis.L.divIcon({ className: 'price-marker-shell', html: content, iconSize: [72, 40], iconAnchor: [36, 40] });
+    const makeIcon = () => {
+      const size = selected ? [96, 92] : [72, 64];
+      const anchor = selected ? [48, 78] : [36, 51];
+      return this.provider === 'naver'
+        ? { content, size: new globalThis.naver.maps.Size(size[0], size[1]), anchor: new globalThis.naver.maps.Point(anchor[0], anchor[1]) }
+        : globalThis.L.divIcon({ className: 'price-marker-shell', html: content, iconSize: size, iconAnchor: anchor });
+    };
     if (!marker) {
       marker = this.provider === 'naver'
         ? new globalThis.naver.maps.Marker({ map: this.map, position: this._naverPoint(point), title: row.name, icon: makeIcon(), zIndex })
