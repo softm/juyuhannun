@@ -27,6 +27,19 @@ function render(d){
  if(collection.lastDownloadError)issues.push('전국 파일 최근 다운로드: '+issueText(collection.lastDownloadError));
  if(c.standardDataStatus&&c.standardDataStatus!=='ready')issues.push('최신 공개 좌표 조회가 실패해 이전에 확보한 좌표와 공식 ID 보완 좌표를 사용했습니다.');
  $('issues').innerHTML=[...new Set(issues)].map(message=>`<li>${esc(message)}</li>`).join('');
+ const audit=d.comparisonAudit||{};
+ const auditState=audit.status==='ready'||audit.status==='partial';
+ $('comparison-audit').innerHTML=[[
+  'API Top20 수집', n(audit.total)+'건'],
+  ['공개파일과 ID·유종 일치', n(audit.matched)+'건'],
+  ['가격 동일', n(audit.same)+'건'],
+  ['가격 차이', n(audit.different)+'건'],
+  ['공개파일 가격 미확인', n(audit.missing)+'건'],
+  ['최대 가격 차이', Number.isFinite(audit.maxAbsDiff)?n(audit.maxAbsDiff)+'원/L':'—']
+ ].map(([label,value])=>`<div><span>${esc(label)}</span><strong>${esc(value)}</strong></div>`).join('');
+ $('comparison-audit-note').textContent=auditState
+  ? '최근 API 비교 '+formatTime(audit.checkedAt)+' · 평균 절대 가격차 '+(Number.isFinite(audit.averageAbsDiff)?n(audit.averageAbsDiff)+'원/L':'—')+'. 가격 차이가 있으면 공개파일 갱신 지연 또는 API 시점 차이를 확인합니다.'
+  : '현재 API 비교자료를 확보하지 못했습니다. 공개파일 수집은 계속 유지하며 다음 API 예산 회차에 다시 대조합니다.';
  const coordinates=d.coordinates||{},queue=coordinates.queue||{},attempt=coordinates.lastAttempt||{},budget=coordinates.budget||{},day=coordinates.dayBudget||{};
  const reasons={reserved_for_prices:'정규 가격 수집용 호출량을 남기고 대기합니다.',daily_budget:'오늘 좌표 보완 예산을 사용했습니다.',daily_budget_exhausted:'오늘 좌표 보완 예산을 사용했습니다.',run_budget:'이번 실행의 보완을 마쳤습니다.',run_budget_exhausted:'이번 실행의 보완을 마쳤습니다.',provider_error:'제공기관 응답 오류로 재시도를 기다립니다.',complete:'현재 보완 대상의 좌표를 모두 확인했습니다.',awaiting_credentials:'공식 API 연결을 기다리고 있습니다.'};
  $('coordinate-state').textContent=`${names[coordinates.status]||'확인 중'} · ${reasons[attempt.stopReason]||'실행마다 남은 호출량을 확인하며 좌표가 없는 주유소를 순서대로 조회합니다.'}`;
