@@ -21,7 +21,7 @@ test('mobile focus detail has sheet controls and real map tools', () => {
 });
 
 test('mobile map view models focus, expanded tools, full map and history exit', () => {
-  for (const state of ['focus-detail', 'expanded-tools', 'full-map']) assert.match(view, new RegExp(state));
+  for (const state of ['focus-detail', 'expanded-tools', 'map-browse', 'map-collapsed']) assert.match(view, new RegExp(state));
   assert.match(view, /history\.pushState/);
   assert.match(view, /window\.addEventListener\('popstate'/);
   assert.match(view, /sidebar\.inert = next === 'focus-detail' \|\| next === 'full-map'/);
@@ -118,8 +118,31 @@ test('desktop station detail uses a dedicated readable modal layout', () => {
   assert.match(styles, /\.detail-dialog \.fuel-price-grid/);
 });
 
-test('compare basket feature is removed while route cost comparison remains available', () => {
+test('compare basket and route-cost workflow are removed from the driving-first UI', () => {
   assert.doesNotMatch(html, /focus-dock-compare/);
   assert.doesNotMatch(app, /storedCompare|state\.compare|toggleCompare|data-action="compare"/);
-  assert.match(app, /compareSelectedRoute/);
+  assert.doesNotMatch(html, /data-view="route"/);
+  assert.doesNotMatch(html, /id="route-panel"/);
+  assert.doesNotMatch(html, /id="open-calculator"/);
+  assert.doesNotMatch(app, /compareSelectedRoute/);
+});
+
+
+test('mobile starts in full-map expanded mode and toggles to collapsed map chrome', () => {
+  assert.match(view, /let mode = media\.matches \? 'map-browse' : 'default'/);
+  assert.match(view, /if\(media\.matches\)startMobileExpanded\(\)/);
+  assert.match(view, /mode==='map-browse'\)\{setMode\('map-collapsed'\)/);
+  assert.match(view, /mode==='map-collapsed'\)\{setMode\('map-browse'\)/);
+  assert.match(css, /body\.mobile-map-collapsed/);
+});
+
+test('detail expand control visibly includes the expansion icon on mobile', () => {
+  assert.match(css, /detail-expand-toggle \.icon[\s\S]*display:inline-flex!important/);
+  assert.match(view, /icon\(expanded\?'collapse':'expand'\)/);
+});
+
+
+test('driving-first copy no longer advertises route-cost calculation', () => {
+  assert.doesNotMatch(html, /경로 비용 비교|예상 절약액의 계산 기준|가격부터 이동 비용까지/);
+  assert.doesNotMatch(app, /invalidateRoutes|routeGeneration|state\.routes/);
 });

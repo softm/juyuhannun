@@ -143,3 +143,7 @@ body:not(.energy-page) .app-header{height:66px;padding:0 24px}
  .detail-dialog .focus-detail-meta{display:grid;grid-template-columns:100px 1fr;gap:10px 14px;padding:16px 18px;border-radius:12px;background:#f5f8f6;font-size:11px;line-height:1.7}.detail-dialog .focus-detail-meta dt{color:#829189}.detail-dialog .focus-detail-meta dd{margin:0;color:#3f5c52}
  .detail-dialog .detail-calculation{margin-top:20px}
 }
+
+
+/* Driving-first UX: remove route-cost UI surfaces. */
+.route-panel,[data-view="route"],#open-calculator,.calculator-dialog{display:none!important}

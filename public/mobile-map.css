@@ -266,3 +266,33 @@
 }
 
 @media(max-width:1000px){body.mobile-map-mode .focus-primary-actions{justify-content:flex-end}.desktop-detail-title{display:none}}
+
+
+/* Driving-first mobile map: expanded by default, one-tap collapse to a clean map. */
+@media(max-width:1000px){
+ body.mobile-map-collapsed{overflow:hidden;overscroll-behavior:none}
+ body.mobile-map-collapsed>.app-header,body.mobile-map-collapsed>.skip{display:none}
+ body.mobile-map-collapsed .workspace{height:100dvh;display:block}
+ body.mobile-map-collapsed #map-section{position:fixed;inset:0;width:100%;height:100dvh;z-index:100;border:0}
+ body.mobile-map-collapsed .workspace>.sidebar{display:none!important}
+ body.mobile-map-collapsed #map-section .map-top,
+ body.mobile-map-collapsed #map-section .map-bottom,
+ body.mobile-map-collapsed .map-secondary-actions,
+ body.mobile-map-collapsed .focus-rescan,
+ body.mobile-map-collapsed .mobile-focus-dock,
+ body.mobile-map-collapsed #map-section .mobile-list-toggle{display:none!important}
+ body.mobile-map-collapsed #map-section .map-actions{display:flex!important;top:calc(150px + env(safe-area-inset-top,0px));left:calc(18px + env(safe-area-inset-left,0px));right:auto;bottom:auto;flex-direction:column;gap:0;border-radius:18px;background:#fff;box-shadow:0 7px 22px #17362e24}
+ body.mobile-map-collapsed #map-section .map-action{display:none!important;width:54px;height:54px;color:#1769d7;border-radius:0}
+ body.mobile-map-collapsed #map-section .map-action.compact-map-action{display:flex!important}
+ body.mobile-map-collapsed .mobile-map-toggle{display:flex!important;position:fixed;right:calc(18px + env(safe-area-inset-right,0px));top:calc(258px + env(safe-area-inset-top,0px));bottom:auto;width:54px;height:54px;min-width:54px;min-height:54px;padding:0;border-radius:50%;background:#fff;color:#347ee8;border:1px solid #e0e6ea;box-shadow:0 6px 20px #17362e24;z-index:180}
+ body.mobile-map-collapsed .mobile-map-toggle>span:last-child{display:none}
+ body.mobile-map-collapsed .mobile-map-toggle .icon svg{width:25px;height:25px}
+
+ body.mobile-map-browse .mobile-map-toggle .icon svg{width:25px;height:25px}
+ body.mobile-map-browse .mobile-map-toggle>span:last-child{display:none}
+
+ body.mobile-map-focus .detail-expand-toggle .icon,
+ body.mobile-map-expanded .detail-expand-toggle .icon{display:inline-flex!important}
+ body.mobile-map-focus .detail-expand-toggle .icon svg,
+ body.mobile-map-expanded .detail-expand-toggle .icon svg{width:17px;height:17px}
+}
