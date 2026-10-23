@@ -192,7 +192,8 @@ async function collectNationwideSnapshot({outputDirectory=resolve(ROOT,'public/d
   ...(await readStations(resolve(outputDirectory,'master.json'))),
   ...(await readStations(resolve(outputDirectory,'latest.json'))),
   ...(await readStations(nearbyPath)),
-  ...(await readStations(resolve(outputDirectory,'coordinate-enrichment.json')))
+  ...(await readStations(resolve(outputDirectory,'coordinate-enrichment.json'))),
+  ...(await readStations(resolve(outputDirectory,'address-geocoding.json')))
  ];
  let standard={status:previousManifest?.standardDataStatus??'error',stations:[],calls:0};
  let standardFetchedAt=previousManifest?.standardFetchedAt??null,standardLastAttemptAt=previousManifest?.standardLastAttemptAt??null;
