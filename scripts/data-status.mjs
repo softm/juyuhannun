@@ -7,7 +7,7 @@ import {DailyQuota} from '../server/quota.mjs';
 
 const count=v=>Array.isArray(v)?v.length:0;
 const number=v=>Number.isInteger(v)&&v>=0?v:0;
-export function summarizeData({manifest={},nationwide={},searchable={},regional={},averages={},highway={},coordinates={},quota=null,generatedAt=new Date().toISOString()}={}){
+export function summarizeData({manifest={},nationwide={},searchable={},regional={},averages={},highway={},comparisons={},coordinates={},quota=null,generatedAt=new Date().toISOString()}={}){
  const now=Date.parse(generatedAt),mapped=count(nationwide.stations),total=number(manifest.priceStationCount??nationwide.coverage?.totalPriceStations);
  const serviceReady=mapped>0&&['ready','partial'].includes(nationwide.status)&&nationwide.coverage?.serviceReady!==false;
  const nationalSource=count(searchable.stations)?searchable:nationwide;
@@ -37,11 +37,12 @@ export function summarizeData({manifest={},nationwide={},searchable={},regional=
  const summary=(id,name,data,rows,schedule)=>({id,name,status:data.status??'error',count:count(rows),fetchedAt:data.fetchedAt??null,lastAttempt:data.lastAttempt??null,retained:Boolean(data.cache?.stale||data.lastAttempt?.status==='error'),reused:Boolean(data.cache?.hit),error:data.lastAttempt?.error??data.error??null,schedule});
  const collection=manifest.collection??nationwide.collection??null;
  const collections=[
-  summary('nationwide','전국 주유소 일일가격',nationwide,nationwide.stations,'매일 20:37 · 재확인 22:37 / 00:37 · 한국시간'),
+  summary('nationwide','전국 주유소 일일가격',nationwide,nationwide.stations,'매일 08:17 · 14:17 · 20:17 · 한국시간'),
   summary('searchable','전국 가격 원본 · 좌표 미확보 포함',searchable,searchable.stations,'전국 수집 결과 보관 · 지도에는 좌표 확보 자료 표시'),
-  summary('regional','지역 API 보완',regional,regional.stations,'매일 01:17 · 02:17 · 09:17 · 12:17 · 16:17 · 19:17'),
-  summary('averages','전국·시도 평균유가',averages,averages.benchmarks,'지역 API 수집 후 갱신'),
-  summary('highway','고속도로 주유소',highway,highway.stations,'지역 API 수집 후 갱신'),
+  summary('regional','지역 API 보완',regional,regional.stations,'매일 08:17 · 14:17 · 20:17'),
+  summary('averages','전국·시도 평균유가',averages,averages.benchmarks,'매일 08:17 · 14:17 · 20:17'),
+  summary('comparisons','전국 최저가 Top20 비교',comparisons,comparisons.comparisons,'유종별 Top20 · 매일 08:17 · 14:17 · 20:17'),
+  summary('highway','고속도로 주유소',highway,highway.stations,'매일 08:17 · 14:17 · 20:17'),
  ];
  return {
   version:1,generatedAt,activeMap:serviceReady?'nationwide':'regional',mapStrategy:'merged',
@@ -54,11 +55,11 @@ export function summarizeData({manifest={},nationwide={},searchable={},regional=
 
 export async function writeDataStatus(dataRoot){
  const read=async name=>{try{return JSON.parse(await readFile(resolve(dataRoot,`${name}.json`),'utf8'));}catch{return{status:'error',error:{code:'DATA_FILE_UNAVAILABLE',message:'수집 결과 파일을 읽을 수 없습니다.'}};}};
- const [manifest,nationwide,searchable,regional,averages,highway,coordinates]=await Promise.all(['nationwide/manifest','nationwide/latest','nationwide/search','stations','averages','highway','nationwide/coordinate-enrichment'].map(read));
+ const [manifest,nationwide,searchable,regional,averages,highway,comparisons,coordinates]=await Promise.all(['nationwide/manifest','nationwide/latest','nationwide/search','stations','averages','highway','comparisons','nationwide/coordinate-enrichment'].map(read));
  // Use the final shared ledger after regional, energy and coordinate requests.
  let quota=null;
  const ledgerPath=resolve(dirname(fileURLToPath(import.meta.url)),'../.cache/opinet-quota.json');
  try{await readFile(ledgerPath);quota=await new DailyQuota({ledgerPath}).snapshot();}catch{}
- const result=summarizeData({manifest,nationwide,searchable,regional,averages,highway,coordinates,quota});
+ const result=summarizeData({manifest,nationwide,searchable,regional,averages,highway,comparisons,coordinates,quota});
  await mkdir(dataRoot,{recursive:true});await writeFile(resolve(dataRoot,'status.json'),JSON.stringify(result,null,2)+'\n');return result;
 }
