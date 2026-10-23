@@ -111,3 +111,18 @@ test('name labels sit above location dots and keep that layer across unchanged r
   h.zoom(7);c._updateMarkerScale();assert.equal(c.canvas.dataset.markerSize,'small');
   h.zoom(13);c._updateMarkerScale();assert.equal(c.canvas.dataset.markerSize,'normal');
 });
+
+
+test('selected marker keeps its base brand tone and zoomed markers show price inside',()=>{
+  const h=harness(),c=h.controller;
+  const station=row('brand',{brand:'SOL'});
+  c.setStations([station],'brand');h.flush();
+  const selected=c._markerState.get('brand').content;
+  assert.match(selected,/station-marker tone-red is-selected/);
+  assert.doesNotMatch(selected,/tone-blue selected/);
+
+  h.zoom(16);c._updateMarkerScale();
+  assert.equal(c.canvas.dataset.markerScale,'name');
+  h.zoom(18);c._updateMarkerScale();
+  assert.equal(c.canvas.dataset.markerScale,'detail');
+});
