@@ -2,12 +2,13 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 
-const [html, app, map, view, css] = await Promise.all([
+const [html, app, map, view, css, styles] = await Promise.all([
   readFile(new URL('../public/index.html', import.meta.url), 'utf8'),
   readFile(new URL('../public/js/app.js', import.meta.url), 'utf8'),
   readFile(new URL('../public/js/map.js', import.meta.url), 'utf8'),
   readFile(new URL('../public/js/mobile-map-view.js', import.meta.url), 'utf8'),
   readFile(new URL('../public/mobile-map.css', import.meta.url), 'utf8'),
+  readFile(new URL('../public/styles.css', import.meta.url), 'utf8'),
 ]);
 
 test('mobile focus detail has sheet controls and real map tools', () => {
@@ -72,11 +73,11 @@ test('approved focus design renders branded marker tones, selected price pin and
   assert.match(map, /station-marker\.is-selected/);
 });
 
-test('station focus sheet contains three fuel cards, compare action, tabs and contact actions', () => {
+test('station focus sheet contains three fuel cards, tabs and contact actions without compare basket', () => {
   assert.match(app, /detailPrice\(station,'B027','휘발유','green'\)/);
   assert.match(app, /detailPrice\(station,'D047','경유','blue'\)/);
   assert.match(app, /detailPrice\(station,'K015','LPG','orange'\)/);
-  assert.match(app, /compare-station-button/);
+  assert.doesNotMatch(app, /compare-station-button/);
   assert.match(app, /focus-detail-tabs/);
   assert.match(app, /copy-address/);
   assert.match(app, /운영시간 정보 미제공/);
@@ -106,6 +107,19 @@ test('five-state mobile focus flow includes map browse and draggable list sheet 
 test('closing detail keeps the focused map session instead of restoring default layout', () => {
   assert.match(view, /hideDetail\(\);\s*setMode\('map-browse'\)/);
   assert.match(app, /focus-dock-list/);
-  assert.match(app, /focus-dock-compare/);
   assert.match(app, /focus-rescan/);
+});
+
+
+test('desktop station detail uses a dedicated readable modal layout', () => {
+  assert.match(html, /desktop-detail-title/);
+  assert.match(styles, /@media\(min-width:1001px\)/);
+  assert.match(styles, /\.detail-dialog \.detail-sheet-handle,\.detail-dialog \.detail-expand-toggle\{display:none!important\}/);
+  assert.match(styles, /\.detail-dialog \.fuel-price-grid/);
+});
+
+test('compare basket feature is removed while route cost comparison remains available', () => {
+  assert.doesNotMatch(html, /focus-dock-compare/);
+  assert.doesNotMatch(app, /storedCompare|state\.compare|toggleCompare|data-action="compare"/);
+  assert.match(app, /compareSelectedRoute/);
 });

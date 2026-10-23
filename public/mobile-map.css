@@ -193,8 +193,6 @@
  body.mobile-map-mode .focus-brand-badge{display:inline-flex;align-items:center;gap:6px;padding:5px 9px;border-radius:15px;background:#f3f5f3;color:#65756f;font-size:10px}
  body.mobile-map-mode .brand-flame{color:#ed9815;font-size:11px}
  body.mobile-map-mode .focus-primary-actions{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:14px}
- body.mobile-map-mode .compare-station-button{min-height:43px;padding:0 13px;border:1px solid #8bcbbb;border-radius:10px;color:#0f6b57;background:#fff;font-size:13px;font-weight:800}
- body.mobile-map-mode .compare-station-button.is-active{background:#0f6b57;color:#fff}
  body.mobile-map-mode .other-stations-button{display:flex;align-items:center;gap:7px;color:#1b5548;font-size:12px;font-weight:700}
  body.mobile-map-mode .other-stations-button strong{display:flex;align-items:center;justify-content:center;min-width:25px;height:25px;padding:0 6px;border-radius:10px;background:#edf5f1}
  body.mobile-map-mode .fuel-price-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:14px}
@@ -233,11 +231,10 @@
   body.mobile-map-browse .mobile-map-toggle>span:last-child{display:none}
 
   body.mobile-map-browse .focus-rescan{display:flex;position:fixed;left:50%;bottom:calc(104px + env(safe-area-inset-bottom,0px));z-index:180;transform:translateX(-50%);align-items:center;gap:6px;min-height:45px;padding:0 20px;border:1px solid #dce5e1;border-radius:23px;background:#fff;color:#2368c8;font-size:12px;font-weight:800;box-shadow:0 6px 20px #17362e20}
-  body.mobile-map-browse .mobile-focus-dock{display:grid;position:fixed;left:50%;bottom:calc(18px + env(safe-area-inset-bottom,0px));z-index:180;transform:translateX(-50%);grid-template-columns:repeat(3,auto);align-items:center;min-width:min(92vw,540px);height:66px;padding:0 14px;border:1px solid #dce5e1;border-radius:33px;background:#f8faf7ee;box-shadow:0 8px 30px #17362e28;backdrop-filter:blur(12px)}
+  body.mobile-map-browse .mobile-focus-dock{display:grid;position:fixed;left:50%;bottom:calc(18px + env(safe-area-inset-bottom,0px));z-index:180;transform:translateX(-50%);grid-template-columns:repeat(2,auto);align-items:center;min-width:min(92vw,540px);height:66px;padding:0 14px;border:1px solid #dce5e1;border-radius:33px;background:#f8faf7ee;box-shadow:0 8px 30px #17362e28;backdrop-filter:blur(12px)}
   body.mobile-map-browse .mobile-focus-dock button{display:flex;align-items:center;justify-content:center;gap:8px;min-height:48px;padding:0 15px;color:#164f43;font-size:13px;font-weight:800;white-space:nowrap}
   body.mobile-map-browse .mobile-focus-dock button+button{border-left:1px solid #e2e8e4}
   body.mobile-map-browse .dock-icon{font-size:22px;line-height:1;color:#0f6b57}
-  body.mobile-map-browse #focus-dock-compare .dock-icon{color:#d27d1c}
   body.mobile-map-browse #focus-dock-more .dock-icon{color:#765ac6;letter-spacing:2px}
   body.mobile-map-browse .mobile-focus-dock strong{font-size:12px}
 
@@ -267,3 +264,5 @@
  body.mobile-map-browse .mobile-focus-dock button{padding:0 9px;font-size:12px}
  body.mobile-list-sheet .workspace>.sidebar{left:6px!important;right:6px!important;inset:auto 6px 0!important}
 }
+
+@media(max-width:1000px){body.mobile-map-mode .focus-primary-actions{justify-content:flex-end}.desktop-detail-title{display:none}}
