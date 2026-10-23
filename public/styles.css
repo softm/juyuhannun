@@ -182,3 +182,9 @@ body:not(.energy-page) .app-header{height:66px;padding:0 24px}
 .fuel-tab-icon.lpg{background:#ed9815}
 .fuel-tab-label{white-space:nowrap}
 .fuel-tabs button.active .fuel-tab-icon{box-shadow:0 0 0 3px #ffffffcc,0 0 0 5px #0f6b5733}
+
+
+/* Stitch b4d1 visual tokens: 주유한눈 - 위성 지도 및 주유소 상세 바텀시트 */
+:root{--stitch-brand:#0a6358;--stitch-brand-light:#e6f4f1;--stitch-blue:#1d68ed;--stitch-green:#10b981;--stitch-amber:#f59e0b;--stitch-red:#ef4444;--stitch-panel:#fff;--stitch-border:#e5e7eb}
+.mobile-search-back,.voice-search,.mobile-fuel-toggle{display:none}
+.voice-search.is-listening{color:#0a6358;background:#e6f4f1}

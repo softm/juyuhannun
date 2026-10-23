@@ -182,3 +182,21 @@ test('mobile default zoom uses the requested city-scale view', async () => {
   assert.match(map, /setZoom\(zoom\)/);
   assert.match(app, /APP_CONFIG\.mobileDefaultZoom\|\|15/);
 });
+
+
+test('Stitch b4d1 mobile design primitives are applied', () => {
+  for (const id of ['mobile-search-back','voice-search','mobile-fuel-toggle']) assert.match(html,new RegExp('id="'+id+'"'));
+  assert.match(css,/Stitch screen b4d1b8b0777145cdb4add508dfb2bb44/);
+  assert.match(css,/border-radius:999px/);
+  assert.match(css,/top:calc\(24px \+ env\(safe-area-inset-top,0px\)\)/);
+  assert.match(css,/border-radius:32px 32px 0 0/);
+  assert.match(css,/background:#ebedf9/);
+  assert.match(css,/background:#7565e3/);
+});
+
+test('Stitch search bar and fuel selector stay functional', () => {
+  assert.match(app,/webkitSpeechRecognition/);
+  assert.match(app,/mobileMapView\.toggleMapChrome\(\)/);
+  assert.match(app,/fuel-tabs'\)\.classList\.remove\('mobile-open'\)/);
+  assert.match(app,/syncMobileFuelToggle\(\)/);
+});
