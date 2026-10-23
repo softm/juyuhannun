@@ -162,7 +162,7 @@ test('lowest price badge is a clickable station selector',()=>{
   ];
   c.setStations(rows);h.flush();
   const content=c._markerState.get('low').content;
-  assert.match(content,/<button type="button" class="lowest-price-badge" data-station-id="low"/);
+  assert.match(content,/<button type="button" class="lowest-price-badge rank-1"[^>]+data-station-id="low"/);
   assert.match(content,/최저가 1,578원 상세 보기/);
   assert.match(content,/최저/);
   assert.match(content,/1,578원/);
