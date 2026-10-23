@@ -118,22 +118,27 @@ async function collectNationwideSnapshot({outputDirectory=resolve(ROOT,'public/d
  let downloadCalls=0,downloadAttempts=[],downloadError=null,downloadFailure=null;
  let businessStations=[],businessStatus='unavailable',businessFetchedAt=null,businessBytes=0,businessError=null;
  let lastDownloadedAt=previousCollection.lastDownloadedAt??null,lastDownloadStatus=previousDownloadStatus,lastDownloadAttemptAt=previousAttemptAt;
- if(plan.due){
+ const previousBusiness=await readJson(resolve(outputDirectory,'business.json'));
+ businessStations=Array.isArray(previousBusiness?.stations)?previousBusiness.stations:[];
+ businessFetchedAt=previousBusiness?.fetchedAt??null;businessBytes=previousBusiness?.bytes??0;
+ businessStatus=previousBusiness?.status??(businessStations.length?'ready':'unavailable');
+ const businessAge=started-Date.parse(businessFetchedAt??'');
+ const businessDue=forceRefresh||!businessStations.length||!Number.isFinite(businessAge)||businessAge>=6*60*60*1000;
+ if(businessDue){
   try{
    const businessResult=await new OpinetDownloadClient({fetchImpl}).download({kind:'basic',searchCond:'1'});
    businessFetchedAt=new Date(clock()).toISOString();businessBytes=businessResult.bytes;
    businessStations=[...mergeBasicAndPrice(businessResult.rows,[],{fetchedAt:businessFetchedAt,kind:'station'}).values()];
    if(businessStations.length<minRows)throw new ServiceError('OPINET_BUSINESS_DOWNLOAD_EMPTY','사업자 기본정보에서 유효한 주유소를 충분히 받지 못했습니다.');
-   businessStatus='ready';
+   businessStatus='ready';businessError=null;
    await atomicWriteJson(resolve(outputDirectory,'business.json'),{version:1,status:'ready',provider:'opinet-public-download',fetchedAt:businessFetchedAt,source:{...SOURCE,name:'한국석유공사 오피넷 사업자 기본정보(현재기준)'},count:businessStations.length,bytes:businessBytes,stations:businessStations.map(({prices,...s})=>s),lastAttempt:{at:attemptedAt,status:'ready'}});
   }catch(error){
    businessError=publicError(error);
-   const previousBusiness=await readJson(resolve(outputDirectory,'business.json'));
-   businessStations=Array.isArray(previousBusiness?.stations)?previousBusiness.stations:[];
-   businessFetchedAt=previousBusiness?.fetchedAt??null;businessBytes=previousBusiness?.bytes??0;
    businessStatus=businessStations.length?'partial':'error';
    await atomicWriteJson(resolve(outputDirectory,'business.json'),{...(previousBusiness??{version:1,provider:'opinet-public-download',stations:[],count:0,bytes:0,fetchedAt:null}),status:businessStatus,lastAttempt:{at:attemptedAt,status:'error',error:businessError},cache:{...previousBusiness?.cache,stale:Boolean(businessStations.length)},error:businessError});
   }
+ }
+ if(plan.due){
   const dates=[kstDate(started),previousKstDate(started)];let gasPrice=null;
   lastDownloadAttemptAt=attemptedAt;
   for(const requestedDate of dates){
@@ -168,9 +173,6 @@ async function collectNationwideSnapshot({outputDirectory=resolve(ROOT,'public/d
   }
   if(!gasPrice&&!downloadFailure)throw new ServiceError('OPINET_DOWNLOAD_EMPTY','전국 가격 파일을 받지 못했습니다.');
  }else {
-  const previousBusiness=await readJson(resolve(outputDirectory,'business.json'));
-  businessStations=Array.isArray(previousBusiness?.stations)?previousBusiness.stations:[];
-  businessFetchedAt=previousBusiness?.fetchedAt??null;businessBytes=previousBusiness?.bytes??0;businessStatus=previousBusiness?.status??(businessStations.length?'ready':'unavailable');
   console.info(JSON.stringify({event:'opinet_daily_price_reuse',date:targetDate,rows:all?.length??0,reason:plan.reason,nextRetryAt:plan.nextRetryAt}));
  }
  const afterPlan=planNationwideCollection({now:clock(),hasPrices:Boolean(all?.length),sourceDate:targetDate,fetchedAt,lastDownloadAttemptAt,lastDownloadStatus});
