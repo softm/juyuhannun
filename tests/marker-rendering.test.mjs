@@ -36,8 +36,8 @@ function harness(provider = 'naver') {
   return { controller, counts, step, flush, zoom: value => { zoom=value; }, bounds: value => { bounds=value; } };
 }
 
-test('주유한눈 10·16·18 scale boundaries show prices from regional zoom and keep viewport-dependent name budgets', () => {
-  for (const [zoom,scale] of [[7,'dot'],[9.99,'dot'],[10,'pin'],[15.99,'pin'],[16,'name'],[17.99,'name'],[18,'detail'],[19,'detail']]) assert.equal(markerScale(zoom),scale);
+test('주유한눈 14·16·18 scale boundaries keep wide mobile views light and show prices from neighborhood zoom', () => {
+  for (const [zoom,scale] of [[7,'dot'],[13.99,'dot'],[14,'pin'],[15.99,'pin'],[16,'name'],[17.99,'name'],[18,'detail'],[19,'detail']]) assert.equal(markerScale(zoom),scale);
   const budgets = [7,12,14,16,18].map(zoom=>labelBudget(zoom,390,600));
   assert.ok(budgets.every((b,i)=>b>0 && (!i || b>=budgets[i-1])));
   assert.equal(labelBudget(13,0,600),0);
@@ -125,7 +125,7 @@ test('selected marker keeps its price-level tone and readable marker scales show
   assert.match(c._markerState.get('mid').content,/station-marker tone-orange/);
   assert.match(c._markerState.get('high').content,/station-marker tone-red is-selected/);
 
-  h.zoom(10);c._updateMarkerScale();
+  h.zoom(14);c._updateMarkerScale();
   assert.equal(c.canvas.dataset.markerScale,'pin');
   h.zoom(16);c._updateMarkerScale();
   assert.equal(c.canvas.dataset.markerScale,'name');
