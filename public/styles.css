@@ -99,3 +99,14 @@ body:not(.energy-page) .app-header{height:66px;padding:0 24px}
 .workspace .data-status>div{min-width:0}
 .workspace .data-status div>span{overflow-wrap:anywhere}
 @media(max-width:760px){.workspace .data-status{max-width:100%}.workspace .extra-filters p{line-height:1.6}}
+
+
+/* Shared detail structures introduced by the mobile focus design; desktop keeps them readable. */
+.station-focus-detail .focus-breadcrumb{color:#7f8e87;font-size:11px}
+.station-focus-detail .focus-brand-badge{margin-top:2px}
+.station-focus-detail .focus-primary-actions{display:flex;justify-content:space-between;gap:12px}
+.station-focus-detail .fuel-price-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.station-focus-detail .focus-detail-tabs{display:grid;grid-template-columns:1fr 1fr}
+.station-focus-detail .contact-row{display:grid;grid-template-columns:30px minmax(0,1fr) auto}
+.station-focus-detail .focus-detail-meta dd{margin:0}
+.map-secondary-actions{display:none}

@@ -62,3 +62,30 @@ test('detail sheet handle is interactive and snaps focus modes', () => {
   assert.match(css, /--sheet-drag-y/);
   assert.match(css, /touch-action:none/);
 });
+
+
+test('approved focus design renders branded marker tones, selected price pin and station callout', () => {
+  assert.match(map, /markerTone\(/);
+  assert.match(map, /selected-station-callout/);
+  assert.match(map, /tone-blue/);
+  assert.match(map, /#2f7df6/);
+  assert.match(map, /station-marker\.is-selected/);
+});
+
+test('station focus sheet contains three fuel cards, compare action, tabs and contact actions', () => {
+  assert.match(app, /detailPrice\(station,'B027','휘발유','green'\)/);
+  assert.match(app, /detailPrice\(station,'D047','경유','blue'\)/);
+  assert.match(app, /detailPrice\(station,'K015','LPG','orange'\)/);
+  assert.match(app, /compare-station-button/);
+  assert.match(app, /focus-detail-tabs/);
+  assert.match(app, /copy-address/);
+  assert.match(app, /운영시간 정보 미제공/);
+});
+
+test('expanded tools match approved staged design', () => {
+  assert.match(html, /map-secondary-actions/);
+  assert.match(css, /mobile-map-expanded \.map-secondary-actions/);
+  assert.match(css, /mobile-map-expanded \.search-block \.fuel-tabs button\.active/);
+  assert.match(css, /mobile-map-expanded \.search-block \.filter-button/);
+  assert.match(css, /focus-route-button/);
+});

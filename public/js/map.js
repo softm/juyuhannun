@@ -97,6 +97,12 @@ function loadLeaflet() {
   return leafletTask;
 }
 
+function markerTone(brand,id='') {
+  const tones={SKE:'blue',GSC:'green',HDO:'orange',SOL:'red',RTE:'green',RTX:'blue',NHO:'green',E1G:'orange',SKG:'blue',ETC:'slate'};
+  if(tones[brand])return tones[brand];
+  const palette=['blue','green','orange','red','slate'];let hash=0;for(const ch of String(id))hash=(hash*31+ch.charCodeAt(0))>>>0;return palette[hash%palette.length];
+}
+
 function installMarkerStyles() {
   if (document.getElementById('juyuhannun-map-style')) return;
   const style = document.createElement('style');
@@ -107,44 +113,33 @@ function installMarkerStyles() {
     '.map-provider-notice{position:absolute;left:12px;bottom:48px;z-index:1000;max-width:min(310px,calc(100% - 70px));padding:9px 12px;border:1px solid #d8e0dc;border-radius:10px;background:rgba(255,255,255,.97);color:#405449;font-size:12px;line-height:1.45;box-shadow:0 3px 12px #12251a12;pointer-events:none}',
     '.map-provider-notice[hidden]{display:none}',
     '.price-marker-shell{background:none!important;border:0!important}',
-    '.price-pin{position:relative;display:block;min-width:65px;min-height:36px;padding:7px 10px;border:1px solid #405747;border-radius:18px;background:#fff;color:#172e20;font:800 14px/1.2 system-ui,sans-serif;box-shadow:0 3px 9px #0e241f26;cursor:pointer;white-space:nowrap}',
-    '.price-pin:after{content:"";position:absolute;left:calc(50% - 4px);bottom:-5px;width:8px;height:8px;transform:rotate(45deg);border-right:1px solid #405747;border-bottom:1px solid #405747;background:inherit}',
-    '.price-pin:focus-visible{outline:3px solid #e49c25;outline-offset:3px}',
-    '.price-pin.selected{border:2px solid #fff;background:#146d45;color:#fff;box-shadow:0 0 0 2px #146d45,0 5px 14px #173a4533}',
-    '.price-pin.selected:after{border-color:#146d45}',
-    '.price-pin.is-stale{border-style:dashed;color:#69736c}',
-    '.price-pin.selected.is-stale{color:#fff;background:#66756b}',
-    '.price-pin-value{display:block}.price-pin-value small{font-size:10px;margin-left:2px;font-weight:600}',
-    '.price-pin-name{display:none;position:absolute;left:50%;bottom:calc(100% + 10px);width:max-content;max-width:200px;margin-left:0;padding:6px 9px;border:1px solid #d8e3dc;border-radius:7px;background:#fff;color:#172e20;font:600 12px/1.35 system-ui,sans-serif;white-space:normal;box-shadow:0 3px 9px #0e241f20;pointer-events:none}',
-    '.price-pin.selected .price-pin-name{display:block}',
-    '.price-pin.selected .price-pin-name:after{content:"";position:absolute;left:50%;bottom:-7px;width:12px;height:12px;transform:translateX(-50%) rotate(45deg);border-right:1px solid #146d45;border-bottom:1px solid #146d45;background:#f0faf3}',
-
-    '.station-marker{position:relative;width:72px;height:40px;pointer-events:none}',
-    '.station-marker .price-pin{position:absolute;left:36px;bottom:5px;box-sizing:border-box;transform:translateX(-50%);pointer-events:auto}',
-    '.price-pin-glyph{display:none;font-size:16px;line-height:1}',
-    '.price-pin-glyph svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:1.8}',
-    '.price-label-title{display:block;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}',
-    '.price-label-value,.price-label-detail{display:none}',
-    '.price-pin-name .price-label-detail{font-size:10px;font-weight:500;line-height:1.5;margin-top:4px;color:#53655f}',
-    '.price-label-detail>span{display:block;max-width:200px}',
-    '.price-pin.label-visible .price-pin-name,.price-pin.label-measure .price-pin-name{display:block;transform:translateX(-50%)}',
-    '.price-pin.label-measure .price-pin-name{visibility:hidden}',
-    '.price-pin.label-detail .price-label-detail{display:block}',
-    '.map-surface[data-marker-scale="dot"] .price-pin:not(.selected),.map-surface.dense-markers .price-pin:not(.selected){min-width:12px;width:12px;min-height:12px;height:12px;bottom:-6px;padding:0;border:2px solid #fff;border-radius:50%;background:#287b50;box-shadow:0 1px 3px #1236}',
+    '.station-marker{position:relative;width:72px;height:64px;pointer-events:none}',
+    '.station-marker .price-pin{position:absolute;left:36px;bottom:7px;display:flex;align-items:center;justify-content:center;width:34px;height:34px;min-width:34px;min-height:34px;padding:0;border:3px solid #fff;border-radius:50%;background:var(--pin,#2f7df6);color:#fff;box-shadow:0 3px 10px #132b3c4a;cursor:pointer;pointer-events:auto}',
+    '.station-marker .price-pin:after{content:"";position:absolute;left:50%;bottom:-7px;width:10px;height:10px;transform:translateX(-50%) rotate(45deg);border-right:3px solid #fff;border-bottom:3px solid #fff;background:var(--pin,#2f7df6);border-radius:0 0 2px 0}',
+    '.price-pin.tone-blue{--pin:#347ee8}.price-pin.tone-green{--pin:#16a077}.price-pin.tone-orange{--pin:#ed9815}.price-pin.tone-red{--pin:#e44f5e}.price-pin.tone-slate{--pin:#718397}',
+    '.price-pin:focus-visible{outline:3px solid #f6b632;outline-offset:3px}',
+    '.price-pin-glyph{display:flex;align-items:center;justify-content:center;position:relative;z-index:2}',
+    '.price-pin-glyph svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2}',
+    '.price-pin-value{display:none;position:relative;z-index:2;font:800 18px/1 system-ui,sans-serif}.price-pin-value small{display:none}',
+    '.station-marker.is-selected{width:96px;height:92px}',
+    '.station-marker .price-pin.selected{left:48px;bottom:5px;width:66px;height:66px;min-width:66px;min-height:66px;border-width:4px;background:#2f7df6;--pin:#2f7df6;box-shadow:0 0 0 3px #fff8,0 8px 22px #1767d266}',
+    '.station-marker .price-pin.selected:after{bottom:-10px;width:17px;height:17px;border-width:4px;background:#2f7df6}',
+    '.station-marker .price-pin.selected .price-pin-glyph{display:none}',
+    '.station-marker .price-pin.selected .price-pin-value{display:block}',
+    '.price-pin.is-stale:not(.selected){filter:saturate(.55);opacity:.84}',
+    '.selected-station-callout{position:absolute;left:48px;bottom:82px;transform:translateX(-50%);display:flex;align-items:center;gap:8px;width:max-content;max-width:240px;min-height:44px;padding:8px 12px 8px 9px;border:1px solid #d8e3dc;border-radius:14px;background:#fff;color:#173e34;box-shadow:0 7px 22px #102a2433;font:800 13px/1.25 system-ui,sans-serif;pointer-events:none;z-index:6}',
+    '.selected-station-callout:after{content:"";position:absolute;left:50%;bottom:-7px;width:13px;height:13px;transform:translateX(-50%) rotate(45deg);border-right:1px solid #d8e3dc;border-bottom:1px solid #d8e3dc;background:#fff}',
+    '.selected-station-callout .callout-pump{display:flex;align-items:center;justify-content:center;width:29px;height:29px;border-radius:50%;background:#2f7df6;color:#fff;flex:none}',
+    '.selected-station-callout .callout-pump svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:2}',
+    '.selected-station-callout strong{max-width:168px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.selected-station-callout b{font-size:18px;font-weight:500;color:#42675d}',
+    '.price-pin-name{display:none!important}',
+    '.map-surface[data-marker-scale="dot"] .price-pin:not(.selected),.map-surface.dense-markers .price-pin:not(.selected){width:15px;height:15px;min-width:15px;min-height:15px;border-width:2px;bottom:1px;box-shadow:0 1px 4px #1236}',
     '.map-surface[data-marker-scale="dot"] .price-pin:not(.selected):after,.map-surface.dense-markers .price-pin:not(.selected):after{display:none}',
-    '.map-surface[data-marker-scale="dot"] .price-pin:not(.selected) .price-pin-value,.map-surface[data-marker-scale="pin"] .price-pin:not(.selected) .price-pin-value,.map-surface.dense-markers .price-pin:not(.selected) .price-pin-value{display:none}',
-    '.map-surface[data-marker-scale="pin"]:not(.dense-markers) .price-pin:not(.selected){min-width:28px;min-height:28px;padding:5px;border-radius:10px}',
-    '.map-surface[data-marker-scale="pin"]:not(.dense-markers) .price-pin:not(.selected) .price-pin-glyph{display:block}',
-    '.map-surface[data-marker-scale="dot"] .price-pin:not(.selected) .price-label-value,.map-surface[data-marker-scale="pin"] .price-pin:not(.selected) .price-label-value,.map-surface.dense-markers .price-pin:not(.selected) .price-label-value{display:block;color:#17633d;font-weight:800;margin-top:2px}',
-    '.map-surface[data-marker-scale="dot"] .price-pin:not(.selected).is-stale,.map-surface.dense-markers .price-pin:not(.selected).is-stale{background:#929b93}',
-    '.map-surface .price-pin.is-stale:not(.selected){border-style:dashed;color:#786b5b}',
-    '.map-surface .price-pin.is-stale:not(.selected) .price-pin-name{border-style:dashed;border-color:#a49a8c}',
-    '.map-surface .price-pin.is-stale:not(.selected) .price-label-value{color:#786b5b}',
-    '.map-surface.dense-markers .price-pin:not(.selected){box-shadow:none}',
-    '.map-surface[data-marker-size="small"] .price-pin:not(.selected){min-width:8px;width:8px;min-height:8px;height:8px;bottom:-4px;border-width:1px}',
-    '.station-marker .price-pin.selected .price-pin-name{display:block;transform:translateX(-50%);border-color:#146d45;background:#f0faf3;color:#123e32;font-weight:800;font-size:13px;padding:9px 12px;border-radius:12px;box-shadow:0 6px 18px #0e241f2f;z-index:4}',
+    '.map-surface[data-marker-scale="dot"] .price-pin:not(.selected) .price-pin-glyph,.map-surface.dense-markers .price-pin:not(.selected) .price-pin-glyph{display:none}',
+    '.map-surface[data-marker-size="small"] .price-pin:not(.selected){width:11px;height:11px;min-width:11px;min-height:11px;border-width:2px}',
     '.map-you{display:block;width:18px;height:18px;border:3px solid #fff;border-radius:50%;background:#2674db;box-shadow:0 0 0 7px #2674db30,0 2px 8px #193a6040}',
     '.juyuhannun-map .leaflet-control-attribution{font-size:10px;background:rgba(255,255,255,.92)}',
+    '@media(max-width:1000px){.station-marker .price-pin.selected{width:70px;height:70px;min-width:70px;min-height:70px}.selected-station-callout{font-size:14px;min-height:46px}}',
     '@media(prefers-reduced-motion:reduce){.price-pin{transition:none}}'
   ].join('\n');
   document.head.append(style);
@@ -543,7 +538,9 @@ export class MapController {
     const stale = presentation ? presentation.stale !== false : !confidence.eligible;
     const unit = presentation ? String(presentation.unit || '') : info ? '원' : '';
     const facts = [BRANDS[row.brand] || row.brand, row.facilities?.self === true ? '셀프' : row.facilities?.self === false ? '일반' : null, info?.sourceDate ? info.sourceDate + ' 기준' : confidence.label].filter(Boolean).join(' · ');
-    const content = '<div class="station-marker"><button type="button" class="price-pin' + (selected ? ' selected' : '') +
+    const tone=markerTone(row.brand,id);
+    const callout=selected?'<div class="selected-station-callout"><span class="callout-pump" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="12" height="17" rx="2"/><path d="M6 7h6v4H6ZM1 21h16m-2-8h2v5a2 2 0 0 0 4 0V8l-4-4m3 3v4h1"/></svg></span><strong>'+escapeHTML(row.name||'주유소')+'</strong><b aria-hidden="true">›</b></div>':'';
+    const content = '<div class="station-marker' + (selected ? ' is-selected' : '') + '">'+callout+'<button type="button" class="price-pin tone-' + tone + (selected ? ' selected' : '') +
       (stale ? ' is-stale' : '') + '" data-station-id="' + escapeHTML(id) +
       '" aria-label="' + escapeHTML(label) + '" aria-pressed="' + selected + '" title="' + escapeHTML(label) +
       '"><span class="price-pin-glyph" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="12" height="17" rx="2"/><path d="M6 7h6v4H6ZM1 21h16m-2-8h2v5a2 2 0 0 0 4 0V8l-4-4m3 3v4h1"/></svg></span><span class="price-pin-value">' + escapeHTML(price) +
