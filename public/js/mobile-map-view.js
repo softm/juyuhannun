@@ -94,7 +94,24 @@ export function setupMobileMapView({
     snapshot();armHistory();detailReturnMode=mode==='map-collapsed'?'map-collapsed':'map-browse';showDetail();setMode(expanded?'expanded-tools':'focus-detail');return true;
   }
   function closeDetail(){if(destroyed)return;if(!media.matches){hideDetail();return;}hideDetail();disarmHistoryInPlace();setMode(detailReturnMode||'map-browse');}
-  function setDetailMode(next){if(!detailModes.has(next)||!detailDialog?.open)return;detailDialog.style.removeProperty('--sheet-live-height');setMode(next);}
+  function clearLiveDetailHeight(){
+    if(!detailDialog)return;
+    detailDialog.style.removeProperty('--sheet-live-height');
+    detailDialog.style.removeProperty('height');
+    detailDialog.style.removeProperty('max-height');
+    detailDialog.style.removeProperty('min-height');
+  }
+  function applyLiveDetailHeight(height){
+    if(!detailDialog)return;
+    const value=Math.max(1,Math.round(Number(height)||0))+'px';
+    detailDialog.style.setProperty('--sheet-live-height',value);
+    // The sheet CSS has several historical max-height rules. Inline !important keeps
+    // the panel physically attached to the finger on Safari/Chrome during the drag.
+    detailDialog.style.setProperty('height',value,'important');
+    detailDialog.style.setProperty('max-height',value,'important');
+    detailDialog.style.setProperty('min-height',value,'important');
+  }
+  function setDetailMode(next){if(!detailModes.has(next)||!detailDialog?.open)return;clearLiveDetailHeight();setMode(next);}
   function toggleDetailExpanded(){if(destroyed||!media.matches||!detailDialog?.open)return;setDetailMode(mode==='expanded-tools'?'focus-detail':'expanded-tools');}
 
   function openListSheet({expanded=false}={}){if(destroyed||!media.matches)return;snapshot();armHistory();hideDetail();sidebar.style.removeProperty('--list-drag-y');setMode(expanded?'list-sheet-expanded':'list-sheet');}
@@ -128,7 +145,7 @@ export function setupMobileMapView({
     const maxHeight=viewportHeight*.9;
     const base=drag.startHeight||(drag.startMode==='expanded-tools'?expandedHeight:compactHeight);
     const next=Math.max(minHeight,Math.min(maxHeight,base-raw));
-    detailDialog.style.setProperty('--sheet-live-height',next+'px');
+    applyLiveDetailHeight(next);
     if(Math.abs(raw)>8)suppressDetailHandleClick=true;
     requestResize();
     event.preventDefault();
@@ -138,7 +155,7 @@ export function setupMobileMapView({
     const dy=(event.clientY??drag.lastY)-drag.startY,elapsed=Math.max(1,performance.now()-drag.startedAt),velocity=dy/elapsed,startMode=drag.startMode,moved=Math.abs(dy)>8;
     drag=null;
     detailDialog?.classList.remove('is-dragging');
-    detailDialog?.style.removeProperty('--sheet-live-height');
+    clearLiveDetailHeight();
     if(moved){suppressDetailHandleClick=true;setTimeout(()=>{suppressDetailHandleClick=false;},0);}
     if(cancelled)return;
     if(startMode==='focus-detail'){
@@ -166,14 +183,19 @@ export function setupMobileMapView({
   function onPopState(){if(!historyArmed)return;historyArmed=false;if(detailModes.has(mode)){hideDetail();setMode(detailReturnMode||'map-browse');}else if(listModes.has(mode))setMode('map-browse');}
   function onMediaChange(){if(media.matches){startMobileExpanded();return;}disarmHistoryInPlace();hideDetail();body.classList.remove('mobile-map-mode','mobile-map-focus','mobile-map-expanded','mobile-map-browse','mobile-map-collapsed','mobile-list-sheet','mobile-list-expanded');sidebar.inert=false;sidebar.style.removeProperty('--list-drag-y');mode='default';requestResize();syncButtons();}
 
+  const onWindowPointerUp=e=>finishHandleDrag(e);
+  const onWindowPointerCancel=e=>finishHandleDrag(e,true);
+
   toggleButton.addEventListener('click',toggleMapChrome);
   listButton.addEventListener('click',toggleList);
   detailExpandButton?.addEventListener('click',toggleDetailExpanded);
   detailHandle?.addEventListener('click',onHandleClick);
   detailHandle?.addEventListener('pointerdown',onHandlePointerDown);
-  detailHandle?.addEventListener('pointermove',onHandlePointerMove);
-  detailHandle?.addEventListener('pointerup',e=>finishHandleDrag(e));
-  detailHandle?.addEventListener('pointercancel',e=>finishHandleDrag(e,true));
+  // Keep tracking after the finger leaves the 18px handle. Pointer capture is not
+  // consistently reliable inside <dialog> on older mobile WebKit.
+  window.addEventListener('pointermove',onHandlePointerMove,{passive:false});
+  window.addEventListener('pointerup',onWindowPointerUp);
+  window.addEventListener('pointercancel',onWindowPointerCancel);
   listSheetHandle?.addEventListener('click',()=>setMode(mode==='list-sheet-expanded'?'list-sheet':'list-sheet-expanded'));
   listSheetHandle?.addEventListener('pointerdown',onListPointerDown);
   listSheetHandle?.addEventListener('pointermove',onListPointerMove);
@@ -185,5 +207,5 @@ export function setupMobileMapView({
   media.addEventListener('change',onMediaChange);
   if(media.matches)startMobileExpanded();else syncButtons();
 
-  return {startMobileExpanded,enterDetail,closeDetail,toggleDetailExpanded,openListSheet,closeListSheet,toggleMapChrome,exit,afterLayout,isActive:()=>focusModes.has(mode),isDetailOpen:()=>detailModes.has(mode),isMobile:()=>media.matches,getMode:()=>mode,destroy(){if(destroyed)return;disarmHistoryInPlace();hideDetail();body.classList.remove('mobile-map-mode','mobile-map-focus','mobile-map-expanded','mobile-map-browse','mobile-map-collapsed','mobile-list-sheet','mobile-list-expanded');destroyed=true;toggleButton.removeEventListener('click',toggleMapChrome);listButton.removeEventListener('click',toggleList);detailExpandButton?.removeEventListener('click',toggleDetailExpanded);detailHandle?.removeEventListener('click',onHandleClick);detailHandle?.removeEventListener('pointerdown',onHandlePointerDown);detailHandle?.removeEventListener('pointermove',onHandlePointerMove);listSheetHandle?.removeEventListener('pointerdown',onListPointerDown);listSheetHandle?.removeEventListener('pointermove',onListPointerMove);listSheetClose?.removeEventListener('click',closeListSheet);document.removeEventListener('keydown',onKeyDown);window.removeEventListener('popstate',onPopState);media.removeEventListener('change',onMediaChange);}};
+  return {startMobileExpanded,enterDetail,closeDetail,toggleDetailExpanded,openListSheet,closeListSheet,toggleMapChrome,exit,afterLayout,isActive:()=>focusModes.has(mode),isDetailOpen:()=>detailModes.has(mode),isMobile:()=>media.matches,getMode:()=>mode,destroy(){if(destroyed)return;disarmHistoryInPlace();hideDetail();body.classList.remove('mobile-map-mode','mobile-map-focus','mobile-map-expanded','mobile-map-browse','mobile-map-collapsed','mobile-list-sheet','mobile-list-expanded');destroyed=true;toggleButton.removeEventListener('click',toggleMapChrome);listButton.removeEventListener('click',toggleList);detailExpandButton?.removeEventListener('click',toggleDetailExpanded);detailHandle?.removeEventListener('click',onHandleClick);detailHandle?.removeEventListener('pointerdown',onHandlePointerDown);window.removeEventListener('pointermove',onHandlePointerMove);window.removeEventListener('pointerup',onWindowPointerUp);window.removeEventListener('pointercancel',onWindowPointerCancel);listSheetHandle?.removeEventListener('pointerdown',onListPointerDown);listSheetHandle?.removeEventListener('pointermove',onListPointerMove);listSheetClose?.removeEventListener('click',closeListSheet);document.removeEventListener('keydown',onKeyDown);window.removeEventListener('popstate',onPopState);media.removeEventListener('change',onMediaChange);}};
 }
