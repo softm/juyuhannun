@@ -200,3 +200,13 @@ test('Stitch search bar and fuel selector stay functional', () => {
   assert.match(app,/fuel-tabs'\)\.classList\.remove\('mobile-open'\)/);
   assert.match(app,/syncMobileFuelToggle\(\)/);
 });
+
+
+test('detail handle drag changes actual sheet height and avoids duplicate click toggle', () => {
+  assert.match(view,/--sheet-live-height/);
+  assert.match(view,/viewportHeight\*\.58/);
+  assert.match(view,/viewportHeight\*\.82/);
+  assert.match(view,/suppressDetailHandleClick/);
+  assert.match(css,/height:var\(--sheet-live-height,58dvh\)!important/);
+  assert.match(css,/height:var\(--sheet-live-height,82dvh\)!important/);
+});

@@ -474,3 +474,17 @@
  body.mobile-map-expanded .search-block .filter-line,
  body.mobile-map-browse .search-block .filter-line{left:112px}
 }
+
+
+/* Detail bottom sheet: compact 58% -> expanded 82%, with live drag height. */
+@media(max-width:1000px){
+ body.mobile-map-focus .detail-dialog[open]{height:var(--sheet-live-height,58dvh)!important;max-height:var(--sheet-live-height,58dvh)!important}
+ body.mobile-map-expanded .detail-dialog[open]{height:var(--sheet-live-height,82dvh)!important;max-height:var(--sheet-live-height,82dvh)!important}
+ body.mobile-map-focus #detail-content,body.mobile-map-expanded #detail-content{height:calc(100% - 54px)!important;max-height:none!important;overflow:auto}
+ body.mobile-map-focus .detail-dialog[open],body.mobile-map-expanded .detail-dialog[open]{transform:none!important;transition:height .22s cubic-bezier(.2,.8,.2,1),max-height .22s cubic-bezier(.2,.8,.2,1)}
+ body.mobile-map-focus .detail-dialog.is-dragging[open],body.mobile-map-expanded .detail-dialog.is-dragging[open]{transition:none!important}
+}
+@media(max-height:650px) and (max-width:1000px){
+ body.mobile-map-focus .detail-dialog[open]{height:var(--sheet-live-height,55dvh)!important;max-height:var(--sheet-live-height,55dvh)!important}
+ body.mobile-map-expanded .detail-dialog[open]{height:var(--sheet-live-height,78dvh)!important;max-height:var(--sheet-live-height,78dvh)!important}
+}

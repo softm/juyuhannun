@@ -142,7 +142,8 @@ function installMarkerStyles() {
     '.price-pin-glyph svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2}',
     '.price-pin-value{display:none;position:relative;z-index:2;font:800 18px/1 system-ui,sans-serif}.price-pin-value small{display:none}',
     '.station-marker.is-selected{width:96px;height:92px}',
-    '.station-marker .price-pin.selected{left:48px;bottom:5px;width:66px;height:66px;min-width:66px;min-height:66px;border-width:4px;background:var(--pin,#347ee8);box-shadow:0 0 0 3px #fff8,0 8px 22px color-mix(in srgb,var(--pin,#347ee8) 45%,transparent)}',
+    '@keyframes selected-pin-bounce{0%{transform:translateY(0) scale(1)}28%{transform:translateY(-14px) scale(1.07)}48%{transform:translateY(0) scale(.98)}68%{transform:translateY(-7px) scale(1.035)}100%{transform:translateY(0) scale(1)}}',
+    '.station-marker .price-pin.selected{left:48px;bottom:5px;width:66px;height:66px;min-width:66px;min-height:66px;border-width:4px;background:var(--pin,#347ee8);box-shadow:0 0 0 3px #fff8,0 8px 22px color-mix(in srgb,var(--pin,#347ee8) 45%,transparent);animation:selected-pin-bounce .72s cubic-bezier(.22,.8,.3,1) 1 both;transform-origin:50% 100%}',
     '.station-marker .price-pin.selected:after{bottom:-10px;width:17px;height:17px;border-width:4px;background:var(--pin,#347ee8)}',
     '.station-marker .price-pin.selected .price-pin-glyph{display:none}',
     '.station-marker .price-pin.selected .price-pin-value{display:block}',
@@ -164,7 +165,7 @@ function installMarkerStyles() {
     '.map-you{display:block;width:18px;height:18px;border:3px solid #fff;border-radius:50%;background:#2674db;box-shadow:0 0 0 7px #2674db30,0 2px 8px #193a6040}',
     '.juyuhannun-map .leaflet-control-attribution{font-size:10px;background:rgba(255,255,255,.92)}',
     '@media(max-width:1000px){.station-marker .price-pin.selected{width:70px;height:70px;min-width:70px;min-height:70px}.selected-station-callout{font-size:14px;min-height:46px}}',
-    '@media(prefers-reduced-motion:reduce){.price-pin{transition:none}}'
+    '@media(prefers-reduced-motion:reduce){.price-pin{transition:none}.station-marker .price-pin.selected{animation:none}}'
   ].join('\n');
   document.head.append(style);
 }
@@ -579,6 +580,8 @@ export class MapController {
     const sourceKey = JSON.stringify([point, row.name, row.brand, row.facilities?.self, row.roadAddress, row.address, this._fuel, selected, info, presentation, tone, this._priceBands, Math.floor(now / 60000)]);
     if (cached && previous?.sourceKey === sourceKey) return false;
     const price = presentation ? String(presentation.value ?? '미확인') : info ? markerPriceFormat.format(info.price) : '미확인';
+    const numericPresentation=Number(presentation?.value);
+    const visiblePrice=info?markerPriceFormat.format(info.price):(Number.isFinite(numericPresentation)&&numericPresentation>0?markerPriceFormat.format(numericPresentation):'—');
     const fuelName = FUEL_TYPES.find(item => item.code === this._fuel)?.name || '유종';
     const label = presentation ? String(presentation.label || row.name) : row.name + ', ' + fuelName + ' ' + (info ? price + '원' : '가격 미확인') + ', ' + confidence.label;
     const unit = presentation ? String(presentation.unit || '') : info ? '원' : '';
@@ -587,10 +590,10 @@ export class MapController {
     const content = '<div class="station-marker tone-' + tone + (selected ? ' is-selected' : '') + '">'+callout+'<button type="button" class="price-pin' + (selected ? ' selected' : '') +
       (stale ? ' is-stale' : '') + '" data-station-id="' + escapeHTML(id) +
       '" aria-label="' + escapeHTML(label) + '" aria-pressed="' + selected + '" title="' + escapeHTML(label) +
-      '"><span class="price-pin-glyph" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="12" height="17" rx="2"/><path d="M6 7h6v4H6ZM1 21h16m-2-8h2v5a2 2 0 0 0 4 0V8l-4-4m3 3v4h1"/></svg></span><span class="price-pin-value">' + escapeHTML(price) +
-      (unit ? '<small>' + escapeHTML(unit) + '</small>' : '') + '</span><span class="price-pin-name"><span class="price-label-title">' +
-      escapeHTML(row.name || '주유소') + '</span><span class="price-label-value">' + escapeHTML(price + unit) +
-      '</span><span class="price-label-detail">' + escapeHTML(facts) + '<span>' + escapeHTML(row.roadAddress || row.address || '') + '</span></span></span></button></div>';
+      '"><span class="price-pin-glyph" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="12" height="17" rx="2"/><path d="M6 7h6v4H6ZM1 21h16m-2-8h2v5a2 2 0 0 0 4 0V8l-4-4m3 3v4h1"/></svg></span><span class="price-pin-value">' + escapeHTML(visiblePrice) +
+      (visiblePrice!=='—'&&unit ? '<small>' + escapeHTML(unit) + '</small>' : '') + '</span><span class="price-pin-name"><span class="price-label-title">' +
+      escapeHTML(row.name || '주유소') + '</span><span class="price-label-value">' + escapeHTML(visiblePrice+(visiblePrice!=='—'?unit:'')) +
+      '</span><span class="price-label-detail">' + escapeHTML(facts) + '</span></span></button></div>';
     let marker = this._markers.get(id) || this._markerPool.get(id);
     const zIndex = selected ? 5000 : this._retainedLabels.has(id) ? 1000 : 100;
     const changed = !previous || previous.content !== content;

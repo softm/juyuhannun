@@ -139,3 +139,15 @@ test('stale or missing price markers use slate rather than price-level colors',(
   c.setStations([row('stale',{prices:{B027:{price:1500,priceUpdatedAt:'2020-01-01T00:00:00Z'}}})]);h.flush();
   assert.match(c._markerState.get('stale').content,/station-marker tone-slate/);
 });
+
+
+test('selected marker visibly uses price only and has bounce selection animation',()=>{
+  const h=harness(),c=h.controller;
+  const fresh=new Date().toISOString();
+  c.setStations([row('selected',{roadAddress:'서울특별시 테스트로 1',prices:{B027:{price:1589,priceUpdatedAt:fresh,fetchedAt:fresh}}})],'selected');h.flush();
+  const content=c._markerState.get('selected').content;
+  assert.match(content,/price-pin-value">1,589/);
+  assert.doesNotMatch(content,/price-label-detail[^<]*서울특별시 테스트로 1/);
+  assert.match(content,/selected-station-callout/);
+  assert.match(content,/테스트 selected/);
+});
