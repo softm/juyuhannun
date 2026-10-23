@@ -22,7 +22,8 @@ function render(d){
  $('price-date').textContent='실제 가격 기준일 '+(c.priceDate||'미확인');
  $('next-retry').textContent=collection.nextRetryAt?formatTime(collection.nextRetryAt):'예약 실행 때 확인';
  $('collection-state').textContent=(collection.nextRetryAt?'해당 시각 이후 첫 실행에서 재시도합니다. ':'')+(collection.expectedDate?`필요 기준일 ${collection.expectedDate} · `:'')+(collection.lastDownloadStatus==='error'?'최근 다운로드 실패':collection.usedPreviousDate?'이전 기준일 파일 사용 중':collection.checkedAt?`마지막 확인 ${formatTime(collection.checkedAt)}`:'수집 기록 확인 중');
- $('collections').innerHTML=d.collections.map(row=>`<tr><td>${esc(row.name)}</td><td><span class="badge ${esc(Object.hasOwn(names,row.status)?row.status:'error')}">${esc(names[row.status]||'확인 필요')}</span>${row.retained?'<br>이전 자료 보존':row.reused?'<br>기존 자료 재사용':''}</td><td>${n(row.count)}</td><td>${esc(formatTime(row.fetchedAt))}</td><td>${esc(formatTime(row.lastAttempt?.at))}<br>${esc(names[row.lastAttempt?.status]||'미확인')}</td><td>${esc(row.schedule)}</td></tr>`).join('');
+ const statusLabel=row=>row.status==='partial'&&row.id==='nationwide'?'지도 표시 일부':row.status==='partial'&&row.id==='searchable'?'가격 원본 확보':names[row.status]||'확인 필요';
+ $('collections').innerHTML=d.collections.map(row=>`<tr><td>${esc(row.name)}</td><td><span class="badge ${esc(Object.hasOwn(names,row.status)?row.status:'error')}">${esc(statusLabel(row))}</span>${row.retained?'<br>이전 자료 보존':row.reused?'<br>기존 자료 재사용':''}</td><td>${n(row.count)}</td><td>${esc(formatTime(row.fetchedAt))}</td><td>${esc(formatTime(row.lastAttempt?.at))}<br>${esc(names[row.lastAttempt?.status]||'미확인')}</td><td>${esc(row.schedule)}</td></tr>`).join('');
  const issues=d.collections.filter(row=>row.error).map(row=>`${row.name}: ${issueText(row.error)}`);
  if(collection.lastDownloadError)issues.push('전국 파일 최근 다운로드: '+issueText(collection.lastDownloadError));
  if(c.standardDataStatus&&c.standardDataStatus!=='ready')issues.push('최신 공개 좌표 조회가 실패해 이전에 확보한 좌표와 공식 ID 보완 좌표를 사용했습니다.');
