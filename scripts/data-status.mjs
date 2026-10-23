@@ -7,7 +7,7 @@ import {DailyQuota} from '../server/quota.mjs';
 
 const count=v=>Array.isArray(v)?v.length:0;
 const number=v=>Number.isInteger(v)&&v>=0?v:0;
-export function summarizeData({manifest={},nationwide={},searchable={},regional={},averages={},highway={},comparisons={},coordinates={},quota=null,generatedAt=new Date().toISOString()}={}){
+export function summarizeData({manifest={},nationwide={},searchable={},regional={},averages={},highway={},comparisons={},coordinates={},addressGeocoding={},quota=null,generatedAt=new Date().toISOString()}={}){
  const now=Date.parse(generatedAt),mapped=count(nationwide.stations),total=number(manifest.priceStationCount??nationwide.coverage?.totalPriceStations);
  const serviceReady=mapped>0&&['ready','partial'].includes(nationwide.status)&&nationwide.coverage?.serviceReady!==false;
  const nationalSource=count(searchable.stations)?searchable:nationwide;
@@ -65,18 +65,18 @@ export function summarizeData({manifest={},nationwide={},searchable={},regional=
   version:1,generatedAt,activeMap:serviceReady?'nationwide':'regional',mapStrategy:'merged',
   nationwide:{status:nationwide.status??'error',totalPriceStations:total,searchablePriceStations:count(searchable.stations),mappedPriceStations:mapped,unmappedPriceStations:Math.max(0,total-mapped),mappedRatio:total?Number((mapped/total).toFixed(4)):0,complete:nationwide.coverage?.complete===true,serviceReady,priceDate:manifest.priceDate??nationwide.coverage?.priceDate??null,fetchedAt:nationwide.fetchedAt??null,priceSource:manifest.priceSource??null,businessInfo:manifest.businessInfo??null,standardDataStatus:manifest.standardDataStatus??null,collection},
   availability:{checkedAt:generatedAt,displayableStationCount:mapStations.length,defaultIncludesHistorical:true,priceCohorts:[...cohorts.values()]},
-  coordinates:{status:coordinates.status??'awaiting_data',queue:coordinates.queue??null,lastAttempt:coordinates.lastAttempt??null,lastSuccessAt:coordinates.lastSuccessAt??null,dayBudget:coordinates.dayBudget??null,budget:coordinates.budget??null,error:coordinates.error??null},comparisonAudit,collections,quota:quota??coordinates.quota??regional.quota??null,fuels,
+  coordinates:{status:coordinates.status??'awaiting_data',queue:coordinates.queue??null,lastAttempt:coordinates.lastAttempt??null,lastSuccessAt:coordinates.lastSuccessAt??null,dayBudget:coordinates.dayBudget??null,budget:coordinates.budget??null,error:coordinates.error??null},addressGeocoding:{status:addressGeocoding.status??'awaiting_data',queue:addressGeocoding.queue??null,lastAttempt:addressGeocoding.lastAttempt??null,fetchedAt:addressGeocoding.fetchedAt??null,error:addressGeocoding.error??null},comparisonAudit,collections,quota:quota??coordinates.quota??regional.quota??null,fuels,
   sources:[{name:'한국석유공사 오피넷 일일가격',url:'https://www.opinet.co.kr/user/opdown/opDownload.do'},{name:'전국주유소표준데이터 · 좌표',url:'https://www.data.go.kr/data/15129441/standard.do'},{name:'오피넷 Open API · 주변·상세·평균',url:'https://www.opinet.co.kr/user/custapi/custApiInfo.do'},{name:'한국도로공사 · 고속도로 주유소',url:'https://data.ex.co.kr/openapi/basicinfo/openApiInfoM?apiId=0312'}]
  };
 }
 
 export async function writeDataStatus(dataRoot){
  const read=async name=>{try{return JSON.parse(await readFile(resolve(dataRoot,`${name}.json`),'utf8'));}catch{return{status:'error',error:{code:'DATA_FILE_UNAVAILABLE',message:'수집 결과 파일을 읽을 수 없습니다.'}};}};
- const [manifest,nationwide,searchable,regional,averages,highway,comparisons,coordinates]=await Promise.all(['nationwide/manifest','nationwide/latest','nationwide/search','stations','averages','highway','comparisons','nationwide/coordinate-enrichment'].map(read));
+ const [manifest,nationwide,searchable,regional,averages,highway,comparisons,coordinates,addressGeocoding]=await Promise.all(['nationwide/manifest','nationwide/latest','nationwide/search','stations','averages','highway','comparisons','nationwide/coordinate-enrichment','nationwide/address-geocoding'].map(read));
  // Use the final shared ledger after regional, energy and coordinate requests.
  let quota=null;
  const ledgerPath=resolve(dirname(fileURLToPath(import.meta.url)),'../.cache/opinet-quota.json');
  try{await readFile(ledgerPath);quota=await new DailyQuota({ledgerPath}).snapshot();}catch{}
- const result=summarizeData({manifest,nationwide,searchable,regional,averages,highway,comparisons,coordinates,quota});
+ const result=summarizeData({manifest,nationwide,searchable,regional,averages,highway,comparisons,coordinates,addressGeocoding,quota});
  await mkdir(dataRoot,{recursive:true});await writeFile(resolve(dataRoot,'status.json'),JSON.stringify(result,null,2)+'\n');return result;
 }
