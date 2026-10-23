@@ -180,7 +180,7 @@ test('mobile default zoom uses the requested neighborhood-scale view', async () 
   assert.match(map, /_defaultZoom\(\)/);
   assert.match(map, /zoom:\s*this\._defaultZoom\(\)/);
   assert.match(map, /setZoom\(zoom\)/);
-  assert.match(app, /APP_CONFIG\.mobileDefaultZoom\|\|13/);
+  assert.match(app, /APP_CONFIG\.mobileDefaultZoom\|\|14/);
 });
 
 
