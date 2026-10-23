@@ -210,3 +210,13 @@ test('detail handle drag changes actual sheet height and avoids duplicate click 
   assert.match(css,/height:var\(--sheet-live-height,58dvh\)!important/);
   assert.match(css,/height:var\(--sheet-live-height,82dvh\)!important/);
 });
+
+
+test('initial map load requests current location before rendering nearby stations', () => {
+  assert.match(app,/async function initializeMapViewport\(\)/);
+  assert.match(app,/const position=await map\.locate\(\)/);
+  assert.match(app,/state\.center=\{lat:position\.lat,lng:position\.lng\}/);
+  assert.match(app,/updateViewport\(\{center:map\.getCenter\(\),bounds:map\.getBounds\(\)\}\)/);
+  assert.match(app,/sharedStationRequested/);
+  assert.match(app,/map\.init\(\)\.then\(initializeMapViewport\)/);
+});
