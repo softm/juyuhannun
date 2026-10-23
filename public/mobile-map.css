@@ -131,7 +131,7 @@
     content:"";position:absolute;left:50%;top:5px;width:40px;height:5px;transform:translateX(-50%);border-radius:4px;background:#c8d3cf
   }
   body.mobile-map-focus .detail-sheet-handle:focus-visible,body.mobile-map-expanded .detail-sheet-handle:focus-visible{outline:3px solid #90bc58;outline-offset:2px;border-radius:10px}
-  body.mobile-map-focus .price-pin.selected .price-pin-name,body.mobile-map-expanded .price-pin.selected .price-pin-name{display:block!important}
+  body.mobile-map-focus .price-pin.selected .price-pin-name,body.mobile-map-expanded .price-pin.selected .price-pin-name{display:none!important}
 }
 @media(prefers-reduced-motion:reduce){
   body.mobile-map-focus .detail-dialog[open],body.mobile-map-expanded .detail-dialog[open]{transition:none!important}
