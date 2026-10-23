@@ -277,6 +277,23 @@ window.addEventListener('beforeunload',()=>{if(map.isDriving())map.stopDriving({
 setInterval(()=>{if(!document.hidden){render();if($('detail-dialog').open)renderDetail();}},60000);
 setInterval(()=>{if(!document.hidden)loadData();},DATA_REFRESH_MS);
 
+async function initializeMapViewport(){
+ state.mapReady=true;
+ $('map-loading')?.remove();
+ const sharedStationRequested=Boolean(sharedId&&/^[\w-]{1,50}$/.test(sharedId));
+ if(sharedStationRequested){
+  map.setCenter(state.center);
+ }else{
+  try{
+   const position=await map.locate();
+   state.center={lat:position.lat,lng:position.lng};
+   if(mobileMapView.isMobile())map.setZoom(APP_CONFIG.mobileDefaultZoom||15);
+  }catch{
+   map.setCenter(state.center);
+  }
+ }
+ updateViewport({center:map.getCenter(),bounds:map.getBounds()});
+}
 loadData();
-map.init().then(()=>{state.mapReady=true;$('map-loading')?.remove();map.setCenter(state.center);updateViewport({center:map.getCenter(),bounds:map.getBounds()});}).catch(()=>{state.mapFailed=true;$('map-loading')?.remove();setMapNotice('지도를 불러오지 못했습니다. 지도 연결 후 화면 안의 주유소를 확인할 수 있습니다.');render();});
+map.init().then(initializeMapViewport).catch(()=>{state.mapFailed=true;$('map-loading')?.remove();setMapNotice('지도를 불러오지 못했습니다. 지도 연결 후 화면 안의 주유소를 확인할 수 있습니다.');render();});
 
