@@ -108,8 +108,10 @@ function markerPriceBands(stations, fuel, now = Date.now()) {
   prices.sort((a,b)=>a-b);
   if (!prices.length) return { count:0, low:null, high:null };
   if (prices.length === 1) return { count:1, low:prices[0], high:prices[0] };
-  const pick = ratio => prices[Math.max(0,Math.min(prices.length-1,Math.round((prices.length-1)*ratio)))];
-  return { count:prices.length, low:pick(1/3), high:pick(2/3) };
+  const last = prices.length - 1;
+  const lowIndex = Math.max(0, Math.floor(last / 3));
+  const highIndex = Math.min(last, Math.ceil(last * 2 / 3));
+  return { count:prices.length, low:prices[lowIndex], high:prices[highIndex] };
 }
 
 function markerTone(info, stale, bands) {
