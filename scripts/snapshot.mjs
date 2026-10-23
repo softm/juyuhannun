@@ -1,7 +1,7 @@
 import { readFile, writeFile, mkdir, rename } from 'node:fs/promises';
 import { dirname } from 'node:path';
 
-const COLLECTION_FIELDS = { highway: 'stations', averages: 'benchmarks' };
+const COLLECTION_FIELDS = { highway: 'stations', averages: 'benchmarks', comparisons: 'comparisons' };
 const AVERAGE_SCOPES = new Set(['national', 'sido', 'sigun']);
 
 function sameAverageCoverage(next, previous) {
