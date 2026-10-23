@@ -555,7 +555,7 @@ export class MapController {
       const size = selected ? [96, 92] : [72, 64];
       const anchor = selected ? [48, 78] : [36, 51];
       return this.provider === 'naver'
-        ? { content, size: new globalThis.naver.maps.Size(size[0], size[1]), anchor: new globalThis.naver.maps.Point(anchor[0], anchor[1]) }
+        ? { content, anchor: new globalThis.naver.maps.Point(anchor[0], anchor[1]) }
         : globalThis.L.divIcon({ className: 'price-marker-shell', html: content, iconSize: size, iconAnchor: anchor });
     };
     if (!marker) {
