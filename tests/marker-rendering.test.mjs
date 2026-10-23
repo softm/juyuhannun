@@ -151,3 +151,19 @@ test('selected marker visibly uses price only and has bounce selection animation
   assert.match(content,/selected-station-callout/);
   assert.match(content,/테스트 selected/);
 });
+
+
+test('lowest price badge is a clickable station selector',()=>{
+  const h=harness(),c=h.controller;
+  const fresh=new Date().toISOString();
+  const rows=[
+    row('low',{prices:{B027:{price:1578,priceUpdatedAt:fresh,fetchedAt:fresh}}}),
+    row('mid',{prices:{B027:{price:1700,priceUpdatedAt:fresh,fetchedAt:fresh}}})
+  ];
+  c.setStations(rows);h.flush();
+  const content=c._markerState.get('low').content;
+  assert.match(content,/<button type="button" class="lowest-price-badge" data-station-id="low"/);
+  assert.match(content,/최저가 1,578원 상세 보기/);
+  assert.match(content,/최저/);
+  assert.match(content,/1,578원/);
+});
