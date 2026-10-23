@@ -89,3 +89,23 @@ test('expanded tools match approved staged design', () => {
   assert.match(css, /mobile-map-expanded \.search-block \.filter-button/);
   assert.match(css, /focus-route-button/);
 });
+
+
+test('five-state mobile focus flow includes map browse and draggable list sheet states', () => {
+  for (const state of ['map-browse','list-sheet','list-sheet-expanded']) assert.match(view, new RegExp(state));
+  assert.match(view, /openListSheet/);
+  assert.match(view, /finishListDrag/);
+  assert.match(view, /dy < -56/);
+  assert.match(view, /dy > 118/);
+  assert.match(html, /id="mobile-focus-dock"/);
+  assert.match(html, /id="mobile-list-sheet-handle"/);
+  assert.match(css, /body\.mobile-map-browse \.mobile-focus-dock/);
+  assert.match(css, /body\.mobile-list-sheet\.mobile-list-expanded/);
+});
+
+test('closing detail keeps the focused map session instead of restoring default layout', () => {
+  assert.match(view, /hideDetail\(\);\s*setMode\('map-browse'\)/);
+  assert.match(app, /focus-dock-list/);
+  assert.match(app, /focus-dock-compare/);
+  assert.match(app, /focus-rescan/);
+});

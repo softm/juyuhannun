@@ -21,7 +21,7 @@
     <div class="header-actions"><a class="open-energy-link" href="./energy.html">평균유가·고속도로</a><button class="text-button" id="open-calculator" aria-label="절약액 계산"><span class="icon" data-icon="calculator"></span><span>절약액 계산</span></button><button class="icon-button" id="open-info" aria-label="데이터 출처와 이용 안내"><span class="icon" data-icon="info"></span></button></div>
   </header>
   <main class="workspace">
-    <aside id="station-sidebar" class="sidebar" aria-label="주유소 검색과 비교">
+    <aside id="station-sidebar" class="sidebar" aria-label="주유소 검색과 비교"><button type="button" id="mobile-list-sheet-handle" class="mobile-list-sheet-handle" aria-label="목록 패널을 위아래로 끌기"></button><div class="mobile-list-sheet-caption"><strong>주유소 목록</strong><button type="button" id="mobile-list-sheet-close">지도 보기</button></div>
       <nav class="view-tabs" aria-label="보기 선택"><button class="view-tab active" data-view="nearby" aria-current="page"><span class="icon" data-icon="pin"></span>지도 안 주유소</button><button class="view-tab" data-view="route"><span class="icon" data-icon="route"></span>경로 비용 비교</button><button class="view-tab" data-view="saved"><span class="icon" data-icon="heart"></span>찜한 곳</button></nav>
       <div class="search-block">
         <form id="search-form" class="search-box" role="search"><span class="icon" data-icon="search"></span><input id="query" type="search" placeholder="지역, 주소 또는 주유소 검색" aria-label="지역, 주소 또는 주유소 검색" autocomplete="off" maxlength="100"><button type="submit" class="icon-button" aria-label="검색"><span class="icon" data-icon="arrow"></span></button></form>
@@ -53,6 +53,12 @@
       <div class="map-bottom"><div class="price-summary"><span id="summary-area">현재 지도 영역 · 검색 조건 기준</span><div><span>비교 가능한 최저가</span><strong id="lowest-price">—</strong><span>원/L</span></div><small id="summary-caption">비교 가능한 가격 자료를 기다리고 있습니다</small></div><div class="map-legend"><span><i class="legend-dot"></i>최신 비교 가능 가격</span><span><i class="legend-dot muted-dot"></i>참고 가격 · 최저가 비교 제외</span><small>거리 표시는 직선거리입니다.</small></div></div>
       <button type="button" id="mobile-map-toggle" class="mobile-map-toggle" aria-label="지도 전체 화면" title="지도 전체 화면" aria-pressed="false" aria-controls="map-section"><span class="icon" data-icon="expand"></span><span>전체지도</span></button>
       <button type="button" id="mobile-list-toggle" class="mobile-list-toggle" aria-expanded="false" aria-controls="station-sidebar"><span class="icon" data-icon="list"></span><span>목록 보기</span></button>
+      <button type="button" id="focus-rescan" class="focus-rescan" aria-label="현재 지도 영역 다시 검색"><span aria-hidden="true">↻</span> 이 지역 재검색</button>
+      <nav id="mobile-focus-dock" class="mobile-focus-dock" aria-label="지도 집중모드 메뉴">
+        <button type="button" id="focus-dock-list"><span class="dock-icon">☷</span><span>목록 <strong id="focus-list-count">0</strong></span></button>
+        <button type="button" id="focus-dock-compare"><span class="dock-icon">♡</span><span>비교 <strong id="focus-compare-count">0</strong></span></button>
+        <button type="button" id="focus-dock-more"><span class="dock-icon">•••</span><span>더보기</span></button>
+      </nav>
     </section>
   </main>
   <dialog id="detail-dialog" class="detail-dialog" data-map-overlay><div class="detail-sheet-head"><button type="button" id="detail-sheet-handle" class="detail-sheet-handle" aria-label="상세 패널을 위아래로 끌기" title="위로 끌어 상세 크게, 아래로 끌어 줄이기"></button><strong class="detail-sheet-title">핵심 정보</strong><button type="button" id="detail-expand-toggle" class="detail-expand-toggle" aria-expanded="false" aria-controls="detail-content"><span class="icon" data-icon="expand"></span><span>상세 크게</span></button><button class="dialog-close icon-button" data-close="detail-dialog" aria-label="주유소 상세 닫기"><span class="icon" data-icon="close"></span></button></div><div id="detail-content"></div></dialog>

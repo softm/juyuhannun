@@ -217,3 +217,53 @@
  body.mobile-map-mode .fuel-price-grid{gap:5px}
  body.mobile-map-mode .fuel-price-card{padding-left:7px;padding-right:7px}
 }
+
+
+/* 2026-10-23 five-state focus toggle: detail -> map browse -> expanded detail -> list sheet -> expanded list. */
+.mobile-list-sheet-handle,.mobile-list-sheet-caption,.mobile-focus-dock,.focus-rescan{display:none}
+@media(max-width:1000px){
+  body.mobile-map-browse .workspace>.sidebar{display:block;position:fixed;inset:0;z-index:118;border:0;background:transparent;pointer-events:none;box-shadow:none}
+  body.mobile-map-browse .workspace>.sidebar>:not(.search-block){display:none!important}
+  body.mobile-map-browse .workspace>.sidebar>.search-block{pointer-events:auto}
+  body.mobile-map-browse #map-section .map-actions{display:flex!important;top:calc(178px + env(safe-area-inset-top,0px));left:calc(18px + env(safe-area-inset-left,0px));right:auto;bottom:auto;flex-direction:column;gap:0;border-radius:18px;background:#fff;box-shadow:0 7px 22px #17362e24}
+  body.mobile-map-browse #map-section .map-action{display:flex!important;width:54px;height:54px;color:#1769d7;border-radius:0}
+  body.mobile-map-browse #map-section .default-map-action{display:none!important}
+  body.mobile-map-browse .map-secondary-actions{position:fixed;right:calc(18px + env(safe-area-inset-right,0px));top:calc(190px + env(safe-area-inset-top,0px));z-index:175;display:flex}
+  body.mobile-map-browse .mobile-map-toggle{display:flex;position:fixed;right:calc(18px + env(safe-area-inset-right,0px));top:calc(258px + env(safe-area-inset-top,0px));bottom:auto;width:54px;height:54px;min-width:54px;min-height:54px;border-radius:50%;background:#fff;color:#347ee8;border:1px solid #e0e6ea;box-shadow:0 6px 20px #17362e24}
+  body.mobile-map-browse .mobile-map-toggle>span:last-child{display:none}
+
+  body.mobile-map-browse .focus-rescan{display:flex;position:fixed;left:50%;bottom:calc(104px + env(safe-area-inset-bottom,0px));z-index:180;transform:translateX(-50%);align-items:center;gap:6px;min-height:45px;padding:0 20px;border:1px solid #dce5e1;border-radius:23px;background:#fff;color:#2368c8;font-size:12px;font-weight:800;box-shadow:0 6px 20px #17362e20}
+  body.mobile-map-browse .mobile-focus-dock{display:grid;position:fixed;left:50%;bottom:calc(18px + env(safe-area-inset-bottom,0px));z-index:180;transform:translateX(-50%);grid-template-columns:repeat(3,auto);align-items:center;min-width:min(92vw,540px);height:66px;padding:0 14px;border:1px solid #dce5e1;border-radius:33px;background:#f8faf7ee;box-shadow:0 8px 30px #17362e28;backdrop-filter:blur(12px)}
+  body.mobile-map-browse .mobile-focus-dock button{display:flex;align-items:center;justify-content:center;gap:8px;min-height:48px;padding:0 15px;color:#164f43;font-size:13px;font-weight:800;white-space:nowrap}
+  body.mobile-map-browse .mobile-focus-dock button+button{border-left:1px solid #e2e8e4}
+  body.mobile-map-browse .dock-icon{font-size:22px;line-height:1;color:#0f6b57}
+  body.mobile-map-browse #focus-dock-compare .dock-icon{color:#d27d1c}
+  body.mobile-map-browse #focus-dock-more .dock-icon{color:#765ac6;letter-spacing:2px}
+  body.mobile-map-browse .mobile-focus-dock strong{font-size:12px}
+
+  body.mobile-list-sheet .workspace>.sidebar{display:flex!important;position:fixed!important;left:10px!important;right:10px!important;top:auto!important;bottom:0!important;inset:auto 10px 0!important;height:42dvh!important;z-index:190;border:1px solid #e0e7e3;border-bottom:0;border-radius:26px 26px 0 0;background:#fff;box-shadow:0 -10px 34px #17362e2e;overflow:hidden;pointer-events:auto;transform:translateY(var(--list-drag-y,0px));transition:height .2s ease,transform .18s ease}
+  body.mobile-list-sheet.mobile-list-expanded .workspace>.sidebar{height:78dvh!important}
+  body.mobile-list-sheet .workspace>.sidebar.is-dragging{transition:none}
+  body.mobile-list-sheet .workspace>.sidebar>.mobile-list-sheet-handle{display:block;position:absolute;left:50%;top:3px;z-index:6;width:64px;height:22px;transform:translateX(-50%);touch-action:none;cursor:ns-resize}
+  body.mobile-list-sheet .workspace>.sidebar>.mobile-list-sheet-handle:before{content:"";position:absolute;left:50%;top:7px;width:42px;height:5px;transform:translateX(-50%);border-radius:4px;background:#c8d3cf}
+  body.mobile-list-sheet .workspace>.sidebar>.mobile-list-sheet-caption{display:flex;align-items:center;justify-content:space-between;flex:none;height:48px;padding:14px 18px 6px;margin-top:7px;border-bottom:1px solid #edf1ef}
+  body.mobile-list-sheet .mobile-list-sheet-caption strong{font-size:14px;color:#254c42}
+  body.mobile-list-sheet .mobile-list-sheet-caption button{padding:7px 10px;border-radius:9px;background:#edf5f1;color:#0f6b57;font-size:11px;font-weight:800}
+  body.mobile-list-sheet .workspace>.sidebar>.view-tabs,
+  body.mobile-list-sheet .workspace>.sidebar>.search-block,
+  body.mobile-list-sheet .workspace>.sidebar>.route-panel,
+  body.mobile-list-sheet .workspace>.sidebar>.coverage-hint,
+  body.mobile-list-sheet .workspace>.sidebar>.sidebar-footer{display:none!important}
+  body.mobile-list-sheet .workspace>.sidebar>.results-header{display:flex!important;padding:11px 17px 9px;flex:none}
+  body.mobile-list-sheet .workspace>.sidebar>.results{display:block!important;flex:1;min-height:0;overflow:auto;padding:0 12px calc(18px + env(safe-area-inset-bottom,0px))}
+  body.mobile-list-sheet .focus-rescan,body.mobile-list-sheet .mobile-focus-dock{display:none!important}
+  body.mobile-list-sheet #map-section .map-actions{display:flex!important;top:calc(178px + env(safe-area-inset-top,0px));left:calc(18px + env(safe-area-inset-left,0px));right:auto;bottom:auto;flex-direction:column}
+  body.mobile-list-sheet .map-secondary-actions{display:flex;position:fixed;right:calc(18px + env(safe-area-inset-right,0px));top:calc(190px + env(safe-area-inset-top,0px));z-index:175}
+  body.mobile-list-sheet .mobile-map-toggle{display:none!important}
+  body.mobile-list-sheet .mobile-list-toggle{display:none!important}
+}
+@media(max-width:430px){
+ body.mobile-map-browse .mobile-focus-dock{min-width:calc(100vw - 28px);padding:0 8px}
+ body.mobile-map-browse .mobile-focus-dock button{padding:0 9px;font-size:12px}
+ body.mobile-list-sheet .workspace>.sidebar{left:6px!important;right:6px!important;inset:auto 6px 0!important}
+}
