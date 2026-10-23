@@ -2,6 +2,7 @@ import { readFile, readdir, unlink } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { OpinetBrowserDownloadClient, kstDate, previousKstDate } from '../server/opinet-browser-download.mjs';
+import { OpinetDownloadClient } from '../server/opinet-download.mjs';
 import { fetchStandardStations, fetchStandardStationsPublic } from '../server/data-go-stations.mjs';
 import { atomicWriteJson, seoulDay } from '../server/quota.mjs';
 import { publicError, ServiceError } from '../server/errors.mjs';
@@ -115,8 +116,24 @@ async function collectNationwideSnapshot({outputDirectory=resolve(ROOT,'public/d
  const plan=planNationwideCollection({now:started,hasPrices:Boolean(reused),sourceDate:reused?.sourceDate,fetchedAt:reused?.fetchedAt,lastDownloadAttemptAt:previousAttemptAt,lastDownloadStatus:previousDownloadStatus,forceRefresh});
  let fetchedAt=reused?.fetchedAt??null,targetDate=reused?.sourceDate?.replaceAll('-','')??kstDate(started),downloadBytes=reused?.downloadBytes??0,all=reused?.stations??null,priceSource='cache';
  let downloadCalls=0,downloadAttempts=[],downloadError=null,downloadFailure=null;
+ let businessStations=[],businessStatus='unavailable',businessFetchedAt=null,businessBytes=0,businessError=null;
  let lastDownloadedAt=previousCollection.lastDownloadedAt??null,lastDownloadStatus=previousDownloadStatus,lastDownloadAttemptAt=previousAttemptAt;
  if(plan.due){
+  try{
+   const businessResult=await new OpinetDownloadClient({fetchImpl}).download({kind:'basic',searchCond:'1'});
+   businessFetchedAt=new Date(clock()).toISOString();businessBytes=businessResult.bytes;
+   businessStations=[...mergeBasicAndPrice(businessResult.rows,[],{fetchedAt:businessFetchedAt,kind:'station'}).values()];
+   if(businessStations.length<minRows)throw new ServiceError('OPINET_BUSINESS_DOWNLOAD_EMPTY','사업자 기본정보에서 유효한 주유소를 충분히 받지 못했습니다.');
+   businessStatus='ready';
+   await atomicWriteJson(resolve(outputDirectory,'business.json'),{version:1,status:'ready',provider:'opinet-public-download',fetchedAt:businessFetchedAt,source:{...SOURCE,name:'한국석유공사 오피넷 사업자 기본정보(현재기준)'},count:businessStations.length,bytes:businessBytes,stations:businessStations.map(({prices,...s})=>s),lastAttempt:{at:attemptedAt,status:'ready'}});
+  }catch(error){
+   businessError=publicError(error);
+   const previousBusiness=await readJson(resolve(outputDirectory,'business.json'));
+   businessStations=Array.isArray(previousBusiness?.stations)?previousBusiness.stations:[];
+   businessFetchedAt=previousBusiness?.fetchedAt??null;businessBytes=previousBusiness?.bytes??0;
+   businessStatus=businessStations.length?'partial':'error';
+   await atomicWriteJson(resolve(outputDirectory,'business.json'),{...(previousBusiness??{version:1,provider:'opinet-public-download',stations:[],count:0,bytes:0,fetchedAt:null}),status:businessStatus,lastAttempt:{at:attemptedAt,status:'error',error:businessError},cache:{...previousBusiness?.cache,stale:Boolean(businessStations.length)},error:businessError});
+  }
   const dates=[kstDate(started),previousKstDate(started)];let gasPrice=null;
   lastDownloadAttemptAt=attemptedAt;
   for(const requestedDate of dates){
@@ -129,7 +146,13 @@ async function collectNationwideSnapshot({outputDirectory=resolve(ROOT,'public/d
     if(receivedDate!==normalizePriceDate(requestedDate)||[...rowDates].some(date=>date!==receivedDate))throw new ServiceError('OPINET_DOWNLOAD_DATE_MISMATCH','전국 CSV 가격 기준일이 요청한 날짜와 다릅니다.');
     const rows=[...mergeBasicAndPrice([],result.rows,{fetchedAt:attemptedAt,kind:'station',sourceDate:requestedDate}).values()];
     if(rows.filter(s=>Object.keys(s.prices||{}).length).length<minRows)throw new ServiceError('OPINET_DOWNLOAD_EMPTY','전국 CSV에서 유효한 개별 가격을 충분히 받지 못했습니다.');
-    gasPrice=result;all=rows;targetDate=requestedDate;fetchedAt=attemptedAt;downloadBytes=result.bytes;priceSource='download';
+    gasPrice=result;
+    if(businessStations.length){
+     const merged=new Map(businessStations.map(s=>[s.id,{...s,prices:{...(s.prices||{})}}]));
+     for(const s of rows){const old=merged.get(s.id);merged.set(s.id,old?{...old,...s,address:s.address||old.address,roadAddress:s.roadAddress||old.roadAddress,phone:s.phone||old.phone,brand:s.brand||old.brand,brandName:s.brandName||old.brandName,facilities:{...old.facilities,...s.facilities},prices:{...old.prices,...s.prices}}:s);}
+     all=[...merged.values()];
+    }else all=rows;
+    targetDate=requestedDate;fetchedAt=attemptedAt;downloadBytes=result.bytes;priceSource='download';
     lastDownloadedAt=new Date(clock()).toISOString();lastDownloadStatus=downloadCalls>1?'fallback':'ready';
     downloadAttempts.push({...attempt,status:'ready',completedAt:lastDownloadedAt});
     break;
@@ -144,7 +167,12 @@ async function collectNationwideSnapshot({outputDirectory=resolve(ROOT,'public/d
    }
   }
   if(!gasPrice&&!downloadFailure)throw new ServiceError('OPINET_DOWNLOAD_EMPTY','전국 가격 파일을 받지 못했습니다.');
- }else console.info(JSON.stringify({event:'opinet_daily_price_reuse',date:targetDate,rows:all?.length??0,reason:plan.reason,nextRetryAt:plan.nextRetryAt}));
+ }else {
+  const previousBusiness=await readJson(resolve(outputDirectory,'business.json'));
+  businessStations=Array.isArray(previousBusiness?.stations)?previousBusiness.stations:[];
+  businessFetchedAt=previousBusiness?.fetchedAt??null;businessBytes=previousBusiness?.bytes??0;businessStatus=previousBusiness?.status??(businessStations.length?'ready':'unavailable');
+  console.info(JSON.stringify({event:'opinet_daily_price_reuse',date:targetDate,rows:all?.length??0,reason:plan.reason,nextRetryAt:plan.nextRetryAt}));
+ }
  const afterPlan=planNationwideCollection({now:clock(),hasPrices:Boolean(all?.length),sourceDate:targetDate,fetchedAt,lastDownloadAttemptAt,lastDownloadStatus});
  const collection={...previousCollection,checkedAt:attemptedAt,lastDownloadAttemptAt,lastDownloadedAt,lastDownloadStatus,lastDownloadError:plan.due?downloadError:(previousCollection.lastDownloadError??previousManifest?.lastAttempt?.error??null),lastDownloadCalls:plan.due?downloadCalls:previousCollection.lastDownloadCalls??0,downloadCalls,downloadAttempts:plan.due?downloadAttempts:previousCollection.downloadAttempts??[],sourceDate:normalizePriceDate(targetDate),expectedDate:afterPlan.expectedDate,usedPreviousDate:afterPlan.usedPreviousDate,eligible:afterPlan.eligible,expectedDateAvailable:afterPlan.expectedDateAvailable,nextRetryAt:afterPlan.nextRetryAt,decisionReason:plan.reason,pendingReason:afterPlan.pendingReason??null};
  if(!all){
@@ -152,6 +180,10 @@ async function collectNationwideSnapshot({outputDirectory=resolve(ROOT,'public/d
   return {status:'error',count:0,total:0,priceSource,fetchedAt:null,collection};
  }
  const priced=all.filter(s=>Object.keys(s.prices||{}).length);
+ const businessIds=new Set(businessStations.map(s=>s.id)),priceIds=new Set(priced.map(s=>s.id));
+ const businessMatchedPrice=[...businessIds].filter(id=>priceIds.has(id)).length;
+ const businessWithoutPrice=Math.max(0,businessIds.size-businessMatchedPrice);
+ const priceWithoutBusiness=[...priceIds].filter(id=>!businessIds.has(id)).length;
  if(priced.length<minRows)throw new Error(`Nationwide price row count too small: ${priced.length}`);
 
  const prior=[
@@ -198,13 +230,14 @@ async function collectNationwideSnapshot({outputDirectory=resolve(ROOT,'public/d
  if(collection.usedPreviousDate)warnings.push({code:'NATIONWIDE_PREVIOUS_DATE',message:'이전 기준일의 일일가격입니다. 개별 주유소의 현재 보고 시각을 뜻하지 않습니다.'});
  if(!collection.eligible)warnings.push({code:'NATIONWIDE_PRICE_REFRESH_PENDING',message:'가격 기준일 또는 수집 경과시간이 최신 비교 범위를 벗어나 마지막 확인 가격으로 보관하고 재수집을 기다립니다.'});
  if(collection.lastDownloadStatus==='error')warnings.push({code:'NATIONWIDE_DOWNLOAD_RETRY_PENDING',message:'전국 가격 다운로드가 실패해 기존 가격과 기준시각을 보존하고 다음 수집 때 재시도합니다.'});
+ if(businessStatus!=='ready')warnings.push({code:'BUSINESS_INFO_DOWNLOAD_'+businessStatus.toUpperCase(),message:businessStations.length?'사업자 기본정보 새 다운로드가 실패해 이전 기본정보를 유지합니다.':'사업자 기본정보를 아직 확보하지 못했습니다.'});
  const coverage={kind:'nationwide',complete:ratio>=0.98,serviceReady,totalPriceStations:priced.length,mappedPriceStations:mappedPriced.length,mappedRatio:Number(ratio.toFixed(4)),priceDate:targetDate.slice(0,4)+'-'+targetDate.slice(4,6)+'-'+targetDate.slice(6,8),description:'오피넷 유가내려받기의 사업자별 일일 판매가격 CSV를 정기 수집하고 필요할 때 재시도하며 공공데이터와 공식 상세 API 좌표를 병합합니다.'};
  const status=serviceReady&&ratio>=0.98&&collection.eligible&&lastDownloadStatus!=='error'?'ready':'partial';
  const lastAttempt=plan.due?{at:attemptedAt,status:downloadCalls>1?'partial':status,calls:downloadCalls+standard.calls,downloadCalls}:previousManifest?.lastAttempt??{at:fetchedAt,status,calls:0};
  const latest={version:2,status,provider:'opinet-public-download',dataGranularity:'station',fetchedAt,source:SOURCE,coverage,stations:mappedPriced,cache:{hit:priceSource==='cache',ageSeconds:Number.isFinite(Date.parse(fetchedAt))?Math.max(0,Math.floor((clock()-Date.parse(fetchedAt))/1000)):null,stale:!collection.eligible||lastDownloadStatus==='error'},warnings,lastAttempt,collection};
  const master={version:2,status,provider:'opinet-public-download',fetchedAt,source:SOURCE,coverage,stations:all.map(({prices,...s})=>s),warnings};
  const history={version:2,date:coverage.priceDate,collectedOn:Number.isFinite(Date.parse(fetchedAt))?seoulDay(Date.parse(fetchedAt)):null,provider:'opinet-public-download',fetchedAt,stations:priced.map(s=>({id:s.id,prices:s.prices}))};
- const manifest={version:2,status,provider:'opinet-public-download',fetchedAt,lastAttempt:latest.lastAttempt,collection,stationCount:all.length,priceStationCount:priced.length,mappedPriceStationCount:mappedPriced.length,mappedRatio:coverage.mappedRatio,serviceReady,standardDataStatus:standard.status,standardCalls:standard.calls,standardFetchedAt,standardLastAttemptAt,priceDate:coverage.priceDate,downloadBytes,priceSource,historyDate:coverage.priceDate,latest:'./latest.json',master:'./master.json',history:`./history/${coverage.priceDate}.json`,sources:[SOURCE,{name:'전국주유소표준데이터',url:'https://www.data.go.kr/data/15129441/standard.do'}]};
+ const manifest={version:2,status,provider:'opinet-public-download',fetchedAt,lastAttempt:latest.lastAttempt,collection,stationCount:all.length,priceStationCount:priced.length,mappedPriceStationCount:mappedPriced.length,mappedRatio:coverage.mappedRatio,serviceReady,standardDataStatus:standard.status,standardCalls:standard.calls,standardFetchedAt,standardLastAttemptAt,priceDate:coverage.priceDate,downloadBytes,priceSource,businessInfo:{status:businessStatus,fetchedAt:businessFetchedAt,count:businessStations.length,bytes:businessBytes,matchedPriceCount:businessMatchedPrice,businessWithoutPriceCount:businessWithoutPrice,priceWithoutBusinessCount:priceWithoutBusiness,error:businessError},historyDate:coverage.priceDate,latest:'./latest.json',master:'./master.json',business:'./business.json',history:`./history/${coverage.priceDate}.json`,sources:[SOURCE,{name:'한국석유공사 오피넷 사업자 기본정보(현재기준)',url:'https://www.opinet.co.kr/user/opdown/opDownload.do'},{name:'전국주유소표준데이터',url:'https://www.data.go.kr/data/15129441/standard.do'}]};
  // List search retains every priced station; missing coordinates only exclude a map marker.
  const searchable={...latest,coverage:{...coverage,searchIncludesUnmapped:true},stations:priced};
  await atomicWriteJson(resolve(outputDirectory,'search.json'),searchable);
@@ -213,7 +246,7 @@ async function collectNationwideSnapshot({outputDirectory=resolve(ROOT,'public/d
  // newly verified locations with the unchanged cached observations before
  // propagating the download failure and recording its retry state.
  if(downloadFailure)throw downloadFailure;
- return {status,count:mappedPriced.length,total:priced.length,mappedRatio:coverage.mappedRatio,serviceReady,priceDate:coverage.priceDate,downloadBytes,priceSource,standardStatus:standard.status,standardCalls:standard.calls,fetchedAt,collection};
+ return {status,count:mappedPriced.length,total:priced.length,mappedRatio:coverage.mappedRatio,serviceReady,priceDate:coverage.priceDate,downloadBytes,priceSource,businessInfo:manifest.businessInfo,standardStatus:standard.status,standardCalls:standard.calls,fetchedAt,collection};
 }
 export async function collectNationwide(options={}){
  try{return await collectNationwideSnapshot(options);}
