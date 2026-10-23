@@ -620,13 +620,12 @@ export class MapController {
     const facts = [BRANDS[row.brand] || row.brand, row.facilities?.self === true ? '셀프' : row.facilities?.self === false ? '일반' : null, info?.sourceDate ? info.sourceDate + ' 기준' : confidence.label].filter(Boolean).join(' · ');
     const callout=selected?'<div class="selected-station-callout"><span class="callout-pump" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="12" height="17" rx="2"/><path d="M6 7h6v4H6ZM1 21h16m-2-8h2v5a2 2 0 0 0 4 0V8l-4-4m3 3v4h1"/></svg></span><strong>'+escapeHTML(row.name||'주유소')+'</strong><b aria-hidden="true">›</b></div>':'';
     const lowestBadge=isLowest&&!selected?'<div class="lowest-price-badge" aria-hidden="true"><span class="lowest-tag">최저</span><strong>'+escapeHTML(visiblePrice)+'원</strong></div>':'';
+    const detailLabel=selected?'':'<span class="price-pin-name"><span class="price-label-title">'+escapeHTML(row.name || '주유소')+'</span><span class="price-label-value">'+escapeHTML(visiblePrice+(visiblePrice!=='—'?unit:''))+'</span><span class="price-label-detail">'+escapeHTML(facts)+'</span></span>';
     const content = '<div class="station-marker tone-' + tone + (selected ? ' is-selected' : '') + (isLowest ? ' is-lowest' : '') + '">'+lowestBadge+callout+'<button type="button" class="price-pin' + (selected ? ' selected' : '') +
       (stale ? ' is-stale' : '') + '" data-station-id="' + escapeHTML(id) +
       '" aria-label="' + escapeHTML(label) + '" aria-pressed="' + selected + '" title="' + escapeHTML(label) +
       '"><span class="price-pin-glyph" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="12" height="17" rx="2"/><path d="M6 7h6v4H6ZM1 21h16m-2-8h2v5a2 2 0 0 0 4 0V8l-4-4m3 3v4h1"/></svg></span><span class="price-pin-value">' + escapeHTML(visiblePrice) +
-      (visiblePrice!=='—'&&unit ? '<small>' + escapeHTML(unit) + '</small>' : '') + '</span><span class="price-pin-name"><span class="price-label-title">' +
-      escapeHTML(row.name || '주유소') + '</span><span class="price-label-value">' + escapeHTML(visiblePrice+(visiblePrice!=='—'?unit:'')) +
-      '</span><span class="price-label-detail">' + escapeHTML(facts) + '</span></span></button></div>';
+      (visiblePrice!=='—'&&unit ? '<small>' + escapeHTML(unit) + '</small>' : '') + '</span>'+detailLabel+'</button></div>';
     let marker = this._markers.get(id) || this._markerPool.get(id);
     const zIndex = selected ? 5000 : isLowest ? 4000 : this._retainedLabels.has(id) ? 1000 : 100;
     const changed = !previous || previous.content !== content;
@@ -686,9 +685,9 @@ export class MapController {
       for (const node of nodes) {
         node.classList.remove('label-visible', 'label-measure', 'label-detail');
         const label = node.querySelector('.price-pin-name');
-        label.style.transform = 'translateX(-50%)';
+        if (label) label.style.transform = 'translateX(-50%)';
       }
-      const candidates = ids.map(id => ({ id, node: byId.get(id) })).filter(item => item.node);
+      const candidates = ids.map(id => ({ id, node: byId.get(id) })).filter(item => item.node && item.id !== this._selectedId && item.node.querySelector('.price-pin-name'));
       const controls = [...this.container.parentElement.querySelectorAll('.map-top,.map-bottom,.map-actions,.map-notice,[data-map-overlay]')]
         .filter(node => !node.hidden).map(node => node.getBoundingClientRect()).filter(rect => rect.width && rect.height);
       // Batch style writes and measurements by level to avoid per-label forced layouts.
