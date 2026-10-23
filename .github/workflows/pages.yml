@@ -101,6 +101,20 @@ jobs:
           DATA_GO_KR_SERVICE_KEY: ${{ secrets.DATA_GO_KR_SERVICE_KEY }}
           NATIONWIDE_FORCE_REFRESH: ${{ github.event_name == 'workflow_dispatch' && '1' || '0' }}
         run: npm run collect:nationwide
+      - name: Geocode business addresses missing coordinates
+        if: github.event_name != 'pull_request'
+        continue-on-error: true
+        env:
+          NAVER_MAPS_API_KEY_ID: ${{ secrets.NAVER_MAPS_API_KEY_ID }}
+          NAVER_MAPS_API_KEY: ${{ secrets.NAVER_MAPS_API_KEY }}
+          NAVER_GEOCODE_MAX_PER_RUN: '1000'
+        run: node scripts/geocode-business-addresses.mjs
+      - name: Republish nationwide map with address geocodes
+        if: github.event_name != 'pull_request'
+        continue-on-error: true
+        env:
+          DATA_GO_KR_SERVICE_KEY: ${{ secrets.DATA_GO_KR_SERVICE_KEY }}
+        run: npm run collect:nationwide
       - name: Save consumed quota even after collection failure
         if: always() && github.event_name != 'pull_request'
         uses: actions/cache/save@v6
