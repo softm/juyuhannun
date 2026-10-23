@@ -555,7 +555,8 @@ export class MapController {
     if (revision !== this._renderRevision || !this.ready || this._destroyed) return;
     const rows = visibleStations(this._stations, this.getBounds(), this._selectedId);
     const ids = new Set(rows.map(row => String(row.id)));
-    this.canvas.classList.toggle('dense-markers', rows.length > markerDensityLimit(this.canvas.clientWidth, this.canvas.clientHeight));
+    const scale = markerScale(this.map.getZoom());
+    this.canvas.classList.toggle('dense-markers', scale === 'dot' && rows.length > markerDensityLimit(this.canvas.clientWidth, this.canvas.clientHeight));
     const removed = [...this._markers.keys()].filter(id => !ids.has(id));
     let removeIndex = 0, rowIndex = 0;
     const now = Date.now();
