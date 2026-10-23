@@ -132,6 +132,21 @@ function markerPriceBands(stations, fuel, now = Date.now()) {
   return { count:prices.length, min:prices[0], low:prices[lowIndex], high:prices[highIndex] };
 }
 
+function markerTopPriceRanks(stations, fuel, now = Date.now(), limit = 5) {
+  const rows = [];
+  for (const station of Array.isArray(stations) ? stations : []) {
+    if (station?.id == null) continue;
+    const info = getFuelPrice(station, fuel);
+    const price = Number(info?.price);
+    if (!Number.isFinite(price) || price <= 0) continue;
+    const status = freshness(info.priceUpdatedAt, info.fetchedAt, now, info.priceTimeStatus, info.sourceDate);
+    if (!status.eligible) continue;
+    rows.push({ id:String(station.id), price });
+  }
+  rows.sort((a,b)=>a.price-b.price || a.id.localeCompare(b.id));
+  return new Map(rows.slice(0, Math.max(0, limit)).map((row,index)=>[row.id,index+1]));
+}
+
 function markerTone(info, stale, bands) {
   if (stale || !info || !Number.isFinite(Number(info.price))) return 'slate';
   const price = Number(info.price);
@@ -166,9 +181,11 @@ function installMarkerStyles() {
     '.station-marker .price-pin.selected .price-pin-glyph{display:none}',
     '.station-marker .price-pin.selected .price-pin-value{display:block}',
     '@keyframes lowest-price-bounce{0%,100%{transform:translateX(-50%) translateY(0) scale(1)}18%{transform:translateX(-50%) translateY(-8px) scale(1.035)}36%{transform:translateX(-50%) translateY(0) scale(.99)}52%{transform:translateX(-50%) translateY(-4px) scale(1.018)}68%{transform:translateX(-50%) translateY(0) scale(1)}}',
-    '.lowest-price-badge{position:absolute;left:36px;bottom:45px;z-index:7;display:flex;align-items:center;gap:6px;width:max-content;min-width:94px;height:38px;padding:0 10px 0 7px;border:3px solid #fff;border-radius:20px;background:#159b72;color:#fff;box-shadow:0 6px 16px #173d3252;font:800 13px/1 system-ui,sans-serif;letter-spacing:-.3px;pointer-events:auto;cursor:pointer;touch-action:manipulation;transform-origin:50% 100%;animation:lowest-price-bounce 1.45s cubic-bezier(.22,.8,.3,1) infinite}',
+    '.lowest-price-badge{position:absolute;left:36px;bottom:45px;z-index:7;display:flex;align-items:center;gap:6px;width:max-content;min-width:94px;height:38px;padding:0 10px 0 7px;border:3px solid #fff;border-radius:20px;background:#159b72;color:#fff;box-shadow:0 6px 16px #173d3252;font:800 13px/1 system-ui,sans-serif;letter-spacing:-.3px;pointer-events:auto;cursor:pointer;touch-action:manipulation;transform-origin:50% 100%;animation:lowest-price-bounce 1.6s cubic-bezier(.22,.8,.3,1) var(--rank-delay,0s) infinite}',
     '.lowest-price-badge:after{content:"";position:absolute;left:50%;bottom:-7px;width:10px;height:10px;transform:translateX(-50%) rotate(45deg);border-right:3px solid #fff;border-bottom:3px solid #fff;background:#159b72;border-radius:0 0 2px 0}',
     '.lowest-price-badge .lowest-tag{position:relative;z-index:2;padding:4px 6px;border-radius:999px;background:#d9f4e8;color:#087a58;font-size:10px;font-weight:900;letter-spacing:-.4px}',
+    '.lowest-price-badge.rank-2,.lowest-price-badge.rank-3,.lowest-price-badge.rank-4,.lowest-price-badge.rank-5{background:#128b69}',
+    '.lowest-price-badge.rank-2:after,.lowest-price-badge.rank-3:after,.lowest-price-badge.rank-4:after,.lowest-price-badge.rank-5:after{background:#128b69}',
     '.lowest-price-badge strong{position:relative;z-index:2;font-size:14px;font-weight:900;white-space:nowrap}',
     '.lowest-price-badge:focus-visible{outline:3px solid #0b5c4f;outline-offset:3px}',
     '.price-pin.is-stale:not(.selected){filter:saturate(.55);opacity:.84}',
@@ -534,7 +551,9 @@ export class MapController {
     this._stations = Array.isArray(stations) ? stations : [];
     this._selectedId = selectedId == null ? null : String(selectedId);
     this._fuel = fuel;
-    this._priceBands = markerPriceBands(this._stations, this._fuel);
+    const now = Date.now();
+    this._priceBands = markerPriceBands(this._stations, this._fuel, now);
+    this._priceRanks = markerTopPriceRanks(this._stations, this._fuel, now, 5);
     this._scheduleMarkers();
   }
 
@@ -609,8 +628,9 @@ export class MapController {
     const stale = presentation ? presentation.stale !== false : !confidence.eligible;
     const tone = presentation ? (stale ? 'slate' : 'orange') : markerTone(info, stale, this._priceBands);
     const numericPrice=Number(info?.price);
-    const isLowest=!presentation&&!stale&&Number.isFinite(numericPrice)&&numericPrice>0&&this._priceBands?.min!=null&&numericPrice===this._priceBands.min;
-    const sourceKey = JSON.stringify([point, row.name, row.brand, row.facilities?.self, row.roadAddress, row.address, this._fuel, selected, isLowest, info, presentation, tone, this._priceBands, Math.floor(now / 60000)]);
+    const priceRank=!presentation&&!stale?(this._priceRanks?.get(id)??null):null;
+    const isTopPrice=Number.isInteger(priceRank)&&priceRank>=1&&priceRank<=5;
+    const sourceKey = JSON.stringify([point, row.name, row.brand, row.facilities?.self, row.roadAddress, row.address, this._fuel, selected, priceRank, info, presentation, tone, this._priceBands, Math.floor(now / 60000)]);
     if (cached && previous?.sourceKey === sourceKey) return false;
     const price = presentation ? String(presentation.value ?? '미확인') : Number.isFinite(numericPrice) && numericPrice > 0 ? markerPriceFormat.format(numericPrice) : '미확인';
     const numericPresentation=Number(presentation?.value);
@@ -620,15 +640,17 @@ export class MapController {
     const unit = presentation ? String(presentation.unit || '') : info ? '원' : '';
     const facts = [BRANDS[row.brand] || row.brand, row.facilities?.self === true ? '셀프' : row.facilities?.self === false ? '일반' : null, info?.sourceDate ? info.sourceDate + ' 기준' : confidence.label].filter(Boolean).join(' · ');
     const callout=selected?'<div class="selected-station-callout"><span class="callout-pump" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="12" height="17" rx="2"/><path d="M6 7h6v4H6ZM1 21h16m-2-8h2v5a2 2 0 0 0 4 0V8l-4-4m3 3v4h1"/></svg></span><strong>'+escapeHTML(row.name||'주유소')+'</strong><b aria-hidden="true">›</b></div>':'';
-    const lowestBadge=isLowest&&!selected?'<button type="button" class="lowest-price-badge" data-station-id="'+escapeHTML(id)+'" aria-label="'+escapeHTML((row.name||'주유소')+' 최저가 '+visiblePrice+'원 상세 보기')+'" title="'+escapeHTML((row.name||'주유소')+' 상세 보기')+'"><span class="lowest-tag">최저</span><strong>'+escapeHTML(visiblePrice)+'원</strong></button>':'';
+    const rankLabel=priceRank===1?'최저':priceRank?priceRank+'위':'';
+    const rankDelay=priceRank?((priceRank-1)*0.12).toFixed(2)+'s':'0s';
+    const lowestBadge=isTopPrice&&!selected?'<button type="button" class="lowest-price-badge rank-'+priceRank+'" style="--rank-delay:'+rankDelay+'" data-station-id="'+escapeHTML(id)+'" aria-label="'+escapeHTML((row.name||'주유소')+' '+rankLabel+' '+visiblePrice+'원 상세 보기')+'" title="'+escapeHTML((row.name||'주유소')+' 상세 보기')+'"><span class="lowest-tag">'+escapeHTML(rankLabel)+'</span><strong>'+escapeHTML(visiblePrice)+'원</strong></button>':'';
     const detailLabel=selected?'':'<span class="price-pin-name"><span class="price-label-title">'+escapeHTML(row.name || '주유소')+'</span><span class="price-label-value">'+escapeHTML(visiblePrice+(visiblePrice!=='—'?unit:''))+'</span><span class="price-label-detail">'+escapeHTML(facts)+'</span></span>';
-    const content = '<div class="station-marker tone-' + tone + (selected ? ' is-selected' : '') + (isLowest ? ' is-lowest' : '') + '">'+lowestBadge+callout+'<button type="button" class="price-pin' + (selected ? ' selected' : '') +
+    const content = '<div class="station-marker tone-' + tone + (selected ? ' is-selected' : '') + (isTopPrice ? ' is-lowest rank-'+priceRank : '') + '">'+lowestBadge+callout+'<button type="button" class="price-pin' + (selected ? ' selected' : '') +
       (stale ? ' is-stale' : '') + '" data-station-id="' + escapeHTML(id) +
       '" aria-label="' + escapeHTML(label) + '" aria-pressed="' + selected + '" title="' + escapeHTML(label) +
       '"><span class="price-pin-glyph" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="12" height="17" rx="2"/><path d="M6 7h6v4H6ZM1 21h16m-2-8h2v5a2 2 0 0 0 4 0V8l-4-4m3 3v4h1"/></svg></span><span class="price-pin-value">' + escapeHTML(visiblePrice) +
       (visiblePrice!=='—'&&unit ? '<small>' + escapeHTML(unit) + '</small>' : '') + '</span>'+detailLabel+'</button></div>';
     let marker = this._markers.get(id) || this._markerPool.get(id);
-    const zIndex = selected ? 5000 : isLowest ? 4000 : this._retainedLabels.has(id) ? 1000 : 100;
+    const zIndex = selected ? 5000 : isTopPrice ? 4100-priceRank*10 : this._retainedLabels.has(id) ? 1000 : 100;
     const changed = !previous || previous.content !== content;
     const moved = !previous || previous.lat !== point.lat || previous.lng !== point.lng;
     const makeIcon = () => {
@@ -659,13 +681,13 @@ export class MapController {
       }
     }
     this._markers.set(id, marker);
-    this._markerState.set(id, { content, lat: point.lat, lng: point.lng, zIndex, sourceKey, lowest:isLowest });
+    this._markerState.set(id, { content, lat: point.lat, lng: point.lng, zIndex, sourceKey, lowest:isTopPrice, rank:priceRank });
     return !cached || changed || moved || previous?.zIndex !== zIndex;
   }
 
   _setMarkerLayer(id, emphasized) {
     const marker = this._markers.get(id), state = this._markerState.get(id);
-    const zIndex = id === this._selectedId ? 5000 : state?.lowest ? 4000 : emphasized ? 1000 : 100;
+    const zIndex = id === this._selectedId ? 5000 : state?.rank ? 4100-state.rank*10 : emphasized ? 1000 : 100;
     if (!marker || !state || state.zIndex === zIndex) return;
     if (this.provider === 'naver') marker.setZIndex(zIndex);
     else marker.setZIndexOffset(zIndex);

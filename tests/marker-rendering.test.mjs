@@ -167,3 +167,35 @@ test('lowest price badge is a clickable station selector',()=>{
   assert.match(content,/최저/);
   assert.match(content,/1,578원/);
 });
+
+
+test('top five current-fuel prices get bouncing clickable rank badges',()=>{
+  const h=harness(),c=h.controller;
+  const fresh=new Date().toISOString();
+  const rows=[1578,1580,1590,1600,1610,1620].map((price,index)=>row('rank'+(index+1),{
+    prices:{B027:{price,priceUpdatedAt:fresh,fetchedAt:fresh}}
+  }));
+  c.setStations(rows);h.flush();
+  for(let rank=1;rank<=5;rank++){
+    const content=c._markerState.get('rank'+rank).content;
+    const tag=rank===1?'최저':rank+'위';
+    assert.match(content,new RegExp('lowest-price-badge rank-'+rank));
+    assert.match(content,new RegExp('data-station-id="rank'+rank+'"'));
+    assert.match(content,new RegExp('>'+tag+'<'));
+    assert.equal(c._markerState.get('rank'+rank).rank,rank);
+  }
+  assert.doesNotMatch(c._markerState.get('rank6').content,/lowest-price-badge/);
+  assert.equal(c._markerState.get('rank6').rank,null);
+});
+
+test('stale prices are excluded from top-five rank badges',()=>{
+  const h=harness(),c=h.controller;
+  const fresh=new Date().toISOString();
+  const rows=[
+    row('stale-cheap',{prices:{B027:{price:1000,priceUpdatedAt:'2020-01-01T00:00:00Z',fetchedAt:'2020-01-01T00:00:00Z'}}}),
+    row('fresh',{prices:{B027:{price:1700,priceUpdatedAt:fresh,fetchedAt:fresh}}})
+  ];
+  c.setStations(rows);h.flush();
+  assert.doesNotMatch(c._markerState.get('stale-cheap').content,/lowest-price-badge/);
+  assert.match(c._markerState.get('fresh').content,/lowest-price-badge rank-1/);
+});
