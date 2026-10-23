@@ -35,6 +35,23 @@ export function summarizeData({manifest={},nationwide={},searchable={},regional=
   return {code,mappedStationCount,comparableStationCount,historicalStationCount:mappedStationCount-comparableStationCount};
  });
  const summary=(id,name,data,rows,schedule)=>({id,name,status:data.status??'error',count:count(rows),fetchedAt:data.fetchedAt??null,lastAttempt:data.lastAttempt??null,retained:Boolean(data.cache?.stale||data.lastAttempt?.status==='error'),reused:Boolean(data.cache?.hit),error:data.lastAttempt?.error??data.error??null,schedule});
+ const comparisonRows=Array.isArray(comparisons.comparisons)?comparisons.comparisons:[];
+ const nationalById=new Map((nationalSource.stations||[]).map(row=>[row.id,row]));
+ let comparisonMatched=0,comparisonSame=0,comparisonDifferent=0,comparisonMissing=0,comparisonMaxAbsDiff=0,comparisonAbsDiffTotal=0;
+ for(const row of comparisonRows){
+  const station=nationalById.get(row.stationId);
+  const observed=station?getFuelPrice(station,row.fuel):null;
+  if(!observed||!Number.isFinite(Number(observed.price))){comparisonMissing++;continue;}
+  comparisonMatched++;
+  const diff=Number(row.price)-Number(observed.price),abs=Math.abs(diff);
+  comparisonAbsDiffTotal+=abs;comparisonMaxAbsDiff=Math.max(comparisonMaxAbsDiff,abs);
+  if(diff===0)comparisonSame++;else comparisonDifferent++;
+ }
+ const comparisonAudit={
+  status:comparisons.status??'error',checkedAt:comparisons.fetchedAt??comparisons.lastAttempt?.at??null,total:comparisonRows.length,matched:comparisonMatched,
+  same:comparisonSame,different:comparisonDifferent,missing:comparisonMissing,maxAbsDiff:comparisonMatched?comparisonMaxAbsDiff:null,
+  averageAbsDiff:comparisonMatched?Number((comparisonAbsDiffTotal/comparisonMatched).toFixed(1)):null,
+ };
  const collection=manifest.collection??nationwide.collection??null;
  const collections=[
   summary('nationwide','전국 주유소 일일가격',nationwide,nationwide.stations,'매일 08:17 · 14:17 · 20:17 · 한국시간'),
@@ -48,7 +65,7 @@ export function summarizeData({manifest={},nationwide={},searchable={},regional=
   version:1,generatedAt,activeMap:serviceReady?'nationwide':'regional',mapStrategy:'merged',
   nationwide:{status:nationwide.status??'error',totalPriceStations:total,searchablePriceStations:count(searchable.stations),mappedPriceStations:mapped,unmappedPriceStations:Math.max(0,total-mapped),mappedRatio:total?Number((mapped/total).toFixed(4)):0,complete:nationwide.coverage?.complete===true,serviceReady,priceDate:manifest.priceDate??nationwide.coverage?.priceDate??null,fetchedAt:nationwide.fetchedAt??null,priceSource:manifest.priceSource??null,standardDataStatus:manifest.standardDataStatus??null,collection},
   availability:{checkedAt:generatedAt,displayableStationCount:mapStations.length,defaultIncludesHistorical:true,priceCohorts:[...cohorts.values()]},
-  coordinates:{status:coordinates.status??'awaiting_data',queue:coordinates.queue??null,lastAttempt:coordinates.lastAttempt??null,lastSuccessAt:coordinates.lastSuccessAt??null,dayBudget:coordinates.dayBudget??null,budget:coordinates.budget??null,error:coordinates.error??null},collections,quota:quota??coordinates.quota??regional.quota??null,fuels,
+  coordinates:{status:coordinates.status??'awaiting_data',queue:coordinates.queue??null,lastAttempt:coordinates.lastAttempt??null,lastSuccessAt:coordinates.lastSuccessAt??null,dayBudget:coordinates.dayBudget??null,budget:coordinates.budget??null,error:coordinates.error??null},comparisonAudit,collections,quota:quota??coordinates.quota??regional.quota??null,fuels,
   sources:[{name:'한국석유공사 오피넷 일일가격',url:'https://www.opinet.co.kr/user/opdown/opDownload.do'},{name:'전국주유소표준데이터 · 좌표',url:'https://www.data.go.kr/data/15129441/standard.do'},{name:'오피넷 Open API · 주변·상세·평균',url:'https://www.opinet.co.kr/user/custapi/custApiInfo.do'},{name:'한국도로공사 · 고속도로 주유소',url:'https://data.ex.co.kr/openapi/basicinfo/openApiInfoM?apiId=0312'}]
  };
 }
