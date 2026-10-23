@@ -164,3 +164,11 @@ test('filter popover explains each checkbox and marker color meaning clearly', (
   assert.match(styles, /\.filter-option strong\{[^}]*font-size:14px/);
   assert.match(styles, /\.filter-option input\{[^}]*width:22px/);
 });
+
+
+test('fuel type controls use circular icon badges like the filter control', () => {
+  for (const icon of ['droplet','pump','star','flame']) assert.match(html,new RegExp('data-icon="'+icon+'"'));
+  assert.match(styles,/\.fuel-tab-icon\{[^}]*border-radius:50%/);
+  assert.match(css,/fuel-tabs \.fuel-tab-icon/);
+  assert.match(css,/fuel-tabs button\.active/);
+});

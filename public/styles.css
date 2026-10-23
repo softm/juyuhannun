@@ -170,3 +170,15 @@ body:not(.energy-page) .app-header{height:66px;padding:0 24px}
 .marker-guide-dot.stale,.price-color-legend .legend-dot.stale{background:#7d8b98}
 .price-color-legend{display:grid;grid-template-columns:repeat(2,max-content);gap:7px 14px}
 .price-color-legend small{grid-column:1/-1}
+
+
+/* Fuel selector chips use the same icon-badge language as the filter button. */
+.fuel-tabs button{display:flex;align-items:center;justify-content:center;gap:7px}
+.fuel-tab-icon{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:50%;color:#fff;flex:none;box-shadow:inset 0 0 0 1px #ffffff40}
+.fuel-tab-icon .icon svg{width:16px;height:16px;stroke-width:2}
+.fuel-tab-icon.gasoline{background:#16a077}
+.fuel-tab-icon.diesel{background:#347ee8}
+.fuel-tab-icon.premium{background:#8a55d4}
+.fuel-tab-icon.lpg{background:#ed9815}
+.fuel-tab-label{white-space:nowrap}
+.fuel-tabs button.active .fuel-tab-icon{box-shadow:0 0 0 3px #ffffffcc,0 0 0 5px #0f6b5733}

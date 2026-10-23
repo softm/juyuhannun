@@ -26,7 +26,12 @@
       <div class="search-block">
         <form id="search-form" class="search-box" role="search"><span class="icon" data-icon="search"></span><input id="query" type="search" placeholder="지역, 주소 또는 주유소 검색" aria-label="지역, 주소 또는 주유소 검색" autocomplete="off" maxlength="100"><button type="submit" class="icon-button" aria-label="검색"><span class="icon" data-icon="arrow"></span></button></form>
         <div id="search-candidates" class="search-candidates" hidden></div>
-        <div class="fuel-tabs" id="fuel-tabs" aria-label="유종 선택"><button data-fuel="B027" class="active" aria-pressed="true">휘발유</button><button data-fuel="D047" aria-pressed="false">경유</button><button data-fuel="B034" aria-pressed="false">고급휘발유</button><button data-fuel="K015" aria-pressed="false">LPG</button></div>
+        <div class="fuel-tabs" id="fuel-tabs" aria-label="유종 선택">
+          <button data-fuel="B027" class="active" aria-pressed="true"><span class="fuel-tab-icon gasoline"><span class="icon" data-icon="droplet"></span></span><span class="fuel-tab-label">휘발유</span></button>
+          <button data-fuel="D047" aria-pressed="false"><span class="fuel-tab-icon diesel"><span class="icon" data-icon="pump"></span></span><span class="fuel-tab-label">경유</span></button>
+          <button data-fuel="B034" aria-pressed="false"><span class="fuel-tab-icon premium"><span class="icon" data-icon="star"></span></span><span class="fuel-tab-label">고급휘발유</span></button>
+          <button data-fuel="K015" aria-pressed="false"><span class="fuel-tab-icon lpg"><span class="icon" data-icon="flame"></span></span><span class="fuel-tab-label">LPG</span></button>
+        </div>
         <div class="filter-line"><label class="select-wrap brand-select"><span class="sr-only">정유사</span><select id="brand-filter"><option value="">모든 정유사</option><option value="SKE">SK에너지</option><option value="GSC">GS칼텍스</option><option value="HDO">HD현대오일뱅크</option><option value="SOL">S-OIL</option><option value="RTE">알뜰주유소</option><option value="RTX">고속도로 알뜰</option><option value="NHO">농협 알뜰</option><option value="ETC">자가상표</option><option value="E1G">E1</option><option value="SKG">SK가스</option></select></label><button id="toggle-filters" class="filter-button" aria-expanded="false" aria-controls="extra-filters"><span class="icon" data-icon="sliders"></span>필터</button></div>
         <div id="extra-filters" class="extra-filters filter-popover" hidden>
           <div class="filter-popover-head"><strong>추가 필터</strong><span>선택하면 지도와 목록에 바로 적용됩니다.</span></div>

@@ -11,6 +11,9 @@ iconPaths.collapse='<path d="M3 8h5V3M21 8h-5V3M8 21v-5H3M16 21v-5h5"/>';
 iconPaths.plus='<path d="M12 5v14M5 12h14"/>';
 iconPaths.minus='<path d="M5 12h14"/>';
 iconPaths.layers='<path d="m12 3 9 5-9 5-9-5 9-5Z"/><path d="m3 12 9 5 9-5M3 16l9 5 9-5"/>';
+iconPaths.droplet='<path d="M12 3s-5 6.2-5 10a5 5 0 0 0 10 0c0-3.8-5-10-5-10Z"/>';
+iconPaths.star='<path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-2.9-5.6 2.9 1.1-6.2L3 9.6l6.2-.9L12 3Z"/>';
+iconPaths.flame='<path d="M13.5 3.5c.4 3-1.7 4.3-3.2 6.1-1.2 1.4-1.8 2.8-1.8 4.5a4.5 4.5 0 0 0 9 0c0-3.4-2.1-6.2-4-10.6Z"/><path d="M10.5 16.8c0-1.5.8-2.7 2.2-4.2.2 2 .9 2.8 1.5 3.8.7 1.1.3 2.6-1.3 3-1.3.3-2.4-.8-2.4-2.6Z"/>';
 const icon=(name)=>`<svg viewBox="0 0 24 24" aria-hidden="true">${iconPaths[name]||iconPaths.pin}</svg>`;
 document.querySelectorAll('[data-icon]').forEach(el=>el.innerHTML=icon(el.dataset.icon));
 function readStorage(key,fallback){try{return JSON.parse(localStorage.getItem(key))??fallback;}catch{return fallback;}}
