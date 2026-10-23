@@ -193,7 +193,7 @@ $('fresh-only').addEventListener('change',()=>{state.freshOnly=$('fresh-only').c
 $('sort').addEventListener('change',()=>{state.sort=$('sort').value;render();});
 $('toggle-filters').addEventListener('click',()=>{const open=$('extra-filters').hidden;$('extra-filters').hidden=!open;$('toggle-filters').setAttribute('aria-expanded',String(open));});
 $('refresh').addEventListener('click',loadData);
-$('reset-map').addEventListener('click',()=>{state.center={...APP_CONFIG.defaultCenter};if(state.mapReady)map.setCenter(state.center);});
+$('reset-map').addEventListener('click',()=>{state.center={...APP_CONFIG.defaultCenter};if(state.mapReady){map.setCenter(state.center);map.setZoom(mobileMapView.isMobile()?(APP_CONFIG.mobileDefaultZoom||15):APP_CONFIG.defaultZoom);}});
 $('zoom-in').addEventListener('click',()=>{if(state.mapReady)map.zoomBy(1);});
 $('zoom-out').addEventListener('click',()=>{if(state.mapReady)map.zoomBy(-1);});
 $('map-type-toggle').addEventListener('click',()=>{const b=$('map-type-toggle');if(!state.mapReady)return;const result=map.toggleMapType();if(!result.supported){b.hidden=true;return;}const satellite=result.type==='satellite';b.setAttribute('aria-pressed',String(satellite));b.setAttribute('aria-label',satellite?'일반 지도 보기':'위성 지도 보기');b.title=satellite?'일반 지도 보기':'위성 지도 보기';});

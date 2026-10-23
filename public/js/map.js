@@ -318,12 +318,18 @@ export class MapController {
 
   _naverPoint(point) { return new globalThis.naver.maps.LatLng(point.lat, point.lng); }
 
+  _defaultZoom() {
+    const mobile = globalThis.matchMedia?.('(max-width:1000px)')?.matches === true;
+    const configured = mobile ? APP_CONFIG.mobileDefaultZoom : APP_CONFIG.defaultZoom;
+    return Number.isFinite(Number(configured)) ? Number(configured) : 13;
+  }
+
   _initNaver() {
     const maps = globalThis.naver.maps;
     this.provider = 'naver';
     this._mapType = 'normal';
     this.map = new maps.Map(this.canvas, {
-      center: this._naverPoint(this._center), zoom: APP_CONFIG.defaultZoom,
+      center: this._naverPoint(this._center), zoom: this._defaultZoom(),
       minZoom: 7, maxZoom: 19, mapTypeId: maps.MapTypeId.NORMAL,
       zoomControl: true, zoomControlOptions: { position: maps.Position.RIGHT_CENTER },
       scrollWheel: true, pinchZoom: true, draggable: true
@@ -351,7 +357,7 @@ export class MapController {
       this._mapType = 'normal';
       const L = globalThis.L;
       this.map = L.map(this.canvas, {
-        center: [center.lat, center.lng], zoom: APP_CONFIG.defaultZoom,
+        center: [center.lat, center.lng], zoom: this._defaultZoom(),
         minZoom: 5, maxZoom: 19, zoomControl: false, attributionControl: true
       });
       L.control.zoom({ position: 'topright' }).addTo(this.map);
@@ -453,6 +459,19 @@ export class MapController {
       else this.map.setView([point.lat, point.lng], this.map.getZoom(), { animate: false });
     });
     return { ...point };
+  }
+
+  setZoom(zoom) {
+    if (!this.map || this._destroyed) return null;
+    const min = this.provider === 'naver' ? 7 : 5, max = 19;
+    const next = Math.max(min, Math.min(max, Number(zoom)));
+    if (!Number.isFinite(next)) return null;
+    this._navigationRevision++;
+    this._internal(() => {
+      if (this.provider === 'naver') this.map.setZoom(next);
+      else this.map.setZoom(next, { animate: false });
+    });
+    return next;
   }
 
   zoomBy(delta = 1) {
