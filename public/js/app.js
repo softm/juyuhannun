@@ -17,6 +17,7 @@ iconPaths.flame='<path d="M13.5 3.5c.4 3-1.7 4.3-3.2 6.1-1.2 1.4-1.8 2.8-1.8 4.5
 iconPaths.back='<path d="m15 18-6-6 6-6"/>';
 iconPaths.mic='<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3m-4 0h8"/>';
 iconPaths['chevron-down']='<path d="m7 10 5 5 5-5"/>';
+iconPaths.navigation='<path d="m12 3 7 18-7-4-7 4 7-18Z"/>';
 const icon=(name)=>`<svg viewBox="0 0 24 24" aria-hidden="true">${iconPaths[name]||iconPaths.pin}</svg>`;
 document.querySelectorAll('[data-icon]').forEach(el=>el.innerHTML=icon(el.dataset.icon));
 function readStorage(key,fallback){try{return JSON.parse(localStorage.getItem(key))??fallback;}catch{return fallback;}}
@@ -25,7 +26,7 @@ const storedFavorites=readStorage('juyu:favorites:v1',[]);
 const storedFuel=readStorage('juyu:fuel:v1','B027');
 const params=new URLSearchParams(location.search);
 const requestedFuel=params.get('fuel')||storedFuel;
-const state={fuel:FUEL_TYPES.some(f=>f.code===requestedFuel)?requestedFuel:'B027',view:'nearby',bounds:null,listLimit:60,center:{...APP_CONFIG.defaultCenter},envelope:null,all:[],visible:[],selected:null,query:'',brand:'',self:false,freshOnly:false,sort:'price',favorites:new Set(Array.isArray(storedFavorites)?storedFavorites.filter(v=>typeof v==='string'&&/^[\w-]{1,50}$/.test(v)).slice(0,500):[]),generation:0,controller:null,mapReady:false,mapFailed:false,searchGeneration:0,loading:false};
+const state={fuel:FUEL_TYPES.some(f=>f.code===requestedFuel)?requestedFuel:'B027',view:'nearby',bounds:null,listLimit:60,center:{...APP_CONFIG.defaultCenter},envelope:null,all:[],visible:[],selected:null,query:'',brand:'',self:false,freshOnly:false,sort:'price',favorites:new Set(Array.isArray(storedFavorites)?storedFavorites.filter(v=>typeof v==='string'&&/^[\w-]{1,50}$/.test(v)).slice(0,500):[]),generation:0,controller:null,mapReady:false,mapFailed:false,searchGeneration:0,loading:false,driving:{active:false,point:null,heading:null,speed:0,accuracy:null}};
 const FUEL_VISUAL={B027:{label:'휘발유',icon:'droplet',tone:'gasoline'},D047:{label:'경유',icon:'pump',tone:'diesel'},B034:{label:'고급휘발유',icon:'star',tone:'premium'},K015:{label:'LPG',icon:'flame',tone:'lpg'}};
 function syncMobileFuelToggle(){const item=FUEL_VISUAL[state.fuel]||FUEL_VISUAL.B027;const button=$('mobile-fuel-toggle'),label=$('mobile-fuel-label');if(!button||!label)return;label.textContent=item.label;const badge=button.querySelector('.fuel-toggle-icon');if(badge){badge.className='fuel-toggle-icon '+item.tone;badge.innerHTML='<span class="icon">'+icon(item.icon)+'</span>';}}
 const localHost=['localhost','127.0.0.1','[::1]'].includes(location.hostname);
@@ -45,7 +46,7 @@ function toast(message){$('toast').textContent=message;$('toast').hidden=false;c
 function showDialog(id){const d=$(id);if(!d.open)d.showModal();}
 function closeDialog(id){$(id).close();}
 function setMapNotice(message){$('map-notice').textContent=message;$('map-notice').hidden=!message;}
-function updateViewport({center,bounds}){state.center=center;state.bounds=bounds;state.listLimit=60;render();}
+function updateViewport({center,bounds}){state.center=state.driving.active&&state.driving.point?{...state.driving.point}:center;state.bounds=bounds;state.listLimit=60;render();}
 function handleMapState({provider,status,message}){const typeButton=$('map-type-toggle');typeButton.hidden=provider!=='naver';if(provider!=='naver'){typeButton.setAttribute('aria-pressed','false');typeButton.setAttribute('aria-label','지도 유형 전환 미지원');typeButton.title='지도 유형 전환 미지원';}else if(typeButton.getAttribute('aria-label')==='지도 유형 전환 미지원'){typeButton.setAttribute('aria-label','위성 지도 보기');typeButton.title='위성 지도 보기';}if(status==='error'||provider==='leaflet')setMapNotice(message||'대체 지도에서 확인하고 있습니다.');else if(status==='ready')setMapNotice('');}
 const map=new MapController($('map'),{onViewportChange:updateViewport,onSelect:id=>selectStation(id),onState:handleMapState});
 const mobileMapView=setupMobileMapView({workspace:document.querySelector('.workspace'),sidebar:$('station-sidebar'),mapSection:$('map-section'),results:$('results'),toggleButton:$('mobile-map-toggle'),listButton:$('mobile-list-toggle'),detailDialog:$('detail-dialog'),detailExpandButton:$('detail-expand-toggle'),detailHandle:$('detail-sheet-handle'),listSheetHandle:$('mobile-list-sheet-handle'),listSheetClose:$('mobile-list-sheet-close'),focusDock:$('mobile-focus-dock'),focusDockList:$('focus-dock-list'),onResize:()=>map.resize(),onModeChange:next=>{if(!['focus-detail','expanded-tools','map-browse','list-sheet','list-sheet-expanded'].includes(next))return;const station=state.all.find(s=>s.id===state.selected);if(station&&state.mapReady&&hasMapCoordinates(station)&&!['list-sheet','list-sheet-expanded'].includes(next))requestAnimationFrame(()=>map.focus(station,{preserveZoom:true}));},icon});
@@ -72,6 +73,25 @@ async function loadDataOnce(){
  }catch(error){if(generation!==state.generation)return;state.loading=false;state.envelope={...state.envelope,status:'error',cache:{...state.envelope?.cache,stale:true},warnings:[error.name==='AbortError'?'자료 응답이 지연되고 있습니다. 다시 시도해 주세요.':error.message],error:{message:error.name==='AbortError'?'조회 시간이 초과되었습니다.':error.message}};render();}
  finally{clearTimeout(timeout);if(generation===state.generation){lastDataCheckAt=Date.now();state.loading=false;$('results').setAttribute('aria-busy','false');$('refresh').classList.remove('busy');}}
 }
+function bearingDegrees(a,b){
+ const rad=Math.PI/180,lat1=a.lat*rad,lat2=b.lat*rad,dLng=(b.lng-a.lng)*rad;
+ const y=Math.sin(dLng)*Math.cos(lat2),x=Math.cos(lat1)*Math.sin(lat2)-Math.sin(lat1)*Math.cos(lat2)*Math.cos(dLng);
+ return (Math.atan2(y,x)/rad+360)%360;
+}
+function angleDelta(a,b){const d=Math.abs(((a-b+540)%360)-180);return Number.isFinite(d)?d:180;}
+function drivingMapStations(rows){
+ if(!state.driving.active||!state.driving.point||!Number.isFinite(state.driving.heading))return rows;
+ const here=state.driving.point,heading=state.driving.heading;
+ return rows.filter(station=>{
+   if(station.id===state.selected)return true;
+   if(!hasMapCoordinates(station))return false;
+   const distance=distanceMeters(here,station);
+   if(distance<=450)return true;
+   const cone=state.driving.speed>=16?78:state.driving.speed>=7?92:110;
+   const limit=state.driving.speed>=16?10000:state.driving.speed>=7?7000:4500;
+   return distance<=limit&&angleDelta(bearingDegrees(here,station),heading)<=cone;
+ });
+}
 function render(){
  const now=Date.now();refreshPriceSelection(now);
  let filtered=filterStations(state.all,{fuel:state.fuel,center:state.center,bounds:state.bounds,query:state.query,brand:state.brand,self:state.self,freshOnly:state.freshOnly,favorites:state.view==='saved'?state.favorites:null,sort:state.sort,now});
@@ -82,7 +102,7 @@ function render(){
  const total=state.envelope?.coverage?.totalPriceStations??state.all.length,mapped=collectionStats().mapped,summary=summarizeVisiblePrices(filtered);
  $('coverage-hint').textContent=`현재 지도 ${filtered.length.toLocaleString('ko-KR')}곳 · 최신 비교 ${summary.comparable.toLocaleString('ko-KR')}곳 · 좌표 ${mapped.toLocaleString('ko-KR')}/${total.toLocaleString('ko-KR')}곳 확보`;
  if(!filtered.length)renderEmpty();else $('results').innerHTML=filtered.slice(0,state.listLimit).map((s,i)=>card(s,i)).join('')+(filtered.length>state.listLimit?`<button class="load-more" data-action="load-more">${Math.min(60,filtered.length-state.listLimit)}곳 더 보기 · ${state.listLimit.toLocaleString('ko-KR')}/${filtered.length.toLocaleString('ko-KR')}곳</button>`:'');
- if(state.mapReady)map.setStations(filtered,state.selected,state.fuel);
+ if(state.mapReady)map.setStations(drivingMapStations(filtered),state.selected,state.fuel);
  const cheapest=summary.lowest;
  $('lowest-price').textContent=money(cheapest);$('summary-area').textContent='현재 지도 영역 · 검색 조건 기준';
  $('summary-caption').textContent=cheapest?`${FUEL_TYPES.find(f=>f.code===state.fuel).name} · 최신 비교 ${summary.comparable}곳${summary.reference?` · 참고 가격 ${summary.reference}곳 제외`:''}${state.envelope?.coverage?.complete===false?' · 일부 자료':''}`:filtered.length?`표시된 ${filtered.length}곳은 참고 가격입니다 · 최저가 비교 제외`:'현재 지도에서 비교 가능한 가격이 없습니다';
@@ -204,7 +224,42 @@ $('fresh-only').addEventListener('change',()=>{state.freshOnly=$('fresh-only').c
 $('sort').addEventListener('change',()=>{state.sort=$('sort').value;render();});
 $('toggle-filters').addEventListener('click',()=>{const open=$('extra-filters').hidden;$('extra-filters').hidden=!open;$('toggle-filters').setAttribute('aria-expanded',String(open));if(open){$('fuel-tabs').classList.remove('mobile-open');$('mobile-fuel-toggle').setAttribute('aria-expanded','false');}});
 $('refresh').addEventListener('click',loadData);
-$('reset-map').addEventListener('click',()=>{state.center={...APP_CONFIG.defaultCenter};if(state.mapReady){map.setCenter(state.center);map.setZoom(mobileMapView.isMobile()?(APP_CONFIG.mobileDefaultZoom||15):APP_CONFIG.defaultZoom);}});
+function syncDrivingButton(){
+ const button=$('drive-mode');if(!button)return;
+ const active=state.driving.active;
+ button.setAttribute('aria-pressed',String(active));
+ button.setAttribute('aria-label',active?'주행 추적 종료':'주행 추적 시작');
+ button.title=active?'주행 추적 종료':'주행 추적 시작';
+ document.body.classList.toggle('driving-mode',active);
+}
+function stopDrivingMode({message=''}={}){
+ if(state.driving.active||map.isDriving())map.stopDriving({keepMarker:true});
+ state.driving={active:false,point:null,heading:null,speed:0,accuracy:null};
+ syncDrivingButton();
+ if(state.mapReady){state.center=map.getCenter();state.bounds=map.getBounds();}
+ render();
+ if(message)toast(message);
+}
+function startDrivingMode(){
+ if(!state.mapReady){toast('지도가 준비된 뒤 주행 추적을 시작해 주세요.');return;}
+ try{
+   state.driving.active=true;syncDrivingButton();
+   map.startDriving({
+     onUpdate:({point,heading,speed,accuracy})=>{
+       state.driving={active:true,point,heading,speed,accuracy};
+       state.center={...point};
+       syncDrivingButton();
+     },
+     onError:error=>{stopDrivingMode({message:error.message||'주행 위치를 확인하지 못했습니다.'});}
+   });
+   toast('주행 추적을 시작했습니다. 현재 위치와 진행 방향을 따라 지도가 갱신됩니다.');
+ }catch(error){
+   state.driving={active:false,point:null,heading:null,speed:0,accuracy:null};syncDrivingButton();
+   toast(error.message||'주행 추적을 시작하지 못했습니다.');
+ }
+}
+$('drive-mode').addEventListener('click',()=>{if(state.driving.active)stopDrivingMode({message:'주행 추적을 종료했습니다.'});else startDrivingMode();});
+$('reset-map').addEventListener('click',()=>{if(state.driving.active)stopDrivingMode();state.center={...APP_CONFIG.defaultCenter};if(state.mapReady){map.setCenter(state.center);map.setZoom(mobileMapView.isMobile()?(APP_CONFIG.mobileDefaultZoom||15):APP_CONFIG.defaultZoom);}});
 $('zoom-in').addEventListener('click',()=>{if(state.mapReady)map.zoomBy(1);});
 $('zoom-out').addEventListener('click',()=>{if(state.mapReady)map.zoomBy(-1);});
 $('map-type-toggle').addEventListener('click',()=>{const b=$('map-type-toggle');if(!state.mapReady)return;const result=map.toggleMapType();if(!result.supported){b.hidden=true;return;}const satellite=result.type==='satellite';b.setAttribute('aria-pressed',String(satellite));b.setAttribute('aria-label',satellite?'일반 지도 보기':'위성 지도 보기');b.title=satellite?'일반 지도 보기':'위성 지도 보기';});
@@ -218,6 +273,7 @@ document.querySelectorAll('dialog').forEach(d=>d.addEventListener('click',e=>{if
 document.addEventListener('click',async e=>{const b=e.target.closest('[data-action]');if(!b)return;const action=b.dataset.action,id=b.dataset.id;if(action==='load-more'){state.listLimit+=60;render();}else if(action==='detail')selectStation(id);else if(action==='save')toggleFavorite(id);else if(action==='show-list')openFocusList();else if(action==='copy-address'){const st=state.all.find(s=>s.id===id);if(st){try{await navigator.clipboard.writeText(st.roadAddress||st.address||'');toast('주소를 복사했습니다.');}catch{toast('주소 복사를 사용할 수 없습니다.');}}}else if(action==='share')shareStation(id);else if(action==='retry')loadData();else if(action==='show-old'){state.freshOnly=false;$('fresh-only').checked=false;render();}else if(action==='zone'){const zone=state.envelope?.coverage?.zones?.find(z=>z.id===b.dataset.zone);if(zone?.center){state.center=zone.center;if(state.mapReady)map.setCenter(zone.center);}}else if(action==='reset-filters'){state.query='';state.brand='';state.self=false;state.freshOnly=false;$('fresh-only').checked=false;$('query').value='';$('brand-filter').value='';$('self-only').checked=false;render();}});
 document.addEventListener('visibilitychange',()=>{if(!document.hidden){render();if(Date.now()-lastDataCheckAt>=DATA_REFRESH_MS)loadData();}});
 window.addEventListener('online',loadData);
+window.addEventListener('beforeunload',()=>{if(map.isDriving())map.stopDriving({keepMarker:false});});
 setInterval(()=>{if(!document.hidden){render();if($('detail-dialog').open)renderDetail();}},60000);
 setInterval(()=>{if(!document.hidden)loadData();},DATA_REFRESH_MS);
 
