@@ -174,9 +174,9 @@ test('fuel type controls use circular icon badges like the filter control', () =
 });
 
 
-test('mobile default zoom uses the requested city-scale view', async () => {
+test('mobile default zoom uses the requested neighborhood-scale view', async () => {
   const config = await readFile(new URL('../public/config.js', import.meta.url), 'utf8');
-  assert.match(config, /mobileDefaultZoom:\s*13/);
+  assert.match(config, /mobileDefaultZoom:\s*14/);
   assert.match(map, /_defaultZoom\(\)/);
   assert.match(map, /zoom:\s*this\._defaultZoom\(\)/);
   assert.match(map, /setZoom\(zoom\)/);
