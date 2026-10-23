@@ -2,7 +2,6 @@ import { readFile, readdir, unlink } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { OpinetBrowserDownloadClient, kstDate, previousKstDate } from '../server/opinet-browser-download.mjs';
-import { OpinetDownloadClient } from '../server/opinet-download.mjs';
 import { fetchStandardStations, fetchStandardStationsPublic } from '../server/data-go-stations.mjs';
 import { atomicWriteJson, seoulDay } from '../server/quota.mjs';
 import { publicError, ServiceError } from '../server/errors.mjs';
@@ -126,7 +125,7 @@ async function collectNationwideSnapshot({outputDirectory=resolve(ROOT,'public/d
  const businessDue=forceRefresh||!businessStations.length||!Number.isFinite(businessAge)||businessAge>=6*60*60*1000;
  if(businessDue){
   try{
-   const businessResult=await new OpinetDownloadClient({fetchImpl}).download({kind:'basic',searchCond:'1'});
+   const businessResult=await downloadClient.businessInfo({businessType:'station'});
    businessFetchedAt=new Date(clock()).toISOString();businessBytes=businessResult.bytes;
    businessStations=[...mergeBasicAndPrice(businessResult.rows,[],{fetchedAt:businessFetchedAt,kind:'station'}).values()];
    if(businessStations.length<minRows)throw new ServiceError('OPINET_BUSINESS_DOWNLOAD_EMPTY','사업자 기본정보에서 유효한 주유소를 충분히 받지 못했습니다.');
