@@ -74,7 +74,7 @@ jobs:
           OPINET_DIAGNOSTICS: '1'
         run: node scripts/collect.mjs --output public/data/stations.json --ledger .cache/opinet-quota.json
       - name: Collect regional averages and highway fuel data
-        if: github.event_name != 'pull_request' && steps.collect.outcome == 'success'
+        if: github.event_name != 'pull_request'
         continue-on-error: true
         env:
           OPINET_API_KEY: ${{ secrets.OPINET_API_KEY }}
