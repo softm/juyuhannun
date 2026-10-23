@@ -116,9 +116,9 @@ test('name labels sit above location dots and keep that layer across unchanged r
 test('selected marker keeps its price-level tone and readable marker scales show price inside',()=>{
   const h=harness(),c=h.controller;
   const rows=[
-    row('cheap',{prices:{B027:{price:1600,priceUpdatedAt:new Date().toISOString()}}}),
-    row('mid',{prices:{B027:{price:1700,priceUpdatedAt:new Date().toISOString()}}}),
-    row('high',{prices:{B027:{price:1900,priceUpdatedAt:new Date().toISOString()}}})
+    row('cheap',{prices:{B027:{price:1600,priceUpdatedAt:new Date().toISOString(),fetchedAt:new Date().toISOString()}}}),
+    row('mid',{prices:{B027:{price:1700,priceUpdatedAt:new Date().toISOString(),fetchedAt:new Date().toISOString()}}}),
+    row('high',{prices:{B027:{price:1900,priceUpdatedAt:new Date().toISOString(),fetchedAt:new Date().toISOString()}}})
   ];
   c.setStations(rows,'high');h.flush();
   assert.match(c._markerState.get('cheap').content,/station-marker tone-green/);
