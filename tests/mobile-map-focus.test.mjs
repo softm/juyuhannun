@@ -46,7 +46,7 @@ test('map controller uses actual SDK zoom and Naver map type APIs', () => {
 test('focus mode keeps marker callout and stages compact versus expanded tools', () => {
   assert.match(html, /compact-map-action/);
   assert.match(html, /map-secondary-actions/);
-  assert.match(map, /price-pin\.selected \.price-pin-name/);
+  assert.match(map, /selected-station-callout/);
   assert.match(css, /mobile-map-focus[\s\S]*compact-map-action/);
   assert.match(css, /mobile-map-expanded[\s\S]*expanded-map-action/);
 });
