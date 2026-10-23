@@ -117,6 +117,7 @@ function installMarkerStyles() {
     '.price-pin-value{display:block}.price-pin-value small{font-size:10px;margin-left:2px;font-weight:600}',
     '.price-pin-name{display:none;position:absolute;left:50%;bottom:calc(100% + 10px);width:max-content;max-width:200px;margin-left:0;padding:6px 9px;border:1px solid #d8e3dc;border-radius:7px;background:#fff;color:#172e20;font:600 12px/1.35 system-ui,sans-serif;white-space:normal;box-shadow:0 3px 9px #0e241f20;pointer-events:none}',
     '.price-pin.selected .price-pin-name{display:block}',
+    '.price-pin.selected .price-pin-name:after{content:"";position:absolute;left:50%;bottom:-7px;width:12px;height:12px;transform:translateX(-50%) rotate(45deg);border-right:1px solid #146d45;border-bottom:1px solid #146d45;background:#f0faf3}',
 
     '.station-marker{position:relative;width:72px;height:40px;pointer-events:none}',
     '.station-marker .price-pin{position:absolute;left:36px;bottom:5px;box-sizing:border-box;transform:translateX(-50%);pointer-events:auto}',
@@ -141,7 +142,7 @@ function installMarkerStyles() {
     '.map-surface .price-pin.is-stale:not(.selected) .price-label-value{color:#786b5b}',
     '.map-surface.dense-markers .price-pin:not(.selected){box-shadow:none}',
     '.map-surface[data-marker-size="small"] .price-pin:not(.selected){min-width:8px;width:8px;min-height:8px;height:8px;bottom:-4px;border-width:1px}',
-    '.station-marker .price-pin.selected .price-pin-name{transform:translateX(-50%);border-color:#146d45;background:#f0faf3}',
+    '.station-marker .price-pin.selected .price-pin-name{display:block;transform:translateX(-50%);border-color:#146d45;background:#f0faf3;color:#123e32;font-weight:800;font-size:13px;padding:9px 12px;border-radius:12px;box-shadow:0 6px 18px #0e241f2f;z-index:4}',
     '.map-you{display:block;width:18px;height:18px;border:3px solid #fff;border-radius:50%;background:#2674db;box-shadow:0 0 0 7px #2674db30,0 2px 8px #193a6040}',
     '.juyuhannun-map .leaflet-control-attribution{font-size:10px;background:rgba(255,255,255,.92)}',
     '@media(prefers-reduced-motion:reduce){.price-pin{transition:none}}'

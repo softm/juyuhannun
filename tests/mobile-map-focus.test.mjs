@@ -41,3 +41,24 @@ test('map controller uses actual SDK zoom and Naver map type APIs', () => {
   assert.match(map, /MapTypeId\.SATELLITE/);
   assert.match(app, /map\.toggleMapType\(\)/);
 });
+
+
+test('focus mode keeps marker callout and stages compact versus expanded tools', () => {
+  assert.match(html, /compact-map-action/);
+  assert.match(html, /expanded-map-action/);
+  assert.match(map, /price-pin\.selected \.price-pin-name/);
+  assert.match(css, /mobile-map-focus[\s\S]*compact-map-action/);
+  assert.match(css, /mobile-map-expanded[\s\S]*expanded-map-action/);
+});
+
+test('detail sheet handle is interactive and snaps focus modes', () => {
+  assert.match(html, /id="detail-sheet-handle"/);
+  assert.match(view, /pointerdown/);
+  assert.match(view, /pointermove/);
+  assert.match(view, /finishHandleDrag/);
+  assert.match(view, /dy < -58/);
+  assert.match(view, /dy > 132/);
+  assert.match(view, /setDetailMode\('expanded-tools'\)/);
+  assert.match(css, /--sheet-drag-y/);
+  assert.match(css, /touch-action:none/);
+});

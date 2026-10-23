@@ -7,6 +7,7 @@ export function setupMobileMapView({
   listButton,
   detailDialog = null,
   detailExpandButton = null,
+  detailHandle = null,
   onResize = () => {},
   onModeChange = () => {},
   icon,
@@ -24,6 +25,7 @@ export function setupMobileMapView({
   let revision = 0;
   let destroyed = false;
   let historyArmed = false;
+  let drag = null;
 
   function cancelRestore() {
     revision++;
@@ -202,14 +204,54 @@ export function setupMobileMapView({
     restoreBase({ showList, restoreFocus });
   }
 
+  function setDetailMode(next) {
+    if (!focusModes.has(next) || !detailDialog?.open) return;
+    detailDialog.style.removeProperty('--sheet-drag-y');
+    setMode(next);
+    fullReturnMode = next;
+  }
+
   function toggleDetailExpanded() {
     if (destroyed || !media.matches || !detailDialog?.open) return;
-    if (mode === 'expanded-tools') {
-      setMode('focus-detail');
-      fullReturnMode = 'focus-detail';
+    setDetailMode(mode === 'expanded-tools' ? 'focus-detail' : 'expanded-tools');
+  }
+
+  function onHandlePointerDown(event) {
+    if (destroyed || !media.matches || !focusModes.has(mode) || event.button > 0) return;
+    drag = { id: event.pointerId, startY: event.clientY, lastY: event.clientY, startedAt: performance.now(), startMode: mode };
+    detailHandle?.setPointerCapture?.(event.pointerId);
+    detailDialog?.classList.add('is-dragging');
+    event.preventDefault();
+  }
+
+  function onHandlePointerMove(event) {
+    if (!drag || drag.id !== event.pointerId || !detailDialog) return;
+    drag.lastY = event.clientY;
+    const raw = drag.lastY - drag.startY;
+    const offset = drag.startMode === 'expanded-tools'
+      ? Math.max(-24, Math.min(180, raw))
+      : Math.max(-180, Math.min(140, raw));
+    detailDialog.style.setProperty('--sheet-drag-y', offset + 'px');
+    event.preventDefault();
+  }
+
+  function finishHandleDrag(event, cancelled = false) {
+    if (!drag || drag.id !== event.pointerId) return;
+    const dy = (event.clientY ?? drag.lastY) - drag.startY;
+    const elapsed = Math.max(1, performance.now() - drag.startedAt);
+    const velocity = dy / elapsed;
+    const startMode = drag.startMode;
+    drag = null;
+    detailDialog?.classList.remove('is-dragging');
+    detailDialog?.style.removeProperty('--sheet-drag-y');
+    if (cancelled) return;
+    if (startMode === 'focus-detail') {
+      if (dy < -58 || velocity < -0.45) setDetailMode('expanded-tools');
+      else if (dy > 132 || velocity > 0.72) closeDetail();
+      else setDetailMode('focus-detail');
     } else {
-      setMode('expanded-tools');
-      fullReturnMode = 'expanded-tools';
+      if (dy > 58 || velocity > 0.45) setDetailMode('focus-detail');
+      else setDetailMode('expanded-tools');
     }
   }
 
@@ -322,6 +364,11 @@ export function setupMobileMapView({
   toggleButton.addEventListener('click', toggleFullMap);
   listButton.addEventListener('click', toggleList);
   detailExpandButton?.addEventListener('click', toggleDetailExpanded);
+  detailHandle?.addEventListener('click', toggleDetailExpanded);
+  detailHandle?.addEventListener('pointerdown', onHandlePointerDown);
+  detailHandle?.addEventListener('pointermove', onHandlePointerMove);
+  detailHandle?.addEventListener('pointerup', event => finishHandleDrag(event));
+  detailHandle?.addEventListener('pointercancel', event => finishHandleDrag(event, true));
   document.addEventListener('keydown', onKeyDown);
   window.addEventListener('popstate', onPopState);
   media.addEventListener('change', onMediaChange);
@@ -348,6 +395,9 @@ export function setupMobileMapView({
       toggleButton.removeEventListener('click', toggleFullMap);
       listButton.removeEventListener('click', toggleList);
       detailExpandButton?.removeEventListener('click', toggleDetailExpanded);
+      detailHandle?.removeEventListener('click', toggleDetailExpanded);
+      detailHandle?.removeEventListener('pointerdown', onHandlePointerDown);
+      detailHandle?.removeEventListener('pointermove', onHandlePointerMove);
       document.removeEventListener('keydown', onKeyDown);
       window.removeEventListener('popstate', onPopState);
       media.removeEventListener('change', onMediaChange);
