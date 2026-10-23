@@ -7,12 +7,9 @@ on:
     branches: [main]
   workflow_dispatch:
   schedule:
-    # KST 01:17, 02:17, 09:17, 12:17, 16:17, 19:17.
-    # Actions schedules can be delayed; source timestamps remain authoritative.
-    - cron: '17 0,3,7,10,16,17 * * *'
-    # KST 20:37 primary collection, 22:37 and 00:37 follow-up checks.
-    # Every run evaluates the source date; retries preserve the original observation time.
-    - cron: '37 11,13,15 * * *'
+    # KST 08:17, 14:17, 20:17 — nationwide file + general API comparison/enrichment.
+    # GitHub Actions schedules can be delayed; source timestamps remain authoritative.
+    - cron: '17 23,5,11 * * *'
 
 permissions:
   contents: read
@@ -51,6 +48,7 @@ jobs:
             public/data/stations.json
             public/data/averages.json
             public/data/highway.json
+            public/data/comparisons.json
             public/data/nationwide
           key: fuel-data-v2-${{ github.run_id }}-${{ github.run_attempt }}
           restore-keys: |
@@ -68,7 +66,7 @@ jobs:
             fuel-quota-v2-
             opinet-quota-v1-
       - name: Collect official prices or preserve explicit unavailable state
-        if: github.event_name != 'pull_request' && (github.event_name != 'schedule' || github.event.schedule == '17 0,3,7,10,16,17 * * *')
+        if: github.event_name != 'pull_request'
         id: collect
         continue-on-error: true
         env:
@@ -83,12 +81,18 @@ jobs:
           OPINET_DIAGNOSTICS: '1'
           EX_API_KEY: ${{ secrets.EX_API_KEY }}
         run: npm run collect:energy
+      - name: Collect nationwide lowest-price comparison samples
+        if: github.event_name != 'pull_request'
+        continue-on-error: true
+        env:
+          OPINET_API_KEY: ${{ secrets.OPINET_API_KEY }}
+        run: npm run collect:comparisons
       - name: Enrich missing station coordinates within the shared daily quota
         if: github.event_name != 'pull_request'
         continue-on-error: true
         env:
           OPINET_API_KEY: ${{ secrets.OPINET_API_KEY }}
-        run: node scripts/enrich-coordinates.mjs
+        run: node scripts/enrich-coordinates.mjs --max-calls 20 --daily-budget 60 --reserve 60
       - name: Check nationwide source date and collect when due
         if: github.event_name != 'pull_request'
         id: nationwide
@@ -113,6 +117,7 @@ jobs:
             public/data/stations.json
             public/data/averages.json
             public/data/highway.json
+            public/data/comparisons.json
             public/data/nationwide
           key: fuel-data-v2-${{ github.run_id }}-${{ github.run_attempt }}
       - name: Validate deployable assets and data
@@ -141,7 +146,7 @@ jobs:
           const d=JSON.parse(await readFile('dist/data/status.json','utf8'));
           const time=value=>value?new Intl.DateTimeFormat('ko-KR',{timeZone:'Asia/Seoul',dateStyle:'short',timeStyle:'short',hour12:false}).format(new Date(value)):'미확인';
           let report='## 주유한눈 데이터 상태\n\n[수집 현황 페이지](https://softm.github.io/juyuhannun/data-status.html) · 모든 시각은 한국시간\n\n';
-          report+=`**전국 수집 예정 20:37 · 재확인 22:37 / 다음 날 00:37**\n\n**마지막 성공 수집 ${time(d.nationwide.fetchedAt)} · 실제 가격 기준일 ${d.nationwide.priceDate??'미확인'}**\n\n`;
+          report+=`**수집 예정 08:17 · 14:17 · 20:17 KST (하루 3회)**\n\n**마지막 성공 수집 ${time(d.nationwide.fetchedAt)} · 실제 가격 기준일 ${d.nationwide.priceDate??'미확인'}**\n\n`;
           report+='| 자료 | 상태 | 건수 | 마지막 성공 수집 | 이전 자료 보존 |\n|---|---|---:|---|---|\n';
           for(const row of d.collections)report+=`| ${row.name} | ${row.status} | ${row.count} | ${time(row.fetchedAt)} | ${row.retained?'예':'아니요'} |\n`;
           const c=d.nationwide;
