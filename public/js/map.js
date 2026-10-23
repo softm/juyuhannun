@@ -20,6 +20,24 @@ const pointFor = station => {
   return validPoint(point) ? point : null;
 };
 const abortError = (message = '이전 주소 검색이 취소되었습니다.') => Object.assign(new Error(message), { name: 'AbortError' });
+const normalizeHeading = value => {
+  const number = Number(value);
+  return Number.isFinite(number) ? (number % 360 + 360) % 360 : null;
+};
+const geoDistance = (a, b) => {
+  if (!validPoint(a) || !validPoint(b)) return Infinity;
+  const rad = Math.PI / 180, lat1 = a.lat * rad, lat2 = b.lat * rad;
+  const dLat = (b.lat - a.lat) * rad, dLng = (b.lng - a.lng) * rad;
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) ** 2;
+  return 6371000 * 2 * Math.atan2(Math.sqrt(h), Math.sqrt(Math.max(0, 1 - h)));
+};
+const geoBearing = (a, b) => {
+  if (!validPoint(a) || !validPoint(b)) return null;
+  const rad = Math.PI / 180, lat1 = a.lat * rad, lat2 = b.lat * rad, dLng = (b.lng - a.lng) * rad;
+  const y = Math.sin(dLng) * Math.cos(lat2);
+  const x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLng);
+  return normalizeHeading(Math.atan2(y, x) / rad);
+};
 
 function loadNaverSDK() {
   if (naverAuthFailed) return Promise.reject(new Error('네이버 지도 인증을 확인할 수 없습니다.'));
@@ -162,7 +180,9 @@ function installMarkerStyles() {
     '.map-surface[data-marker-scale="pin"] .station-marker:not(.is-selected) .price-pin-glyph,.map-surface[data-marker-scale="name"] .station-marker:not(.is-selected) .price-pin-glyph,.map-surface[data-marker-scale="detail"] .station-marker:not(.is-selected) .price-pin-glyph{display:none}',
     '.map-surface[data-marker-scale="pin"] .station-marker:not(.is-selected) .price-pin-value,.map-surface[data-marker-scale="name"] .station-marker:not(.is-selected) .price-pin-value,.map-surface[data-marker-scale="detail"] .station-marker:not(.is-selected) .price-pin-value{display:block;font-size:12px;letter-spacing:-.3px}',
     '.map-surface[data-marker-scale="detail"] .station-marker:not(.is-selected) .price-pin-value{font-size:13px}',
-    '.map-you{display:block;width:18px;height:18px;border:3px solid #fff;border-radius:50%;background:#2674db;box-shadow:0 0 0 7px #2674db30,0 2px 8px #193a6040}',
+    '.map-you{display:block;position:relative;width:18px;height:18px;border:3px solid #fff;border-radius:50%;background:#2674db;box-shadow:0 0 0 7px #2674db30,0 2px 8px #193a6040}',
+    '.map-you.is-driving{width:30px;height:30px;border-width:4px;background:#1769d7;box-shadow:0 0 0 9px #2674db26,0 4px 14px #193a6050}',
+    '.map-you.is-driving:before{content:"";position:absolute;left:50%;top:-15px;width:0;height:0;border-left:7px solid transparent;border-right:7px solid transparent;border-bottom:15px solid #1769d7;transform:translateX(-50%) rotate(var(--drive-heading,0deg));transform-origin:50% 30px;filter:drop-shadow(0 1px 1px #fff)}',
     '.juyuhannun-map .leaflet-control-attribution{font-size:10px;background:rgba(255,255,255,.92)}',
     '@media(max-width:1000px){.station-marker .price-pin.selected{width:70px;height:70px;min-width:70px;min-height:70px}.selected-station-callout{font-size:14px;min-height:46px}}',
     '@media(prefers-reduced-motion:reduce){.price-pin{transition:none}.station-marker .price-pin.selected{animation:none}}'
@@ -204,6 +224,10 @@ export class MapController {
     this._suppressUntil = 0;
     this._navigationRevision = 0;
     this._locationRevision = 0;
+    this._driveWatchId = null;
+    this._driveHeading = null;
+    this._drivePoint = null;
+    this._driveSpeed = 0;
     this._geocodeRevision = 0;
     this._mapType = 'normal';
     this._destroyed = false;
@@ -385,7 +409,7 @@ export class MapController {
       this._state('fallback', 'OpenStreetMap 지도 · 네이버 지도 연결을 확인하지 못했습니다.');
       this.setStations(this._stations, this._selectedId, this._fuel);
       if (this._routeCoords.length > 1) this.showRoute(this._routeCoords);
-      if (this._youPoint) this._showYou(this._youPoint);
+      if (this._youPoint) this._showYou(this._youPoint, { heading: this._driveHeading, driving: this._driveWatchId != null });
     })().catch(error => {
       this.ready = false;
       this._notice('지도를 불러오지 못했습니다. 주유소 가격 목록은 계속 사용할 수 있습니다.');
@@ -730,17 +754,144 @@ export class MapController {
     return { ...point };
   }
 
-  _showYou(point) {
+  _drivingCenter(point, heading, speed = 0) {
+    const bounds = this.getBounds();
+    if (!bounds) return { ...point };
+    const latSpan = Math.max(0.003, Math.abs(bounds.north - bounds.south));
+    const lngSpan = Math.max(0.003, Math.abs(bounds.east - bounds.west));
+    const angle = (normalizeHeading(heading) ?? 0) * Math.PI / 180;
+    // Keep the car in the lower part of the screen while reserving extra space
+    // on the horizontal side it is travelling toward. North-up providers cannot
+    // rotate the base map, so the heading arrow makes the travelling direction explicit.
+    const speedFactor = Math.max(0, Math.min(1, Number(speed) / 28));
+    const sideLead = 0.12 + speedFactor * 0.08;
+    const forwardLat = Math.cos(angle) * latSpan * (0.08 + speedFactor * 0.05);
+    const lowerAnchor = latSpan * 0.20;
+    const latShift = Math.max(latSpan * 0.06, Math.min(latSpan * 0.32, lowerAnchor + forwardLat));
+    return {
+      lat: point.lat + latShift,
+      lng: point.lng + Math.sin(angle) * lngSpan * sideLead
+    };
+  }
+
+  isDriving() {
+    return this._driveWatchId != null;
+  }
+
+  startDriving({ onUpdate = () => {}, onError = () => {} } = {}) {
+    if (this._destroyed) throw new Error('종료된 지도에서는 주행 추적을 시작할 수 없습니다.');
+    if (!navigator.geolocation?.watchPosition) throw new Error('이 브라우저에서는 실시간 위치 추적을 지원하지 않습니다.');
+    if (this._driveWatchId != null) return true;
+    let previousPoint = this._drivePoint;
+    let lastHeading = normalizeHeading(this._driveHeading);
+    const errorMessage = error => {
+      if (error?.code === 1) return '주행 추적을 사용하려면 위치 권한을 허용해 주세요.';
+      if (error?.code === 2) return '현재 위치 신호를 받을 수 없습니다. GPS 상태를 확인해 주세요.';
+      if (error?.code === 3) return '현재 위치 확인 시간이 초과되었습니다.';
+      return '주행 위치를 확인하지 못했습니다.';
+    };
+    const success = position => {
+      if (this._destroyed || this._driveWatchId == null) return;
+      const point = { lat: Number(position.coords.latitude), lng: Number(position.coords.longitude) };
+      if (!validPoint(point)) return;
+      const moved = previousPoint ? geoDistance(previousPoint, point) : 0;
+      let heading = normalizeHeading(position.coords.heading);
+      if (heading == null && previousPoint && moved >= 4) heading = geoBearing(previousPoint, point);
+      if (heading == null) heading = lastHeading;
+      if (heading == null) heading = 0;
+      const speed = Number.isFinite(Number(position.coords.speed)) && Number(position.coords.speed) >= 0 ? Number(position.coords.speed) : 0;
+      lastHeading = heading;
+      previousPoint = point;
+      this._drivePoint = { ...point };
+      this._driveHeading = heading;
+      this._driveSpeed = speed;
+      this._youPoint = { ...point };
+      this._showYou(point, { heading, driving: true });
+
+      if (this.map && this.ready) {
+        const currentZoom = Number(this.map.getZoom());
+        const targetZoom = speed >= 22 ? 13 : speed >= 11 ? 14 : 15;
+        const camera = this._drivingCenter(point, heading, speed);
+        this._center = { ...camera };
+        this._queryCenter = { ...camera };
+        this._internal(() => {
+          if (this.provider === 'naver') {
+            if (Number.isFinite(currentZoom) && currentZoom !== targetZoom) this.map.setZoom(targetZoom);
+            this.map.panTo(this._naverPoint(camera));
+          } else {
+            this.map.setView([camera.lat, camera.lng], targetZoom, { animate: false });
+          }
+        });
+        this._scheduleMarkers();
+        this._scheduleViewportChange();
+      }
+      onUpdate({
+        point: { ...point },
+        heading,
+        speed,
+        accuracy: Number(position.coords.accuracy) || null,
+        timestamp: Number(position.timestamp) || Date.now()
+      });
+    };
+    const failure = error => {
+      const wrapped = new Error(errorMessage(error));
+      wrapped.cause = error;
+      onError(wrapped);
+    };
+    try {
+      this._driveWatchId = navigator.geolocation.watchPosition(success, failure, {
+        enableHighAccuracy: true,
+        maximumAge: 1500,
+        timeout: 12000
+      });
+    } catch (error) {
+      this._driveWatchId = null;
+      throw error;
+    }
+    return true;
+  }
+
+  stopDriving({ keepMarker = true } = {}) {
+    if (this._driveWatchId != null && navigator.geolocation?.clearWatch) {
+      try { navigator.geolocation.clearWatch(this._driveWatchId); } catch { /* ignore browser cleanup errors */ }
+    }
+    this._driveWatchId = null;
+    this._driveSpeed = 0;
+    if (!keepMarker && this._you) {
+      this._removeMarker(this._you);
+      this._you = null;
+      this._youPoint = null;
+    } else if (keepMarker && this._youPoint) {
+      this._showYou(this._youPoint, { heading: this._driveHeading, driving: false });
+    }
+  }
+
+  _showYou(point, { heading = null, driving = false } = {}) {
     if (!this.map) return;
-    if (this._you) this._removeMarker(this._you);
-    if (this.provider === 'naver') this._you = new globalThis.naver.maps.Marker({
-      map: this.map, position: this._naverPoint(point), title: '내 위치', zIndex: 6000,
-      icon: { content: '<span class="map-you" aria-label="내 위치"></span>', anchor: new globalThis.naver.maps.Point(9, 9) }
-    });
-    else this._you = globalThis.L.marker([point.lat, point.lng], {
-      icon: globalThis.L.divIcon({ className: 'price-marker-shell', html: '<span class="map-you" aria-label="내 위치"></span>', iconSize: [18, 18], iconAnchor: [9, 9] }),
-      title: '내 위치', interactive: false, zIndexOffset: 6000
-    }).addTo(this.map);
+    const normalized = normalizeHeading(heading) ?? 0;
+    const content = '<span class="map-you' + (driving ? ' is-driving' : '') + '" style="--drive-heading:' + normalized.toFixed(1) + 'deg" aria-label="' + (driving ? '주행 중 현재 위치' : '내 위치') + '"></span>';
+    const size = driving ? 30 : 18;
+    const anchor = size / 2;
+    if (this.provider === 'naver') {
+      const icon = { content, anchor: new globalThis.naver.maps.Point(anchor, anchor) };
+      if (this._you) {
+        this._you.setPosition(this._naverPoint(point));
+        this._you.setIcon(icon);
+        this._you.setZIndex(6000);
+      } else {
+        this._you = new globalThis.naver.maps.Marker({ map: this.map, position: this._naverPoint(point), title: '내 위치', zIndex: 6000, icon });
+      }
+      return;
+    }
+    const icon = globalThis.L.divIcon({ className: 'price-marker-shell', html: content, iconSize: [size, size], iconAnchor: [anchor, anchor] });
+    if (this._you) {
+      this._you.setLatLng([point.lat, point.lng]);
+      this._you.setIcon(icon);
+    } else {
+      this._you = globalThis.L.marker([point.lat, point.lng], {
+        icon, title: '내 위치', interactive: false, zIndexOffset: 6000
+      }).addTo(this.map);
+    }
   }
 
   showRoute(coordinates) {
@@ -839,6 +990,7 @@ export class MapController {
   }
 
   destroy() {
+    this.stopDriving({ keepMarker: false });
     this._destroyed = true;
     this._geocodeRevision++;
     this._resizeObserver?.disconnect();
