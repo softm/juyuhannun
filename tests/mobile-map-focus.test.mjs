@@ -207,7 +207,7 @@ test('Stitch search bar and fuel selector stay functional', () => {
 });
 
 
-test('driving mode keeps travel direction at top and shows actual plus predicted travel guides', () => {
+test('driving mode keeps map overlays upright and shows actual plus predicted travel guides', () => {
   assert.match(map,/projectPoint/);
   assert.match(map,/_renderDrivingGuides/);
   assert.match(map,/strokeStyle:\s*'shortdash'/);
@@ -215,8 +215,8 @@ test('driving mode keeps travel direction at top and shows actual plus predicted
   assert.match(map,/_driveTrailCoords/);
   assert.match(app,/drivingStationScore/);
   assert.match(map,/_setDrivingHeadingUp/);
-  assert.match(map,/--drive-map-rotation/);
-  assert.match(styles,/\.map-surface\.heading-up/);
+  assert.match(map,/driving-guidance-active/);
+  assert.doesNotMatch(styles,/\.map-surface\.heading-up/);
   assert.match(app,/파랑=이동동선/);
   assert.match(app,/refreshDrivingRoadPrediction/);
   assert.match(app,/\/route\/predict/);
