@@ -447,7 +447,7 @@ export class MapController {
       this._state('fallback', 'OpenStreetMap 지도 · 네이버 지도 연결을 확인하지 못했습니다.');
       this.setStations(this._stations, this._selectedId, this._fuel);
       if (this._routeCoords.length > 1) this.showRoute(this._routeCoords);
-      if (this._youPoint) this._showYou(this._youPoint, { heading: this._driveWatchId != null ? 0 : this._driveHeading, driving: this._driveWatchId != null });
+      if (this._youPoint) this._showYou(this._youPoint, { heading: this._driveHeading, driving: this._driveWatchId != null });
       if (this._driveWatchId != null) { this._setDrivingHeadingUp(this._driveHeading, true); this._setDrivingInteraction(true); }
     })().catch(error => {
       this.ready = false;
@@ -814,17 +814,13 @@ export class MapController {
   }
 
   _setDrivingHeadingUp(heading, active = true) {
-    const normalized = normalizeHeading(heading) ?? 0;
+    // Naver Maps JS does not expose a native bearing/rotation control.
+    // Rotating the entire map DOM also rotates baked map labels and station overlays,
+    // so keep the base map north-up and express travel direction with the vehicle arrow
+    // plus trail/prediction guides.
     if (!this.canvas) return;
-    if (active) {
-      this.canvas.classList.add('heading-up');
-      this.canvas.style.setProperty('--drive-map-rotation', (-normalized).toFixed(1) + 'deg');
-      this.container?.classList.add('heading-up-active');
-    } else {
-      this.canvas.classList.remove('heading-up');
-      this.canvas.style.removeProperty('--drive-map-rotation');
-      this.container?.classList.remove('heading-up-active');
-    }
+    this.canvas.classList.toggle('driving-guidance-active',Boolean(active));
+    this.canvas.style.setProperty('--drive-heading',String(normalizeHeading(heading) ?? 0));
   }
 
   _setDrivingInteraction(active) {
@@ -953,7 +949,7 @@ export class MapController {
       this._driveSpeed = speed;
       this._youPoint = { ...point };
       this._setDrivingHeadingUp(heading, true);
-      this._showYou(point, { heading: 0, driving: true });
+      this._showYou(point, { heading, driving: true });
       this._renderDrivingGuides(point, heading, speed);
 
       if (this.map && this.ready) {
