@@ -188,3 +188,17 @@ body:not(.energy-page) .app-header{height:66px;padding:0 24px}
 :root{--stitch-brand:#0a6358;--stitch-brand-light:#e6f4f1;--stitch-blue:#1d68ed;--stitch-green:#10b981;--stitch-amber:#f59e0b;--stitch-red:#ef4444;--stitch-panel:#fff;--stitch-border:#e5e7eb}
 .mobile-search-back,.voice-search,.mobile-fuel-toggle{display:none}
 .voice-search.is-listening{color:#0a6358;background:#e6f4f1}
+
+
+/* Driving heading-up mode: rotate the physical map so travel direction stays at 12 o'clock. */
+.map-canvas{overflow:hidden}
+.map-surface.heading-up{
+  transform:rotate(var(--drive-map-rotation,0deg)) scale(1.46);
+  transform-origin:50% 50%;
+  transition:transform .28s linear;
+  will-change:transform;
+}
+.juyuhannun-map.heading-up-active .map-provider-notice{transform:rotate(calc(-1 * var(--drive-map-rotation,0deg)))}
+@media(prefers-reduced-motion:reduce){
+  .map-surface.heading-up{transition:none}
+}
