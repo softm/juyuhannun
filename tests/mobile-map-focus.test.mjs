@@ -207,6 +207,17 @@ test('Stitch search bar and fuel selector stay functional', () => {
 });
 
 
+test('driving mode keeps north-up and shows actual plus predicted travel guides', () => {
+  assert.match(map,/projectPoint/);
+  assert.match(map,/_renderDrivingGuides/);
+  assert.match(map,/strokeStyle:\s*'shortdash'/);
+  assert.match(map,/dashArray:\s*'12 10'/);
+  assert.match(map,/_driveTrailCoords/);
+  assert.match(app,/drivingStationScore/);
+  assert.match(app,/정북 고정/);
+  assert.match(app,/파랑=이동동선/);
+});
+
 test('detail handle drag changes actual sheet height and avoids duplicate click toggle', () => {
   assert.match(view,/--sheet-live-height/);
   assert.match(view,/viewportHeight\*\.58/);
