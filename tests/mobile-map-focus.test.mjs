@@ -99,6 +99,11 @@ test('five-state mobile focus flow includes map browse and draggable list sheet 
   for (const state of ['map-browse','list-sheet','list-sheet-expanded']) assert.match(view, new RegExp(state));
   assert.match(view, /openListSheet/);
   assert.match(view, /finishListDrag/);
+  assert.match(view, /--list-live-height/);
+  assert.match(view, /setListSnap/);
+  assert.match(css, /--list-live-height/);
+  assert.match(css, /52dvh/);
+  assert.match(css, /82dvh/);
   assert.match(view, /dy<-56/);
   assert.match(view, /dy>118/);
   assert.match(html, /id="mobile-focus-dock"/);
