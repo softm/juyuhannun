@@ -1,6 +1,7 @@
 import {APP_CONFIG} from '../config.js';
 import {MapController} from './map.js';
 import {setupMobileMapView} from './mobile-map-view.js';
+import {createMapLoadingController} from '../shared/map-loading.js';
 import {loadStationData,mergeStationData,reselectStationPrices} from './data-loader.js';
 import {FUEL_TYPES,BRANDS,escapeHTML as esc,money,finite,distanceMeters,getFuelPrice,freshness,formatTime,filterStations,summarizeVisiblePrices,hasMapCoordinates,stationNavigationURL} from './core.js';
 
@@ -49,6 +50,7 @@ function setMapNotice(message){$('map-notice').textContent=message;$('map-notice
 function updateViewport({center,bounds}){state.center=state.driving.active&&state.driving.point?{...state.driving.point}:center;state.bounds=bounds;state.listLimit=60;render();}
 function handleMapState({provider,status,message}){const typeButton=$('map-type-toggle');typeButton.hidden=provider!=='naver';if(provider!=='naver'){typeButton.setAttribute('aria-pressed','false');typeButton.setAttribute('aria-label','지도 유형 전환 미지원');typeButton.title='지도 유형 전환 미지원';}else if(typeButton.getAttribute('aria-label')==='지도 유형 전환 미지원'){typeButton.setAttribute('aria-label','위성 지도 보기');typeButton.title='위성 지도 보기';}if(status==='error'||provider==='leaflet')setMapNotice(message||'대체 지도에서 확인하고 있습니다.');else if(status==='ready')setMapNotice('');}
 const map=new MapController($('map'),{onViewportChange:updateViewport,onSelect:id=>selectStation(id),onState:handleMapState});
+const mapLoading=createMapLoadingController($('map-loading'));
 const mobileMapView=setupMobileMapView({workspace:document.querySelector('.workspace'),sidebar:$('station-sidebar'),mapSection:$('map-section'),results:$('results'),toggleButton:$('mobile-map-toggle'),listButton:$('mobile-list-toggle'),detailDialog:$('detail-dialog'),detailExpandButton:$('detail-expand-toggle'),detailHandle:$('detail-sheet-handle'),listSheetHandle:$('mobile-list-sheet-handle'),listSheetClose:$('mobile-list-sheet-close'),focusDock:$('mobile-focus-dock'),focusDockList:$('focus-dock-list'),onResize:()=>map.resize(),onModeChange:next=>{if(!['focus-detail','expanded-tools','map-browse','list-sheet','list-sheet-expanded'].includes(next))return;const station=state.all.find(s=>s.id===state.selected);if(station&&state.mapReady&&hasMapCoordinates(station)&&!['list-sheet','list-sheet-expanded'].includes(next))requestAnimationFrame(()=>map.focus(station,{preserveZoom:true}));},icon});
 
 async function requestJSON(url,signal){const response=await fetch(url,{signal,cache:'no-store',credentials:'omit',headers:{Accept:'application/json'}});let data;try{data=await response.json();}catch{throw new Error('가격 서버에서 올바른 자료를 받지 못했습니다.');}if(!response.ok&&!data.status)throw new Error('자료를 가져오지 못했습니다. 잠시 후 다시 시도해 주세요.');return data;}
@@ -277,13 +279,13 @@ window.addEventListener('beforeunload',()=>{if(map.isDriving())map.stopDriving({
 setInterval(()=>{if(!document.hidden){render();if($('detail-dialog').open)renderDetail();}},60000);
 setInterval(()=>{if(!document.hidden)loadData();},DATA_REFRESH_MS);
 
-async function initializeMapViewport(){
+async function initializeMapViewport(startupDataPromise){
  state.mapReady=true;
- $('map-loading')?.remove();
  const sharedStationRequested=Boolean(sharedId&&/^[\w-]{1,50}$/.test(sharedId));
  if(sharedStationRequested){
   map.setCenter(state.center);
  }else{
+  mapLoading.stage('location');
   try{
    const position=await map.locate();
    state.center={lat:position.lat,lng:position.lng};
@@ -292,8 +294,14 @@ async function initializeMapViewport(){
    map.setCenter(state.center);
   }
  }
+ mapLoading.stage('data');
+ await startupDataPromise.catch(()=>{});
  updateViewport({center:map.getCenter(),bounds:map.getBounds()});
+ mapLoading.stage('markers');
+ await map.waitForMarkerRender({timeoutMs:5000});
+ mapLoading.complete();
 }
-loadData();
-map.init().then(initializeMapViewport).catch(()=>{state.mapFailed=true;$('map-loading')?.remove();setMapNotice('지도를 불러오지 못했습니다. 지도 연결 후 화면 안의 주유소를 확인할 수 있습니다.');render();});
+const startupDataPromise=loadData();
+mapLoading.stage('map');
+map.init().then(()=>initializeMapViewport(startupDataPromise)).catch(()=>{state.mapFailed=true;mapLoading.error('지도를 불러오지 못했습니다.');setMapNotice('지도를 불러오지 못했습니다. 지도 연결 후 화면 안의 주유소를 확인할 수 있습니다.');render();});
 
