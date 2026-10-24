@@ -110,7 +110,7 @@ function render(){
  $('results-title').textContent=state.view==='saved'?'찜한 주유소':'지도 안 주유소';
  if($('focus-list-count'))$('focus-list-count').textContent=filtered.length.toLocaleString('ko-KR');
  const total=state.envelope?.coverage?.totalPriceStations??state.all.length,mapped=collectionStats().mapped,summary=summarizeVisiblePrices(filtered);
- $('coverage-hint').textContent=state.driving.active?`주행방향 우선 ${filtered.length.toLocaleString('ko-KR')}곳 · 정북 고정 · 파랑=이동동선 · 초록 점선=예측동선`:`현재 지도 ${filtered.length.toLocaleString('ko-KR')}곳 · 최신 비교 ${summary.comparable.toLocaleString('ko-KR')}곳 · 좌표 ${mapped.toLocaleString('ko-KR')}/${total.toLocaleString('ko-KR')}곳 확보`;
+ $('coverage-hint').textContent=state.driving.active?`주행방향 우선 ${filtered.length.toLocaleString('ko-KR')}곳 · 주행방향 위쪽 고정 · 파랑=이동동선 · 초록 점선=예측동선`:`현재 지도 ${filtered.length.toLocaleString('ko-KR')}곳 · 최신 비교 ${summary.comparable.toLocaleString('ko-KR')}곳 · 좌표 ${mapped.toLocaleString('ko-KR')}/${total.toLocaleString('ko-KR')}곳 확보`;
  if(!filtered.length)renderEmpty();else $('results').innerHTML=filtered.slice(0,state.listLimit).map((s,i)=>card(s,i)).join('')+(filtered.length>state.listLimit?`<button class="load-more" data-action="load-more">${Math.min(60,filtered.length-state.listLimit)}곳 더 보기 · ${state.listLimit.toLocaleString('ko-KR')}/${filtered.length.toLocaleString('ko-KR')}곳</button>`:'');
  if(state.mapReady)map.setStations(filtered,state.selected,state.fuel);
  const cheapest=summary.lowest;
@@ -276,7 +276,7 @@ function startDrivingMode(){
      },
      onError:error=>{stopDrivingMode({message:error.message||'주행 위치를 확인하지 못했습니다.'});}
    });
-   toast('주행모드 시작 · 정북 고정 · 파란선은 이동동선, 초록 점선은 예상 진행동선입니다.');
+   toast('주행모드 시작 · 주행방향을 화면 위쪽으로 고정합니다. 파란선은 이동동선, 초록 점선은 예상 진행동선입니다.');
  }catch(error){
    state.driving={active:false,point:null,heading:null,speed:0,accuracy:null};syncDrivingButton();
    toast(error.message||'주행 추적을 시작하지 못했습니다.');
