@@ -447,7 +447,8 @@ export class MapController {
       this._state('fallback', 'OpenStreetMap 지도 · 네이버 지도 연결을 확인하지 못했습니다.');
       this.setStations(this._stations, this._selectedId, this._fuel);
       if (this._routeCoords.length > 1) this.showRoute(this._routeCoords);
-      if (this._youPoint) this._showYou(this._youPoint, { heading: this._driveHeading, driving: this._driveWatchId != null });
+      if (this._youPoint) this._showYou(this._youPoint, { heading: this._driveWatchId != null ? 0 : this._driveHeading, driving: this._driveWatchId != null });
+      if (this._driveWatchId != null) { this._setDrivingHeadingUp(this._driveHeading, true); this._setDrivingInteraction(true); }
     })().catch(error => {
       this.ready = false;
       this._notice('지도를 불러오지 못했습니다. 주유소 가격 목록은 계속 사용할 수 있습니다.');
@@ -812,24 +813,47 @@ export class MapController {
     return { ...point };
   }
 
+  _setDrivingHeadingUp(heading, active = true) {
+    const normalized = normalizeHeading(heading) ?? 0;
+    if (!this.canvas) return;
+    if (active) {
+      this.canvas.classList.add('heading-up');
+      this.canvas.style.setProperty('--drive-map-rotation', (-normalized).toFixed(1) + 'deg');
+      this.container?.classList.add('heading-up-active');
+    } else {
+      this.canvas.classList.remove('heading-up');
+      this.canvas.style.removeProperty('--drive-map-rotation');
+      this.container?.classList.remove('heading-up-active');
+    }
+  }
+
+  _setDrivingInteraction(active) {
+    if (!this.map) return;
+    try {
+      if (this.provider === 'naver') {
+        this.map.setOptions?.({
+          draggable: !active,
+          scrollWheel: !active,
+          pinchZoom: !active
+        });
+      } else {
+        const toggle=(control,enable)=>{ if (!control) return; try { enable ? control.enable?.() : control.disable?.(); } catch {} };
+        toggle(this.map.dragging,!active);
+        toggle(this.map.scrollWheelZoom,!active);
+        toggle(this.map.touchZoom,!active);
+        toggle(this.map.doubleClickZoom,!active);
+      }
+    } catch {}
+  }
+
   _drivingCenter(point, heading, speed = 0) {
     const bounds = this.getBounds();
     if (!bounds) return { ...point };
     const latSpan = Math.max(0.003, Math.abs(bounds.north - bounds.south));
-    const lngSpan = Math.max(0.003, Math.abs(bounds.east - bounds.west));
-    const angle = (normalizeHeading(heading) ?? 0) * Math.PI / 180;
-    // Keep the car in the lower part of the screen while reserving extra space
-    // on the horizontal side it is travelling toward. North-up providers cannot
-    // rotate the base map, so the heading arrow makes the travelling direction explicit.
+    const visibleMeters = latSpan * 111320;
     const speedFactor = Math.max(0, Math.min(1, Number(speed) / 28));
-    const sideLead = 0.12 + speedFactor * 0.08;
-    const forwardLat = Math.cos(angle) * latSpan * (0.08 + speedFactor * 0.05);
-    const lowerAnchor = latSpan * 0.20;
-    const latShift = Math.max(latSpan * 0.06, Math.min(latSpan * 0.32, lowerAnchor + forwardLat));
-    return {
-      lat: point.lat + latShift,
-      lng: point.lng + Math.sin(angle) * lngSpan * sideLead
-    };
+    const leadMeters = Math.max(180, Math.min(1800, visibleMeters * (0.16 + speedFactor * 0.08)));
+    return projectPoint(point, heading, leadMeters) || { ...point };
   }
 
   isDriving() {
@@ -928,7 +952,8 @@ export class MapController {
       this._driveHeading = heading;
       this._driveSpeed = speed;
       this._youPoint = { ...point };
-      this._showYou(point, { heading, driving: true });
+      this._setDrivingHeadingUp(heading, true);
+      this._showYou(point, { heading: 0, driving: true });
       this._renderDrivingGuides(point, heading, speed);
 
       if (this.map && this.ready) {
@@ -962,6 +987,7 @@ export class MapController {
       onError(wrapped);
     };
     try {
+      this._setDrivingInteraction(true);
       this._driveWatchId = navigator.geolocation.watchPosition(success, failure, {
         enableHighAccuracy: true,
         maximumAge: 1500,
@@ -980,6 +1006,8 @@ export class MapController {
     }
     this._driveWatchId = null;
     this._driveSpeed = 0;
+    this._setDrivingHeadingUp(0, false);
+    this._setDrivingInteraction(false);
     this._clearDrivingGuides();
     this._driveTrailCoords = [];
     if (!keepMarker && this._you) {
