@@ -40,6 +40,8 @@ let recordStats;
 let priceSelection;
 let dataRequest=null;
 let lastDataCheckAt=0;
+let drivingPredictionAt=0;
+let drivingPredictionKey='';
 const DATA_REFRESH_MS=5*60*1000;
 function collectionStats(){const now=Date.now(),minute=Math.floor(now/60000);if(recordStats?.source===state.all&&recordStats.fuel===state.fuel&&recordStats.minute===minute)return recordStats;let mapped=0,fresh=0;for(const station of state.all){if(!hasMapCoordinates(station))continue;mapped++;const p=getFuelPrice(station,state.fuel);if(p&&freshness(p.priceUpdatedAt,p.fetchedAt,now,p.priceTimeStatus,p.sourceDate).eligible)fresh++;}return recordStats={source:state.all,fuel:state.fuel,minute,mapped,fresh};}
 function refreshPriceSelection(now){const sources=state.envelope?.sourceSnapshots,minute=Math.floor(now/60000);if(!sources||(priceSelection?.sources===sources&&priceSelection.minute===minute))return;state.all=reselectStationPrices(state.all,sources,{now});priceSelection={sources,minute};}
@@ -248,6 +250,18 @@ function stopDrivingMode({message=''}={}){
  render();
  if(message)toast(message);
 }
+async function refreshDrivingRoadPrediction(point,heading,speed){
+ if(!apiBase||!point||!Number.isFinite(heading))return;
+ const now=Date.now(),distance=Math.max(1200,Math.min(5000,(Number(speed)||0)*140||2200));
+ const key=[point.lat.toFixed(3),point.lng.toFixed(3),Math.round(heading/15)*15,Math.round(distance/500)*500].join(':');
+ if(now-drivingPredictionAt<45000&&key===drivingPredictionKey)return;
+ drivingPredictionAt=now;drivingPredictionKey=key;
+ try{
+  const url=`${apiBase}/route/predict?origin=${encodeURIComponent(point.lng+','+point.lat)}&heading=${encodeURIComponent(heading)}&distanceMeters=${Math.round(distance)}`;
+  const result=await requestJSON(url,AbortSignal.timeout(12000));
+  if(result?.status==='ready'&&Array.isArray(result.path)&&result.path.length>1)map.setDrivingPredictionPath(result.path);
+ }catch{}
+}
 function startDrivingMode(){
  if(!state.mapReady){toast('지도가 준비된 뒤 주행 추적을 시작해 주세요.');return;}
  try{
@@ -257,6 +271,7 @@ function startDrivingMode(){
        state.driving={active:true,point,heading,speed,accuracy};
        state.center={...point};
        syncDrivingButton();
+       refreshDrivingRoadPrediction(point,heading,speed);
        render();
      },
      onError:error=>{stopDrivingMode({message:error.message||'주행 위치를 확인하지 못했습니다.'});}
