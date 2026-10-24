@@ -39,6 +39,16 @@ const geoBearing = (a, b) => {
   return normalizeHeading(Math.atan2(y, x) / rad);
 };
 
+const projectPoint = (origin, heading, distanceMeters) => {
+  if (!validPoint(origin)) return null;
+  const bearing = (normalizeHeading(heading) ?? 0) * Math.PI / 180;
+  const angular = Math.max(0, Number(distanceMeters) || 0) / 6371000;
+  const lat1 = origin.lat * Math.PI / 180, lng1 = origin.lng * Math.PI / 180;
+  const lat2 = Math.asin(Math.sin(lat1) * Math.cos(angular) + Math.cos(lat1) * Math.sin(angular) * Math.cos(bearing));
+  const lng2 = lng1 + Math.atan2(Math.sin(bearing) * Math.sin(angular) * Math.cos(lat1), Math.cos(angular) - Math.sin(lat1) * Math.sin(lat2));
+  return { lat: lat2 * 180 / Math.PI, lng: lng2 * 180 / Math.PI };
+};
+
 function loadNaverSDK() {
   if (naverAuthFailed) return Promise.reject(new Error('네이버 지도 인증을 확인할 수 없습니다.'));
   if (globalThis.naver?.maps?.Map) return Promise.resolve(globalThis.naver.maps);
@@ -249,6 +259,9 @@ export class MapController {
     this._locationRevision = 0;
     this._driveWatchId = null;
     this._driveHeading = null;
+    this._driveTrailCoords = [];
+    this._driveTrail = null;
+    this._drivePrediction = null;
     this._drivePoint = null;
     this._driveSpeed = 0;
     this._geocodeRevision = 0;
@@ -821,6 +834,60 @@ export class MapController {
     return this._driveWatchId != null;
   }
 
+  _clearDrivingGuides() {
+    if (this._driveTrail) this._removeMarker(this._driveTrail);
+    if (this._drivePrediction) this._removeMarker(this._drivePrediction);
+    this._driveTrail = null;
+    this._drivePrediction = null;
+  }
+
+  _renderDrivingGuides(point, heading, speed = 0) {
+    if (!this.map || !validPoint(point)) return;
+    const previous = this._driveTrailCoords.at(-1);
+    if (!previous || geoDistance(previous, point) >= 4) {
+      this._driveTrailCoords.push({ ...point, at: Date.now() });
+      if (this._driveTrailCoords.length > 120) this._driveTrailCoords.splice(0, this._driveTrailCoords.length - 120);
+    }
+    const trailPoints = this._driveTrailCoords.map(({ lat, lng }) => ({ lat, lng }));
+    const horizon = Math.max(900, Math.min(5000, (Number(speed) || 0) * 120));
+    const predicted = [0.28,0.56,0.8,1].map(ratio => projectPoint(point, heading, horizon * ratio)).filter(Boolean);
+
+    this._clearDrivingGuides();
+    if (this.provider === 'naver') {
+      const maps = globalThis.naver.maps;
+      if (trailPoints.length > 1) {
+        this._driveTrail = new maps.Polyline({
+          map: this.map,
+          path: trailPoints.map(p => new maps.LatLng(p.lat, p.lng)),
+          strokeColor: '#1769d7',
+          strokeWeight: 5,
+          strokeOpacity: 0.72
+        });
+      }
+      if (predicted.length) {
+        this._drivePrediction = new maps.Polyline({
+          map: this.map,
+          path: [point,...predicted].map(p => new maps.LatLng(p.lat, p.lng)),
+          strokeColor: '#0f6b57',
+          strokeWeight: 5,
+          strokeOpacity: 0.78,
+          strokeStyle: 'shortdash'
+        });
+      }
+    } else {
+      if (trailPoints.length > 1) {
+        this._driveTrail = globalThis.L.polyline(trailPoints.map(p => [p.lat,p.lng]), {
+          color: '#1769d7', weight: 5, opacity: .72
+        }).addTo(this.map);
+      }
+      if (predicted.length) {
+        this._drivePrediction = globalThis.L.polyline([point,...predicted].map(p => [p.lat,p.lng]), {
+          color: '#0f6b57', weight: 5, opacity: .78, dashArray: '12 10'
+        }).addTo(this.map);
+      }
+    }
+  }
+
   startDriving({ onUpdate = () => {}, onError = () => {} } = {}) {
     if (this._destroyed) throw new Error('종료된 지도에서는 주행 추적을 시작할 수 없습니다.');
     if (!navigator.geolocation?.watchPosition) throw new Error('이 브라우저에서는 실시간 위치 추적을 지원하지 않습니다.');
@@ -850,6 +917,7 @@ export class MapController {
       this._driveSpeed = speed;
       this._youPoint = { ...point };
       this._showYou(point, { heading, driving: true });
+      this._renderDrivingGuides(point, heading, speed);
 
       if (this.map && this.ready) {
         const currentZoom = Number(this.map.getZoom());
@@ -900,6 +968,8 @@ export class MapController {
     }
     this._driveWatchId = null;
     this._driveSpeed = 0;
+    this._clearDrivingGuides();
+    this._driveTrailCoords = [];
     if (!keepMarker && this._you) {
       this._removeMarker(this._you);
       this._you = null;
