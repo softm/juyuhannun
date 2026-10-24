@@ -547,6 +547,18 @@ export class MapController {
     return { supported: true, type: next };
   }
 
+  async waitForMarkerRender({ timeoutMs = 4000 } = {}) {
+    const started=performance.now();
+    return new Promise(resolve=>{
+      const check=()=>{
+        if(this._destroyed||!this._markerFrame){resolve({count:this._markers.size,timedOut:false});return;}
+        if(performance.now()-started>=timeoutMs){resolve({count:this._markers.size,timedOut:true});return;}
+        requestAnimationFrame(check);
+      };
+      requestAnimationFrame(check);
+    });
+  }
+
   setStations(stations, selectedId = null, fuel = 'B027') {
     this._stations = Array.isArray(stations) ? stations : [];
     this._selectedId = selectedId == null ? null : String(selectedId);
