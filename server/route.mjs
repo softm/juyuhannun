@@ -10,6 +10,17 @@ export function parseRoutePoint(value) {
   return { lat, lng };
 }
 
+export function projectRoutePoint(origin, heading, distanceMeters) {
+  if (!origin || !Number.isFinite(origin.lat) || !Number.isFinite(origin.lng)) throw new ServiceError('INVALID_ROUTE_POINT', '출발지 좌표를 확인해 주세요.', 400);
+  const normalized=((Number(heading)%360)+360)%360;
+  if (!Number.isFinite(normalized)) throw new ServiceError('INVALID_ROUTE_HEADING', '주행 방향을 확인해 주세요.', 400);
+  const distance=Math.max(500,Math.min(8000,Number(distanceMeters)||2500));
+  const R=6371000,brng=normalized*Math.PI/180,lat1=origin.lat*Math.PI/180,lng1=origin.lng*Math.PI/180,ang=distance/R;
+  const lat2=Math.asin(Math.sin(lat1)*Math.cos(ang)+Math.cos(lat1)*Math.sin(ang)*Math.cos(brng));
+  const lng2=lng1+Math.atan2(Math.sin(brng)*Math.sin(ang)*Math.cos(lat1),Math.cos(ang)-Math.sin(lat1)*Math.sin(lat2));
+  return {lat:lat2*180/Math.PI,lng:lng2*180/Math.PI};
+}
+
 export function normalizeNaverRoute(payload, option = 'traoptimal') {
   const routes = payload?.route?.[option];
   if (payload?.code !== 0 || !Array.isArray(routes) || routes.length !== 1) throw new ServiceError('ROUTE_NOT_CONFIRMED', '경로 제공사가 하나의 확정된 경로를 반환하지 않았습니다.');
@@ -47,6 +58,29 @@ export class NaverRouteClient {
       if (error instanceof ServiceError) throw error;
       throw new ServiceError('NAVER_NETWORK_ERROR', '도로 경로를 조회하지 못했습니다. 우회 비용을 확정할 수 없습니다.');
     }
+  }
+
+  async predict({ origin: originText, heading: headingText, distanceMeters: distanceText }) {
+    const origin=parseRoutePoint(originText);
+    const heading=Number(headingText);
+    if (!Number.isFinite(heading)) throw new ServiceError('INVALID_ROUTE_HEADING','주행 방향을 확인해 주세요.',400);
+    const distanceMeters=Math.max(800,Math.min(6000,Number(distanceText)||2500));
+    const destination=projectRoutePoint(origin,heading,distanceMeters);
+    const option='traoptimal';
+    if (!this.configured) return {status:'unavailable',provider:'naver',option,fetchedAt:null,origin,destination,path:[],error:{code:'NAVER_CREDENTIALS_REQUIRED',message:'도로 예측 경로를 사용하려면 네이버 Directions 인증정보가 필요합니다.'}};
+    const key=JSON.stringify({type:'predict',origin,destination,option});
+    const cached=this.cache.get(key);
+    if (cached) return {...cached.value,cache:{hit:true,ageSeconds:cached.ageSeconds}};
+    return this.singleFlight.run(key,async()=>{
+      try{
+        const route=await this.request({origin,destination,option});
+        const value={status:'ready',provider:'naver',option,fetchedAt:new Date(this.clock()).toISOString(),origin,destination,path:route.path,distanceMeters:route.distanceMeters,durationSeconds:route.durationSeconds};
+        this.cache.set(key,value,this.ttlMs);
+        return {...value,cache:{hit:false,ageSeconds:0}};
+      }catch(error){
+        return {status:'error',provider:'naver',option,fetchedAt:new Date(this.clock()).toISOString(),origin,destination,path:[],error:publicError(error)};
+      }
+    });
   }
 
   async route({ origin: originText, destination: destinationText, via: viaText }) {
