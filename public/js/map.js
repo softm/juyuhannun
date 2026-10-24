@@ -260,8 +260,10 @@ export class MapController {
     this._driveWatchId = null;
     this._driveHeading = null;
     this._driveTrailCoords = [];
+    this._driveRoadPredictionCoords = [];
     this._driveTrail = null;
     this._drivePrediction = null;
+    this._driveRoadPredictionCoords = [];
     this._drivePoint = null;
     this._driveSpeed = 0;
     this._geocodeRevision = 0;
@@ -841,6 +843,15 @@ export class MapController {
     this._drivePrediction = null;
   }
 
+  setDrivingPredictionPath(coordinates) {
+    if (!Array.isArray(coordinates)) return false;
+    const next=coordinates.map(pair=>Array.isArray(pair)?{lng:Number(pair[0]),lat:Number(pair[1])}:{lat:Number(pair?.lat),lng:Number(pair?.lng)}).filter(validPoint);
+    if (next.length < 2) return false;
+    this._driveRoadPredictionCoords=next.slice(0,240);
+    if (this._drivePoint) this._renderDrivingGuides(this._drivePoint,this._driveHeading,this._driveSpeed);
+    return true;
+  }
+
   _renderDrivingGuides(point, heading, speed = 0) {
     if (!this.map || !validPoint(point)) return;
     const previous = this._driveTrailCoords.at(-1);
@@ -850,7 +861,8 @@ export class MapController {
     }
     const trailPoints = this._driveTrailCoords.map(({ lat, lng }) => ({ lat, lng }));
     const horizon = Math.max(900, Math.min(5000, (Number(speed) || 0) * 120));
-    const predicted = [0.28,0.56,0.8,1].map(ratio => projectPoint(point, heading, horizon * ratio)).filter(Boolean);
+    const fallbackPredicted = [0.28,0.56,0.8,1].map(ratio => projectPoint(point, heading, horizon * ratio)).filter(Boolean);
+    const predicted = this._driveRoadPredictionCoords.length > 1 ? this._driveRoadPredictionCoords.map(p=>({lat:p.lat,lng:p.lng})) : fallbackPredicted;
 
     this._clearDrivingGuides();
     if (this.provider === 'naver') {
