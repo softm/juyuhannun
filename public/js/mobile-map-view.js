@@ -34,6 +34,7 @@ export function setupMobileMapView({
   let drag = null;
   let suppressDetailHandleClick = false;
   let listDrag = null;
+  let listSnap = 'medium';
   let detailReturnMode = 'map-browse';
 
   function cancelRestore(){revision++;if(restoreFrame)cancelAnimationFrame(restoreFrame);restoreFrame=0;}
@@ -114,8 +115,23 @@ export function setupMobileMapView({
   function setDetailMode(next){if(!detailModes.has(next)||!detailDialog?.open)return;clearLiveDetailHeight();setMode(next);}
   function toggleDetailExpanded(){if(destroyed||!media.matches||!detailDialog?.open)return;setDetailMode(mode==='expanded-tools'?'focus-detail':'expanded-tools');}
 
-  function openListSheet({expanded=false}={}){if(destroyed||!media.matches)return;snapshot();armHistory();hideDetail();sidebar.style.removeProperty('--list-drag-y');setMode(expanded?'list-sheet-expanded':'list-sheet');}
-  function closeListSheet(){if(destroyed||!media.matches)return;sidebar.style.removeProperty('--list-drag-y');disarmHistoryInPlace();setMode('map-browse');}
+  function listViewportHeight(){return Math.max(420,window.innerHeight||document.documentElement.clientHeight||800);}
+  function listSnapHeight(snap=listSnap){
+    const viewport=listViewportHeight();
+    return Math.round(viewport*(snap==='compact'?.28:snap==='expanded'?.82:.52));
+  }
+  function applyListHeight(height){
+    const viewport=listViewportHeight();
+    const min=Math.round(viewport*.24),max=Math.round(viewport*.88);
+    sidebar.style.setProperty('--list-live-height',Math.max(min,Math.min(max,Math.round(height)))+'px');
+  }
+  function setListSnap(next){
+    listSnap=['compact','medium','expanded'].includes(next)?next:'medium';
+    sidebar.style.setProperty('--list-live-height',listSnapHeight(listSnap)+'px');
+    setMode(listSnap==='expanded'?'list-sheet-expanded':'list-sheet');
+  }
+  function openListSheet({expanded=false}={}){if(destroyed||!media.matches)return;snapshot();armHistory();hideDetail();listSnap=expanded?'expanded':'medium';sidebar.style.removeProperty('--list-drag-y');sidebar.style.setProperty('--list-live-height',listSnapHeight(listSnap)+'px');setMode(expanded?'list-sheet-expanded':'list-sheet');}
+  function closeListSheet(){if(destroyed||!media.matches)return;sidebar.style.removeProperty('--list-drag-y');sidebar.style.removeProperty('--list-live-height');disarmHistoryInPlace();setMode('map-browse');}
 
   function toggleMapChrome(){
     if(destroyed||!media.matches)return;
@@ -172,16 +188,47 @@ export function setupMobileMapView({
     toggleDetailExpanded();
   }
 
-  function onListPointerDown(event){if(destroyed||!media.matches||!listModes.has(mode)||event.button>0)return;listDrag={id:event.pointerId,startY:event.clientY,lastY:event.clientY,startedAt:performance.now(),startMode:mode};listSheetHandle?.setPointerCapture?.(event.pointerId);sidebar.classList.add('is-dragging');event.preventDefault();}
-  function onListPointerMove(event){if(!listDrag||listDrag.id!==event.pointerId)return;listDrag.lastY=event.clientY;const raw=listDrag.lastY-listDrag.startY,offset=listDrag.startMode==='list-sheet-expanded'?Math.max(-20,Math.min(260,raw)):Math.max(-330,Math.min(180,raw));sidebar.style.setProperty('--list-drag-y',offset+'px');event.preventDefault();}
-  function finishListDrag(event,cancelled=false){if(!listDrag||listDrag.id!==event.pointerId)return;const dy=(event.clientY??listDrag.lastY)-listDrag.startY,elapsed=Math.max(1,performance.now()-listDrag.startedAt),velocity=dy/elapsed,startMode=listDrag.startMode;listDrag=null;sidebar.classList.remove('is-dragging');sidebar.style.removeProperty('--list-drag-y');if(cancelled)return;if(startMode==='list-sheet'){if(dy<-56||velocity<-.42)setMode('list-sheet-expanded');else if(dy>118||velocity>.65)closeListSheet();else setMode('list-sheet');}else{if(dy>58||velocity>.42)setMode('list-sheet');else setMode('list-sheet-expanded');}}
+  function onListPointerDown(event){
+    if(destroyed||!media.matches||!listModes.has(mode)||event.button>0)return;
+    const rect=sidebar.getBoundingClientRect();
+    listDrag={id:event.pointerId,startY:event.clientY,lastY:event.clientY,startedAt:performance.now(),startHeight:rect.height||listSnapHeight(),moved:false};
+    listSheetHandle?.setPointerCapture?.(event.pointerId);
+    sidebar.classList.add('is-dragging');
+    event.preventDefault();
+  }
+  function onListPointerMove(event){
+    if(!listDrag||listDrag.id!==event.pointerId)return;
+    listDrag.lastY=event.clientY;
+    const dy=listDrag.lastY-listDrag.startY;
+    if(Math.abs(dy)>6)listDrag.moved=true;
+    applyListHeight(listDrag.startHeight-dy);
+    requestResize();
+    event.preventDefault();
+  }
+  function finishListDrag(event,cancelled=false){
+    if(!listDrag||listDrag.id!==event.pointerId)return;
+    const dragState=listDrag;
+    const dy=(event.clientY??dragState.lastY)-dragState.startY;
+    const elapsed=Math.max(1,performance.now()-dragState.startedAt),velocity=dy/elapsed;
+    const currentHeight=Math.max(1,dragState.startHeight-dy),viewport=listViewportHeight();
+    listDrag=null;sidebar.classList.remove('is-dragging');
+    if(cancelled){applyListHeight(listSnapHeight());return;}
+    let next;
+    const ratio=currentHeight/viewport;
+    if(velocity<-.65)next=listSnap==='compact'?'medium':'expanded';
+    else if(velocity>.65)next=listSnap==='expanded'?'medium':'compact';
+    else if(ratio<.4)next='compact';
+    else if(ratio>.68)next='expanded';
+    else next='medium';
+    setListSnap(next);
+  }
 
   function toggleList(){if(destroyed||!media.matches)return;if(listModes.has(mode))closeListSheet();else if(focusModes.has(mode))openListSheet();}
-  function exit({restoreFocus=true,skipHistory=false}={}){if(destroyed)return;if(skipHistory)disarmHistoryInPlace();if(!media.matches)return;hideDetail();sidebar.style.removeProperty('--list-drag-y');setMode('map-browse');if(restoreFocus&&focusDockList?.isConnected)focusDockList.focus({preventScroll:true});}
+  function exit({restoreFocus=true,skipHistory=false}={}){if(destroyed)return;if(skipHistory)disarmHistoryInPlace();if(!media.matches)return;hideDetail();sidebar.style.removeProperty('--list-drag-y');sidebar.style.removeProperty('--list-live-height');setMode('map-browse');if(restoreFocus&&focusDockList?.isConnected)focusDockList.focus({preventScroll:true});}
   function afterLayout(callback){if(typeof callback!=='function')return;requestAnimationFrame(()=>requestAnimationFrame(()=>{if(!destroyed)callback();}));}
   function onKeyDown(event){if(!media.matches||event.key!=='Escape')return;if(document.querySelector('dialog[open]:not(#detail-dialog)'))return;if(mode==='expanded-tools'){event.preventDefault();setDetailMode('focus-detail');return;}if(detailModes.has(mode)){event.preventDefault();closeDetail();return;}if(mode==='list-sheet-expanded'){event.preventDefault();setMode('list-sheet');return;}if(mode==='list-sheet'){event.preventDefault();closeListSheet();return;}if(mode==='map-browse'){event.preventDefault();setMode('map-collapsed');return;}if(mode==='map-collapsed'){event.preventDefault();setMode('map-browse');}}
   function onPopState(){if(!historyArmed)return;historyArmed=false;if(detailModes.has(mode)){hideDetail();setMode(detailReturnMode||'map-browse');}else if(listModes.has(mode))setMode('map-browse');}
-  function onMediaChange(){if(media.matches){startMobileExpanded();return;}disarmHistoryInPlace();hideDetail();body.classList.remove('mobile-map-mode','mobile-map-focus','mobile-map-expanded','mobile-map-browse','mobile-map-collapsed','mobile-list-sheet','mobile-list-expanded');sidebar.inert=false;sidebar.style.removeProperty('--list-drag-y');mode='default';requestResize();syncButtons();}
+  function onMediaChange(){if(media.matches){startMobileExpanded();return;}disarmHistoryInPlace();hideDetail();body.classList.remove('mobile-map-mode','mobile-map-focus','mobile-map-expanded','mobile-map-browse','mobile-map-collapsed','mobile-list-sheet','mobile-list-expanded');sidebar.inert=false;sidebar.style.removeProperty('--list-drag-y');sidebar.style.removeProperty('--list-live-height');mode='default';requestResize();syncButtons();}
 
   const onWindowPointerUp=e=>finishHandleDrag(e);
   const onWindowPointerCancel=e=>finishHandleDrag(e,true);
@@ -196,7 +243,7 @@ export function setupMobileMapView({
   window.addEventListener('pointermove',onHandlePointerMove,{passive:false});
   window.addEventListener('pointerup',onWindowPointerUp);
   window.addEventListener('pointercancel',onWindowPointerCancel);
-  listSheetHandle?.addEventListener('click',()=>setMode(mode==='list-sheet-expanded'?'list-sheet':'list-sheet-expanded'));
+  listSheetHandle?.addEventListener('click',()=>setListSnap(listSnap==='compact'?'medium':listSnap==='medium'?'expanded':'medium'));
   listSheetHandle?.addEventListener('pointerdown',onListPointerDown);
   listSheetHandle?.addEventListener('pointermove',onListPointerMove);
   listSheetHandle?.addEventListener('pointerup',e=>finishListDrag(e));
