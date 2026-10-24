@@ -81,6 +81,11 @@ function bearingDegrees(a,b){
  return (Math.atan2(y,x)/rad+360)%360;
 }
 function angleDelta(a,b){const d=Math.abs(((a-b+540)%360)-180);return Number.isFinite(d)?d:180;}
+function drivingStationScore(station){
+ if(!state.driving.active||!state.driving.point||!Number.isFinite(state.driving.heading)||!hasMapCoordinates(station))return Infinity;
+ const here=state.driving.point,distance=distanceMeters(here,station),delta=angleDelta(bearingDegrees(here,station),state.driving.heading);
+ return distance*(1+Math.min(2,delta/70));
+}
 function drivingMapStations(rows){
  if(!state.driving.active||!state.driving.point||!Number.isFinite(state.driving.heading))return rows;
  const here=state.driving.point,heading=state.driving.heading;
@@ -92,19 +97,20 @@ function drivingMapStations(rows){
    const cone=state.driving.speed>=16?78:state.driving.speed>=7?92:110;
    const limit=state.driving.speed>=16?10000:state.driving.speed>=7?7000:4500;
    return distance<=limit&&angleDelta(bearingDegrees(here,station),heading)<=cone;
- });
+ }).sort((a,b)=>drivingStationScore(a)-drivingStationScore(b));
 }
 function render(){
  const now=Date.now();refreshPriceSelection(now);
  let filtered=filterStations(state.all,{fuel:state.fuel,center:state.center,bounds:state.bounds,query:state.query,brand:state.brand,self:state.self,freshOnly:state.freshOnly,favorites:state.view==='saved'?state.favorites:null,sort:state.sort,now});
+ if(state.driving.active)filtered=drivingMapStations(filtered);
  state.visible=filtered;
  $('result-count').textContent=filtered.length;
  $('results-title').textContent=state.view==='saved'?'찜한 주유소':'지도 안 주유소';
  if($('focus-list-count'))$('focus-list-count').textContent=filtered.length.toLocaleString('ko-KR');
  const total=state.envelope?.coverage?.totalPriceStations??state.all.length,mapped=collectionStats().mapped,summary=summarizeVisiblePrices(filtered);
- $('coverage-hint').textContent=`현재 지도 ${filtered.length.toLocaleString('ko-KR')}곳 · 최신 비교 ${summary.comparable.toLocaleString('ko-KR')}곳 · 좌표 ${mapped.toLocaleString('ko-KR')}/${total.toLocaleString('ko-KR')}곳 확보`;
+ $('coverage-hint').textContent=state.driving.active?`주행방향 우선 ${filtered.length.toLocaleString('ko-KR')}곳 · 정북 고정 · 파랑=이동동선 · 초록 점선=예측동선`:`현재 지도 ${filtered.length.toLocaleString('ko-KR')}곳 · 최신 비교 ${summary.comparable.toLocaleString('ko-KR')}곳 · 좌표 ${mapped.toLocaleString('ko-KR')}/${total.toLocaleString('ko-KR')}곳 확보`;
  if(!filtered.length)renderEmpty();else $('results').innerHTML=filtered.slice(0,state.listLimit).map((s,i)=>card(s,i)).join('')+(filtered.length>state.listLimit?`<button class="load-more" data-action="load-more">${Math.min(60,filtered.length-state.listLimit)}곳 더 보기 · ${state.listLimit.toLocaleString('ko-KR')}/${filtered.length.toLocaleString('ko-KR')}곳</button>`:'');
- if(state.mapReady)map.setStations(drivingMapStations(filtered),state.selected,state.fuel);
+ if(state.mapReady)map.setStations(filtered,state.selected,state.fuel);
  const cheapest=summary.lowest;
  $('lowest-price').textContent=money(cheapest);$('summary-area').textContent='현재 지도 영역 · 검색 조건 기준';
  $('summary-caption').textContent=cheapest?`${FUEL_TYPES.find(f=>f.code===state.fuel).name} · 최신 비교 ${summary.comparable}곳${summary.reference?` · 참고 가격 ${summary.reference}곳 제외`:''}${state.envelope?.coverage?.complete===false?' · 일부 자료':''}`:filtered.length?`표시된 ${filtered.length}곳은 참고 가격입니다 · 최저가 비교 제외`:'현재 지도에서 비교 가능한 가격이 없습니다';
@@ -251,10 +257,11 @@ function startDrivingMode(){
        state.driving={active:true,point,heading,speed,accuracy};
        state.center={...point};
        syncDrivingButton();
+       render();
      },
      onError:error=>{stopDrivingMode({message:error.message||'주행 위치를 확인하지 못했습니다.'});}
    });
-   toast('주행 추적을 시작했습니다. 현재 위치와 진행 방향을 따라 지도가 갱신됩니다.');
+   toast('주행모드 시작 · 정북 고정 · 파란선은 이동동선, 초록 점선은 예상 진행동선입니다.');
  }catch(error){
    state.driving={active:false,point:null,heading:null,speed:0,accuracy:null};syncDrivingButton();
    toast(error.message||'주행 추적을 시작하지 못했습니다.');
