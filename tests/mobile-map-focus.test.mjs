@@ -216,6 +216,9 @@ test('driving mode keeps north-up and shows actual plus predicted travel guides'
   assert.match(app,/drivingStationScore/);
   assert.match(app,/정북 고정/);
   assert.match(app,/파랑=이동동선/);
+  assert.match(app,/refreshDrivingRoadPrediction/);
+  assert.match(app,/\/route\/predict/);
+  assert.match(map,/setDrivingPredictionPath/);
 });
 
 test('detail handle drag changes actual sheet height and avoids duplicate click toggle', () => {
