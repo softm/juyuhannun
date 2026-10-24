@@ -207,14 +207,16 @@ test('Stitch search bar and fuel selector stay functional', () => {
 });
 
 
-test('driving mode keeps north-up and shows actual plus predicted travel guides', () => {
+test('driving mode keeps travel direction at top and shows actual plus predicted travel guides', () => {
   assert.match(map,/projectPoint/);
   assert.match(map,/_renderDrivingGuides/);
   assert.match(map,/strokeStyle:\s*'shortdash'/);
   assert.match(map,/dashArray:\s*'12 10'/);
   assert.match(map,/_driveTrailCoords/);
   assert.match(app,/drivingStationScore/);
-  assert.match(app,/정북 고정/);
+  assert.match(map,/_setDrivingHeadingUp/);
+  assert.match(map,/--drive-map-rotation/);
+  assert.match(styles,/\.map-surface\.heading-up/);
   assert.match(app,/파랑=이동동선/);
   assert.match(app,/refreshDrivingRoadPrediction/);
   assert.match(app,/\/route\/predict/);
