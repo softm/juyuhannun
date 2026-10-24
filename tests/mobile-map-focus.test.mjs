@@ -104,7 +104,7 @@ test('five-state mobile focus flow includes map browse and draggable list sheet 
   assert.match(css, /--list-live-height/);
   assert.match(css, /52dvh/);
   assert.match(css, /82dvh/);
-  assert.match(view, /dy<-56/);
+  assert.match(view, /ratio<\.4/);
   assert.match(view, /dy>118/);
   assert.match(html, /id="mobile-focus-dock"/);
   assert.match(html, /id="mobile-list-sheet-handle"/);
@@ -224,4 +224,10 @@ test('initial map load requests current location before rendering nearby station
   assert.match(app,/updateViewport\(\{center:map\.getCenter\(\),bounds:map\.getBounds\(\)\}\)/);
   assert.match(app,/sharedStationRequested/);
   assert.match(app,/map\.init\(\)\.then\(initializeMapViewport\)/);
+
+  assert.match(app, /createMapLoadingController/);
+  assert.match(app, /mapLoading\.stage\('location'\)/);
+  assert.match(app, /mapLoading\.stage\('data'\)/);
+  assert.match(app, /mapLoading\.stage\('markers'\)/);
+  assert.match(app, /waitForMarkerRender/);
 });
