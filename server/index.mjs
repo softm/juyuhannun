@@ -76,6 +76,9 @@ export function createApp({ env = process.env, fetchImpl = fetch, projectRoot = 
         }
         const detailMatch = pathname.match(/^\/api\/stations\/([^/]+)$/);
         if (detailMatch) { json(response, 200, await opinet.detail(detailMatch[1], url.searchParams.get('fuel') ?? 'B027')); return; }
+        if (pathname === '/api/route/predict') {
+          json(response, 200, await routes.predict({ origin: url.searchParams.get('origin'), heading: url.searchParams.get('heading'), distanceMeters: url.searchParams.get('distanceMeters') })); return;
+        }
         if (pathname === '/api/route') {
           json(response, 200, await routes.route({ origin: url.searchParams.get('origin'), destination: url.searchParams.get('destination'), via: url.searchParams.get('via') })); return;
         }
