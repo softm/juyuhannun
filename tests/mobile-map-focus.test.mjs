@@ -105,7 +105,7 @@ test('five-state mobile focus flow includes map browse and draggable list sheet 
   assert.match(css, /52dvh/);
   assert.match(css, /82dvh/);
   assert.match(view, /ratio<\.4/);
-  assert.match(view, /dy>118/);
+  assert.match(view, /ratio>\.68/);
   assert.match(html, /id="mobile-focus-dock"/);
   assert.match(html, /id="mobile-list-sheet-handle"/);
   assert.match(css, /body\.mobile-map-browse \.mobile-focus-dock/);
@@ -218,12 +218,12 @@ test('detail handle drag changes actual sheet height and avoids duplicate click 
 
 
 test('initial map load requests current location before rendering nearby stations', () => {
-  assert.match(app,/async function initializeMapViewport\(\)/);
+  assert.match(app,/async function initializeMapViewport\(startupDataPromise\)/);
   assert.match(app,/const position=await map\.locate\(\)/);
   assert.match(app,/state\.center=\{lat:position\.lat,lng:position\.lng\}/);
   assert.match(app,/updateViewport\(\{center:map\.getCenter\(\),bounds:map\.getBounds\(\)\}\)/);
   assert.match(app,/sharedStationRequested/);
-  assert.match(app,/map\.init\(\)\.then\(initializeMapViewport\)/);
+  assert.match(app,/map\.init\(\)\.then\(\(\)=>initializeMapViewport\(startupDataPromise\)\)/);
 
   assert.match(app, /createMapLoadingController/);
   assert.match(app, /mapLoading\.stage\('location'\)/);
