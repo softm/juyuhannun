@@ -107,7 +107,8 @@ jobs:
         env:
           NAVER_MAPS_API_KEY_ID: ${{ secrets.NAVER_MAPS_API_KEY_ID }}
           NAVER_MAPS_API_KEY: ${{ secrets.NAVER_MAPS_API_KEY }}
-          NAVER_GEOCODE_MAX_PER_RUN: '1000'
+          # Run immediately after business-info collection and drain the current queue in one run.
+          NAVER_GEOCODE_MAX_PER_RUN: '3000'
         run: node scripts/geocode-business-addresses.mjs
       - name: Republish nationwide map with address geocodes
         if: github.event_name != 'pull_request'
