@@ -59,7 +59,7 @@ function closeDialog(id){$(id).close();}
 function setMapNotice(message){$('map-notice').textContent=message;$('map-notice').hidden=!message;}
 function updateViewport({center,bounds}){state.center=state.driving.active&&state.driving.point?{...state.driving.point}:center;state.bounds=bounds;state.listLimit=60;render();}
 function handleMapState({provider,status,message}){const typeButton=$('map-type-toggle');typeButton.hidden=provider!=='naver';if(provider!=='naver'){typeButton.setAttribute('aria-pressed','false');typeButton.setAttribute('aria-label','지도 유형 전환 미지원');typeButton.title='지도 유형 전환 미지원';}else if(typeButton.getAttribute('aria-label')==='지도 유형 전환 미지원'){typeButton.setAttribute('aria-label','위성 지도 보기');typeButton.title='위성 지도 보기';}if(status==='error'||provider==='leaflet')setMapNotice(message||'대체 지도에서 확인하고 있습니다.');else if(status==='ready')setMapNotice('');}
-const map=new MapController($('map'),{onViewportChange:updateViewport,onSelect:id=>selectStation(id),onPick:point=>handleRouteMapPick(point),onState:handleMapState,markerPresentation:row=>state.view==='route'?{value:row.currentPrice?.price,unit:'원',label:`${row.name} · 경로 ${(Number(row.progressMeters||0)/1000).toFixed(1)}km 지점`,stale:row.confidence?.eligible!==true,rank:row.routeRank,badgeLabel:'추천 {rank}',tone:'green'}:null});
+const map=new MapController($('map'),{onViewportChange:updateViewport,onSelect:id=>selectStation(id),onPick:point=>handleRouteMapPick(point),onState:handleMapState,markerPresentation:row=>state.view==='route'&&finite(row.progressMeters)?{value:row.currentPrice?.price,unit:'원',label:`${row.name} · 경로 ${(row.progressMeters/1000).toFixed(1)}km 지점`,stale:row.confidence?.eligible!==true,rank:row.routeRank,badgeLabel:'추천 {rank}',tone:'green'}:null});
 const mapLoading=createMapLoadingController($('map-loading'));
 const mobileMapView=setupMobileMapView({workspace:document.querySelector('.workspace'),sidebar:$('station-sidebar'),mapSection:$('map-section'),results:$('results'),toggleButton:$('mobile-map-toggle'),listButton:$('mobile-list-toggle'),detailDialog:$('detail-dialog'),detailExpandButton:$('detail-expand-toggle'),detailHandle:$('detail-sheet-handle'),listSheetHandle:$('mobile-list-sheet-handle'),listSheetClose:$('mobile-list-sheet-close'),focusDock:$('mobile-focus-dock'),focusDockList:$('focus-dock-list'),onResize:()=>map.resize(),onModeChange:next=>{if(!['focus-detail','expanded-tools','map-browse','list-sheet','list-sheet-expanded'].includes(next))return;const station=state.all.find(s=>s.id===state.selected);if(station&&state.mapReady&&hasMapCoordinates(station)&&!['list-sheet','list-sheet-expanded'].includes(next))requestAnimationFrame(()=>map.focus(station,{preserveZoom:true}));},icon});
 
@@ -111,6 +111,9 @@ function drivingMapStations(rows){
  }).sort((a,b)=>drivingStationScore(a)-drivingStationScore(b));
 }
 function routeViewOptions(){return{sort:state.routeSort,brand:state.brand,selfOnly:state.self,freshOnly:state.freshOnly,maxDetourMinutes:Number($('route-max-detour')?.value||10)};}
+function routeFallbackMapStations(now=Date.now()){
+ return filterStations(state.all,{fuel:state.fuel,center:state.center,bounds:state.bounds,query:state.query,brand:state.brand,self:state.self,freshOnly:state.freshOnly,favorites:nearbyMapSnapshot?.sourceView==='saved'?state.favorites:null,sort:state.sort,now});
+}
 function routePriceBasis(row){const price=row.currentPrice;if(['daily_current_file','daily_price_file'].includes(price?.priceTimeStatus))return price.sourceDate?`${price.sourceDate} 기준`:'기준일 미확인';return formatTime(price?.priceUpdatedAt,true);}
 function routeCard(row,index,{lowest,fastestId}={}){
  const saved=state.favorites.has(row.id),verified=row.detour?.verified===true,extraKm=verified?(row.detour.distanceMeters/1000).toFixed(1):null,extraMinutes=verified?Math.ceil(row.detour.durationSeconds/60):null;
@@ -143,7 +146,7 @@ function renderRouteView(){
  if(routeMode.state.loading)$('results').innerHTML='<div class="loading-state"><div class="spinner"></div><h3>가는 길의 주유소를 확인하고 있어요</h3><p>기본경로 1회와 우선 후보의 실제 경유 경로를 비교합니다.</p></div>';
  else if(!rows.length){const message=routeMode.state.error?.message||(response?.baseRoute?'조건에 맞는 경로상 주유소가 없습니다. 탐색 조건에서 거리나 우회시간을 넓혀 보세요.':'목적지를 선택한 뒤 경로상 주유소 보기를 눌러 주세요.');$('results').innerHTML=`<div class="empty-state"><div class="empty-icon">${icon('route')}</div><h3>목적지 가는 길의 주유소</h3><p>${esc(message)}</p></div>`;}
  else{const comparable=rows.filter(row=>row.confidence?.eligible),lowest=comparable.length?Math.min(...comparable.map(row=>row.currentPrice.price)):null,verified=comparable.filter(row=>row.detour?.verified&&finite(row.detour.durationSeconds)),fastest=verified.sort((a,b)=>a.detour.durationSeconds-b.detour.durationSeconds||a.currentPrice.price-b.currentPrice.price)[0];$('results').innerHTML=rows.map((row,index)=>routeCard(row,index,{lowest,fastestId:fastest?.id})).join('');}
- if(state.mapReady)map.setStations(rows,state.selected,state.fuel);
+ if(state.mapReady&&!routeMode.state.loading){const mapRows=rows.length?rows:routeFallbackMapStations();map.setStations(mapRows,rows.length?state.selected:null,state.fuel);}
  const comparable=rows.filter(row=>row.confidence?.eligible),lowest=comparable.length?Math.min(...comparable.map(row=>row.currentPrice.price)):null;
  $('lowest-price-label').textContent='경로상 최저가';$('lowest-price').textContent=money(lowest);$('summary-area').textContent='목적지 가는 길 · 선택 유종 기준';$('summary-caption').textContent=lowest?`${FUEL_TYPES.find(f=>f.code===state.fuel)?.name||'유종'} · 우회시간 확인 ${Number(response?.checkedCount||0)}곳 · 참고 가격 제외`:'경로에서 확인 가능한 최신 가격이 없습니다';
  renderRoutePanelState(rows);renderStatus();
@@ -208,7 +211,7 @@ function selectView(view){
   if(state.driving.active)stopDrivingMode();
   let center={...state.center},zoom=null;
   if(state.mapReady){try{center=map.getCenter()||center;zoom=map.getZoom();}catch{}}
-  nearbyMapSnapshot={center,zoom,selected:state.selected,scrollTop:$('results').scrollTop};
+  nearbyMapSnapshot={center,zoom,selected:state.selected,scrollTop:$('results').scrollTop,sourceView:state.view};
   state.selected=null;
   if(!routeMode.state.origin&&lastLocatedPoint)routeMode.setPoint('origin',lastLocatedPoint,'현재 위치');
  }
