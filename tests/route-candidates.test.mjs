@@ -74,6 +74,19 @@ test('recommendations require verified detours, valid prices and the detour limi
   assert.equal(sortRouteCandidates(rows,{sort:'detour'})[0].id,'stale');
 });
 
+test('default recommendation needs no average or vehicle cost and prefers low detour before price',()=>{
+  const candidate=(id,priceValue,durationSeconds)=>({
+    id,confidence:{eligible:true},currentPrice:{price:priceValue},progressMeters:1_000,proximityMeters:100,
+    detour:{verified:true,distanceMeters:500,durationSeconds,tollWon:0},costs:{},
+  });
+  const rows=[candidate('slow-cheap',1400,190),candidate('fast',1650,70),candidate('same-minute-cheaper',1600,119)];
+  const sorted=sortRouteCandidates(rows,{sort:'recommended',maxDetourMinutes:10});
+  assert.deepEqual(sorted.map(row=>row.id),['same-minute-cheaper','fast','slow-cheap']);
+  const ranked=applyRecommendationRanks(rows,{maxDetourMinutes:10});
+  assert.equal(ranked.find(row=>row.id==='same-minute-cheaper').rank,1);
+  assert.match(ranked.find(row=>row.id==='same-minute-cheaper').reason,/우회가 적은 순/);
+});
+
 test('Kakao navigation keeps origin, one waypoint and final destination distinct',()=>{
   const urls=kakaoRouteURLs({lat:37.1,lng:127.1},{lat:37.2,lng:127.2},{lat:37.3,lng:127.3});
   assert.match(urls.app,/^kakaomap:\/\/route\?/);

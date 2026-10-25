@@ -42,6 +42,7 @@ test('map controller uses actual SDK zoom and Naver map type APIs', () => {
   assert.match(map, /setMapTypeId/);
   assert.match(map, /MapTypeId\.SATELLITE/);
   assert.match(app, /map\.toggleMapType\(\)/);
+  assert.match(map, /resize\(\) \{[\s\S]*catch \(error\) \{ if \(this\.provider === 'naver'\) void this\._fallback/);
 });
 
 
@@ -152,10 +153,17 @@ test('detail expand control visibly includes the expansion icon on mobile', () =
 });
 
 
-test('route mode labels assumptions and does not revive the retired generic route calculator', () => {
-  assert.match(html, /예시 가정/);
-  assert.match(html, /추가 주행 연료 기준 단가/);
-  assert.match(html, /입력하지 않으면 총비용·절약액을 계산하지 않습니다/);
+test('route mode is destination-first and keeps cost comparison out of the primary flow', () => {
+  assert.match(html, /어디로 가세요\?/);
+  assert.match(html, /경로상 주유소 보기/);
+  assert.match(html, /현재 가격과 실제 우회시간만 간단히 보여드립니다/);
+  assert.doesNotMatch(html, /평균가격|기준 단가|주유할 양|차량 연비|시간 가치/);
+  assert.match(html, /class="route-options"/);
+  for (const removed of ['route-liters','route-economy','route-reference-price','route-hourly','route-swap']) assert.doesNotMatch(html,new RegExp(`id="${removed}"`));
+  assert.match(app, /useCurrentLocationForRoute/);
+  assert.match(app, /mobileMapView\.getMode\(\)==='map-collapsed'/);
+  assert.match(app, /mobileMapView\.toggleMapChrome\(\)/);
+  assert.doesNotMatch(app, /routeInputNumber/);
   assert.doesNotMatch(app, /invalidateRoutes|routeGeneration|state\.routes/);
 });
 

@@ -22,13 +22,16 @@ test('route mode reports an explicit API requirement without inventing a route',
   let calls=0;const controller=createRouteModeController({apiBase:'',requestJSON:async()=>{calls+=1;},clock:now});points(controller);
   const result=await controller.plan({stations:[station()],fuel:'B027',liters:30,kmPerLiter:12,maxDetourMinutes:10,corridorMeters:2000});
   assert.equal(calls,0);assert.equal(result.status,'unavailable');assert.equal(result.baseRoute,null);assert.deepEqual(result.results,[]);
+  assert.doesNotMatch(result.error.message,/PUBLIC_API_BASE|HTTPS 엔드포인트/);
 });
 
 test('route mode reuses verified detours but refreshes the local price observation',async()=>{
   let requestOptions;
   const controller=createRouteModeController({apiBase:'https://api.example.test/api',clock:now,requestJSON:async(_url,_signal,options)=>{requestOptions=options;return response;}});points(controller);
-  await controller.plan({stations:[station()],fuel:'B027',liters:30,kmPerLiter:12,maxDetourMinutes:10,corridorMeters:2000});
+  await controller.plan({stations:[station()],fuel:'B027',maxDetourMinutes:10,corridorMeters:2000});
   assert.equal(requestOptions.method,'POST');
+  const payload=JSON.parse(requestOptions.body);
+  for(const optional of ['liters','kmPerLiter','referenceFuelWonPerL','hourlyValueWonPerHour'])assert.equal(optional in payload,false);
   assert.equal(controller.rows({liters:30,kmPerLiter:12,maxDetourMinutes:10})[0].costs.totalWon,null);
   controller.syncStations([station(1500)],'B027');
   const [updated]=controller.rows({liters:30,kmPerLiter:12,referenceFuelWonPerL:1700,maxDetourMinutes:10});
