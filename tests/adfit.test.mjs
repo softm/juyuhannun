@@ -11,7 +11,21 @@ test('주유한눈 상세 광고는 전용 PC·모바일 단위와 운영 경로
   assert.match(config,/pathname:'\/juyuhannun\/'/);
   assert.match(config,/desktop:\{unit:'DAN-HpBNRNLNOH0TTRji',width:728,height:90\}/);
   assert.match(config,/mobile:\{unit:'DAN-VR0n4syKiJiIKlN7',width:320,height:100\}/);
+  assert.match(config,/bottom:\{unit:'DAN-VR0n4syKiJiIKlN7',width:320,height:100\}/);
   assert.match(config,/AdMobNative\\\/1/);
+});
+
+test('메인과 평균유가 화면은 세션 상태를 유지하는 공통 하단 접힘 광고를 사용한다',async()=>{
+  const [app,energy,adfit,styles]=await Promise.all([read('public/js/app.js'),read('public/js/energy.js'),read('public/js/adfit.js'),read('public/styles.css')]);
+  assert.match(app,/mountBottomAd\(\)/);
+  assert.match(energy,/mountBottomAd\(\)/);
+  assert.match(adfit,/juyuhannun:ad-bottom:expanded:v1/);
+  assert.match(adfit,/광고 접기/);
+  assert.match(adfit,/광고 펼치기/);
+  assert.match(adfit,/sessionStorage\.setItem/);
+  assert.match(adfit,/state==='empty'/);
+  assert.match(styles,/--juyu-bottom-ad-space/);
+  assert.match(styles,/\.juyu-bottom-ad\{/);
 });
 
 test('상세 하단 광고는 지연 요청과 실패 시 공간 반환을 유지한다',async()=>{
