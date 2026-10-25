@@ -168,6 +168,14 @@ test('route mode is destination-first and keeps cost comparison out of the prima
 });
 
 
+test('entering route mode keeps ordinary map markers until route candidates exist', () => {
+  assert.match(app, /function routeFallbackMapStations/);
+  assert.match(app, /const mapRows=rows\.length\?rows:routeFallbackMapStations\(\)/);
+  assert.match(app, /state\.view==='route'&&finite\(row\.progressMeters\)/);
+  assert.doesNotMatch(app, /state\.view==='route'\?\{value:row\.currentPrice/);
+});
+
+
 test('expanded mobile fuel selector exposes every fuel choice instead of hiding inactive fuels', () => {
   assert.match(css, /fuel-tabs button\{[\s\S]*display:flex!important/);
   for (const fuel of ['B027','D047','B034','K015']) assert.match(html,new RegExp('data-fuel="'+fuel+'"'));
