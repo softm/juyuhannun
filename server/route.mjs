@@ -1,5 +1,60 @@
 import { ServiceError, readJsonResponse, publicError } from './errors.mjs';
 import { MemoryCache, SingleFlight } from './cache.mjs';
+import {applyRecommendationRanks,calculateRouteCandidateCosts,findRouteCandidates,selectVerificationCandidates,sortRouteCandidates} from '../public/js/route-candidates.js';
+
+const ROUTE_OPTIONS=new Set(['traoptimal','traavoidtoll']);
+const FUEL_TYPES=new Set(['B027','D047','B034','K015']);
+const CORRIDOR_VALUES=new Set([500,1000,2000,3000]);
+const DETOUR_VALUES=new Set([3,5,10,15]);
+
+function optionalNumber(value,{min,max,name}){
+  if(value===null||value===undefined||value==='')return null;
+  const number=Number(value);
+  if(!Number.isFinite(number)||number<min||number>max)throw new ServiceError('INVALID_RECOMMENDATION_INPUT',`${name} 입력 범위를 확인해 주세요.`,400);
+  return number;
+}
+
+export function parseRouteOption(value){
+  const option=value||'traoptimal';
+  if(!ROUTE_OPTIONS.has(option))throw new ServiceError('INVALID_ROUTE_OPTION','경로 옵션을 확인해 주세요.',400);
+  return option;
+}
+
+export function parseRoutePointObject(value){
+  if(!value||typeof value!=='object'||Array.isArray(value))throw new ServiceError('INVALID_ROUTE_POINT','경로의 출발지와 목적지를 선택해 주세요.',400);
+  const lat=Number(value.lat),lng=Number(value.lng);
+  if(!Number.isFinite(lat)||!Number.isFinite(lng)||lat<32||lat>40||lng<123||lng>133)throw new ServiceError('INVALID_ROUTE_POINT','대한민국 영역의 올바른 경로 좌표를 입력해 주세요.',400);
+  return {lat,lng};
+}
+
+export function parseRecommendationsRequest(value){
+  if(!value||typeof value!=='object'||Array.isArray(value))throw new ServiceError('INVALID_RECOMMENDATION_INPUT','경로 추천 요청 형식을 확인해 주세요.',400);
+  const origin=parseRoutePointObject(value.origin),destination=parseRoutePointObject(value.destination);
+  if(origin.lat===destination.lat&&origin.lng===destination.lng)throw new ServiceError('ROUTE_SAME_ENDPOINTS','출발지와 목적지를 서로 다르게 선택해 주세요.',400);
+  const fuel=String(value.fuel||'');if(!FUEL_TYPES.has(fuel))throw new ServiceError('INVALID_RECOMMENDATION_INPUT','유종을 확인해 주세요.',400);
+  const corridorMeters=Number(value.corridorMeters??2000);if(!CORRIDOR_VALUES.has(corridorMeters))throw new ServiceError('INVALID_RECOMMENDATION_INPUT','경로 인근 탐색 반경을 확인해 주세요.',400);
+  const maxDetourMinutes=Number(value.maxDetourMinutes??10);if(!DETOUR_VALUES.has(maxDetourMinutes))throw new ServiceError('INVALID_RECOMMENDATION_INPUT','최대 우회 시간을 확인해 주세요.',400);
+  const rawIds=value.candidateIds??[];
+  if(!Array.isArray(rawIds)||rawIds.length>12||rawIds.some(id=>typeof id!=='string'||!/^[\w-]{1,50}$/.test(id)))throw new ServiceError('INVALID_RECOMMENDATION_INPUT','주유소 후보 ID를 확인해 주세요.',400);
+  const candidateIds=[...new Set(rawIds)];
+  return {
+    origin,destination,fuel,corridorMeters,maxDetourMinutes,candidateIds,
+    liters:optionalNumber(value.liters,{min:1,max:1000,name:'주유량'}),
+    kmPerLiter:optionalNumber(value.kmPerLiter,{min:.1,max:100,name:'연비'}),
+    referenceFuelWonPerL:optionalNumber(value.referenceFuelWonPerL,{min:1,max:10_000,name:'추가 주행 연료 단가'}),
+    hourlyValueWonPerHour:optionalNumber(value.hourlyValueWonPerHour??0,{min:0,max:1_000_000,name:'시간 가치'}),
+    option:parseRouteOption(value.option),
+    selfOnly:value.selfOnly===true,
+    brand:typeof value.brand==='string'&&/^[A-Z0-9]{0,8}$/.test(value.brand)?value.brand:'',
+  };
+}
+
+async function mapConcurrent(items,limit,worker){
+  const results=new Array(items.length);let cursor=0;
+  const run=async()=>{for(;;){const index=cursor++;if(index>=items.length)return;try{results[index]={status:'fulfilled',value:await worker(items[index],index)};}catch(reason){results[index]={status:'rejected',reason};}}};
+  await Promise.all(Array.from({length:Math.min(Math.max(1,limit),items.length)},run));
+  return results;
+}
 
 export function parseRoutePoint(value) {
   if (typeof value !== 'string') throw new ServiceError('INVALID_ROUTE_POINT', '경로의 출발지와 목적지를 선택해 주세요.', 400);
@@ -39,25 +94,39 @@ export function normalizeNaverRoute(payload, option = 'traoptimal') {
 }
 
 export class NaverRouteClient {
-  constructor({ apiKeyId = '', apiKey = '', quota, fetchImpl = fetch, clock = Date.now, timeoutMs = 12_000, ttlMs = 120_000 } = {}) {
+  constructor({ apiKeyId = '', apiKey = '', quota, fetchImpl = fetch, clock = Date.now, timeoutMs = 12_000, ttlMs = 120_000, recommendationConcurrency = 3, recommendationLimit = 8 } = {}) {
     this.apiKeyId = apiKeyId.trim(); this.apiKey = apiKey.trim(); this.quota = quota;
     this.fetchImpl = fetchImpl; this.clock = clock; this.timeoutMs = timeoutMs; this.ttlMs = ttlMs;
     // Locations are retained only in a short-lived in-memory cache; no route persistence.
-    this.cache = new MemoryCache({ clock, staleMaxMs: 0, maxEntries: 50 }); this.singleFlight = new SingleFlight();
+    this.cache = new MemoryCache({ clock, staleMaxMs: 0, maxEntries: 500 }); this.singleFlight = new SingleFlight();
+    this.recommendationConcurrency=Math.max(1,Math.min(3,Number(recommendationConcurrency)||3));
+    this.recommendationLimit=Math.max(1,Math.min(12,Number(recommendationLimit)||8));
   }
   get configured() { return Boolean(this.apiKeyId && this.apiKey); }
 
   async request({ origin, destination, via, option }) {
+    option=parseRouteOption(option);
     await this.quota?.reserve(1);
     const params = new URLSearchParams({ start: `${origin.lng},${origin.lat}`, goal: `${destination.lng},${destination.lat}`, option });
     if (via) params.set('waypoints', `${via.lng},${via.lat}`);
     try {
-      const response = await this.fetchImpl(`https://maps.apigw.ntruss.com/map-direction/v1/driving?${params}`, { headers: { 'x-ncp-apigw-api-key-id': this.apiKeyId, 'x-ncp-apigw-api-key': this.apiKey, Accept: 'application/json' }, signal: AbortSignal.timeout(this.timeoutMs) });
+      const response = await this.fetchImpl(`https://naveropenapi.apigw.ntruss.com/map-direction/v1/driving?${params}`, { headers: { 'x-ncp-apigw-api-key-id': this.apiKeyId, 'x-ncp-apigw-api-key': this.apiKey, Accept: 'application/json' }, signal: AbortSignal.timeout(this.timeoutMs) });
       return normalizeNaverRoute(await readJsonResponse(response, 'NAVER', 5_000_000), option);
     } catch (error) {
       if (error instanceof ServiceError) throw error;
       throw new ServiceError('NAVER_NETWORK_ERROR', '도로 경로를 조회하지 못했습니다. 우회 비용을 확정할 수 없습니다.');
     }
+  }
+
+  async routeLeg({origin,destination,via=null,option='traoptimal'}){
+    option=parseRouteOption(option);
+    const key=JSON.stringify({type:'route-leg',origin,destination,via,option});
+    const cached=this.cache.get(key);if(cached)return cached.value;
+    return this.singleFlight.run(key,async()=>{
+      const again=this.cache.get(key);if(again)return again.value;
+      const value=await this.request({origin,destination,via,option});
+      this.cache.set(key,value,this.ttlMs);return value;
+    });
   }
 
   async predict({ origin: originText, heading: headingText, distanceMeters: distanceText }) {
@@ -73,7 +142,7 @@ export class NaverRouteClient {
     if (cached) return {...cached.value,cache:{hit:true,ageSeconds:cached.ageSeconds}};
     return this.singleFlight.run(key,async()=>{
       try{
-        const route=await this.request({origin,destination,option});
+        const route=await this.routeLeg({origin,destination,option});
         const value={status:'ready',provider:'naver',option,fetchedAt:new Date(this.clock()).toISOString(),origin,destination,path:route.path,distanceMeters:route.distanceMeters,durationSeconds:route.durationSeconds};
         this.cache.set(key,value,this.ttlMs);
         return {...value,cache:{hit:false,ageSeconds:0}};
@@ -83,9 +152,9 @@ export class NaverRouteClient {
     });
   }
 
-  async route({ origin: originText, destination: destinationText, via: viaText }) {
+  async route({ origin: originText, destination: destinationText, via: viaText, option: optionText }) {
     const origin = parseRoutePoint(originText); const destination = parseRoutePoint(destinationText);
-    const via = viaText ? parseRoutePoint(viaText) : null; const option = 'traoptimal';
+    const via = viaText ? parseRoutePoint(viaText) : null; const option = parseRouteOption(optionText);
     const empty = { provider: 'naver', option, fetchedAt: null, direct: null, via: null, extra: null };
     if (!this.configured) return { ...empty, status: 'unavailable', error: { code: 'NAVER_CREDENTIALS_REQUIRED', message: '도로 경로가 연결되면 우회 거리·시간·통행료를 비교할 수 있습니다.' } };
     if (origin.lat === destination.lat && origin.lng === destination.lng) throw new ServiceError('ROUTE_SAME_ENDPOINTS', '출발지와 목적지를 서로 다르게 선택해 주세요.', 400);
@@ -94,8 +163,8 @@ export class NaverRouteClient {
     if (cached) return { ...cached.value, cache: { hit: true, ageSeconds: cached.ageSeconds } };
     return this.singleFlight.run(key, async () => {
       try {
-        const direct = await this.request({ origin, destination, option });
-        const withVia = via ? await this.request({ origin, destination, via, option }) : null;
+        const direct = await this.routeLeg({ origin, destination, option });
+        const withVia = via ? await this.routeLeg({ origin, destination, via, option }) : null;
         const extra = withVia ? { distanceMeters: withVia.distanceMeters - direct.distanceMeters, durationSeconds: withVia.durationSeconds - direct.durationSeconds, tollWon: withVia.tollWon - direct.tollWon } : null;
         // A materially shorter via route may reflect a different traffic solution.
         // Keep the comparison unconfirmed instead of converting it into a guaranteed saving.
@@ -108,6 +177,55 @@ export class NaverRouteClient {
       } catch (error) {
         return { ...empty, status: 'error', error: publicError(error) };
       }
+    });
+  }
+
+  async recommendations({request,stations=[],coverage=null,snapshotRevision=null}={}){
+    const input=parseRecommendationsRequest(request);
+    const {origin,destination,option}=input;
+    const empty={provider:'naver',option,fetchedAt:null,baseRoute:null,results:[],checkedCount:0,attemptedCount:0,candidateCount:0,coverage,warnings:[]};
+    if(!this.configured)return {...empty,status:'unavailable',error:{code:'NAVER_CREDENTIALS_REQUIRED',message:'가는 길 주유를 사용하려면 공개 화면과 분리된 HTTPS 경로 API 설정이 필요합니다.'}};
+    const key=JSON.stringify({type:'recommendations',input,snapshotRevision});
+    const cached=this.cache.get(key);if(cached)return {...cached.value,cache:{hit:true,ageSeconds:cached.ageSeconds}};
+    return this.singleFlight.run(key,async()=>{
+      const again=this.cache.get(key);if(again)return {...again.value,cache:{hit:true,ageSeconds:again.ageSeconds}};
+      try{
+        const baseRoute=await this.routeLeg({origin,destination,option});
+        const found=findRouteCandidates(stations,baseRoute.path,{fuel:input.fuel,corridorMeters:input.corridorMeters,maxCandidates:50,brand:input.brand,self:input.selfOnly,now:this.clock()});
+        const allowedIds=input.candidateIds.length?new Set(input.candidateIds):null;
+        const candidates=allowedIds?found.candidates.filter(row=>allowedIds.has(row.id)):found.candidates;
+        const shortlist=selectVerificationCandidates(candidates,{limit:this.recommendationLimit,totalMeters:found.index.totalMeters});
+        const checked=await mapConcurrent(shortlist,this.recommendationConcurrency,async row=>{
+          const viaRoute=await this.routeLeg({origin,destination,via:{lat:row.lat,lng:row.lng},option});
+          const distanceMeters=viaRoute.distanceMeters-baseRoute.distanceMeters;
+          const durationSeconds=viaRoute.durationSeconds-baseRoute.durationSeconds;
+          const tollWon=viaRoute.tollWon-baseRoute.tollWon;
+          if(distanceMeters<0||durationSeconds<0)throw new ServiceError('ROUTE_COMPARISON_AMBIGUOUS','직행·경유 경로의 교통 조건이 달라 우회를 확정할 수 없습니다.');
+          return {stationId:row.id,detour:{verified:true,distanceMeters,durationSeconds,tollWon},viaPath:viaRoute.path};
+        });
+        const verifiedById=new Map();const warnings=[];
+        checked.forEach((result,index)=>{
+          const stationId=shortlist[index].id;
+          if(result.status==='fulfilled')verifiedById.set(stationId,result.value);
+          else{const error=publicError(result.reason);verifiedById.set(stationId,{stationId,detour:{verified:false,distanceMeters:null,durationSeconds:null,tollWon:null,error},viaPath:null});warnings.push(`${shortlist[index].name}: ${error.message}`);}
+        });
+        let rows=candidates.map(row=>{
+          const checkedRow=verifiedById.get(row.id);
+          const detour=checkedRow?.detour||{verified:false,distanceMeters:null,durationSeconds:null,tollWon:null};
+          const costs=calculateRouteCandidateCosts({unitPrice:row.currentPrice.price,liters:input.liters,kmPerLiter:input.kmPerLiter,referenceFuelWonPerL:input.referenceFuelWonPerL,hourlyValueWonPerHour:input.hourlyValueWonPerHour,detour});
+          return {...row,detour,costs,viaPath:checkedRow?.viaPath||null};
+        });
+        rows=applyRecommendationRanks(rows,{maxDetourMinutes:input.maxDetourMinutes,limit:5});
+        rows=sortRouteCandidates(rows,{sort:'recommended',maxDetourMinutes:input.maxDetourMinutes});
+        const results=rows.map(row=>({
+          stationId:row.id,progressMeters:Math.round(row.progressMeters),proximityMeters:Math.round(row.proximityMeters),
+          price:{value:row.currentPrice.price,sourceDate:row.currentPrice.sourceDate||null,priceUpdatedAt:row.currentPrice.priceUpdatedAt||null,fetchedAt:row.currentPrice.fetchedAt||null,eligible:row.confidence.eligible,label:row.confidence.label},
+          detour:row.detour,costs:row.costs,rank:row.rank,reason:row.reason,viaPath:row.viaPath,
+        }));
+        const successful=results.filter(row=>row.detour.verified).length;
+        const value={status:warnings.length?'partial':'ready',provider:'naver',option,fetchedAt:new Date(this.clock()).toISOString(),baseRoute,results,checkedCount:successful,attemptedCount:shortlist.length,candidateCount:found.candidateCount,coverage,warnings};
+        this.cache.set(key,value,this.ttlMs);return {...value,cache:{hit:false,ageSeconds:0}};
+      }catch(error){return {...empty,status:'error',fetchedAt:new Date(this.clock()).toISOString(),error:publicError(error)};}
     });
   }
 }
