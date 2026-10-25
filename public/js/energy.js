@@ -2,8 +2,10 @@ import { APP_CONFIG } from '../config.js';
 import { MapController } from './map.js';
 import { escapeHTML as esc, money, finite, getFuelPrice, formatTime, freshness } from './core.js';
 import { isKoreanPoint, safeSourceUrl, visibleBenchmarks, energyCacheKey, retainEnergySnapshot } from './energy-core.js';
+import { mountBottomAd } from './adfit.js';
 
 const $ = id => document.getElementById(id);
+mountBottomAd();
 const apiBase = (APP_CONFIG.apiBase || (['localhost', '127.0.0.1', '[::1]'].includes(location.hostname) ? '/api' : '')).replace(/\/$/, '');
 const sources = {
   averages: { eyebrow: 'FUEL PRICE REFERENCE', title: '우리 지역 기름값,<br>평균과 비교하세요.', description: '전국·지역별 평균으로 가격 흐름을 확인하세요.', label: '평균 유가', sourceName: '한국석유공사 오피넷', url: 'https://www.opinet.co.kr/user/custapi/custApiInfo.do', field: 'benchmarks', path: 'benchmarks', file: 'averages.json', symbol: '▥' },

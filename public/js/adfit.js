@@ -3,6 +3,8 @@ import {ADFIT_CONFIG,NATIVE_ADS} from '../adfit-config.js';
 const nodes=new Map();
 let sdkReady;
 let serial=0;
+let bottomController;
+export const BOTTOM_AD_STORAGE_KEY='juyuhannun:ad-bottom:expanded:v1';
 
 function isProduction(){
   return location.hostname===ADFIT_CONFIG.hostname&&location.pathname.startsWith(ADFIT_CONFIG.pathname);
@@ -20,23 +22,24 @@ function loadSdk(startFirst){
   document.body.append(script);
 }
 
-function createAdNode(slot){
+function createAdNode(slot,{onState=()=>{}}={}){
   const node=document.createElement('aside');
   node.className='station-detail-ad';node.setAttribute('aria-label','광고');node.hidden=true;
   const label=document.createElement('span');label.className='station-detail-ad-label';label.textContent='광고';
   const body=document.createElement('div');body.className='station-detail-ad-body';
   node.append(label,body);
   let attempted=false,queued=false,visible=false,timeout;
-  const stop=()=>{clearTimeout(timeout);body.replaceChildren();body.style.minHeight='';node.hidden=true;node.dataset.state='empty';};
+  const setState=state=>{node.dataset.state=state;onState(state);};
+  const stop=()=>{clearTimeout(timeout);body.replaceChildren();body.style.minHeight='';node.hidden=true;setState('empty');};
   const eligible=()=>ADFIT_CONFIG.enabled&&isProduction()&&visible&&!document.hidden&&node.isConnected&&body.clientWidth>=slot.width;
   function start(ready,abort){
     attempted=true;queued=false;observer.disconnect();document.removeEventListener('visibilitychange',request);
-    node.hidden=false;body.style.minHeight=`${slot.height}px`;node.dataset.state='requested';
+    node.hidden=false;body.style.minHeight=`${slot.height}px`;setState('requested');
     const ins=document.createElement('ins');ins.className='kakao_ad_area';ins.style.display='none';
     ins.dataset.adUnit=slot.unit;ins.dataset.adWidth=String(slot.width);ins.dataset.adHeight=String(slot.height);
     const id=++serial,failed=`juyuAdFailed${id}`,loaded=`juyuAdLoaded${id}`;
     window[failed]=()=>{ready?.();stop();};ins.dataset.adOnfail=failed;
-    window[loaded]=()=>{clearTimeout(timeout);node.hidden=false;node.dataset.state='filled';ready?.();};ins.dataset.adOnload=loaded;
+    window[loaded]=()=>{clearTimeout(timeout);node.hidden=false;setState('filled');ready?.();};ins.dataset.adOnload=loaded;
     body.append(ins);
     timeout=setTimeout(()=>{if(abort)abort(new Error('AdFit response timeout'));if(!body.querySelector('iframe'))stop();},10000);
     return ins;
@@ -74,4 +77,25 @@ export function mountStationListAds(hosts){
     const key=`list-${index}`;if(!nodes.has(key))nodes.set(key,createAdNode(slot));
     const node=nodes.get(key);host.hidden=false;if(node.parentNode!==host)host.replaceChildren(node);
   });
+}
+
+export function mountBottomAd({win=window,doc=document}={}){
+  if(bottomController)return bottomController;
+  const slot=ADFIT_CONFIG.bottom;
+  const viewportWidth=Math.max(doc.documentElement?.clientWidth||0,win.innerWidth||0);
+  if(NATIVE_ADS||!ADFIT_CONFIG.enabled||!isProduction()||!slot||viewportWidth<slot.width)return null;
+  const shell=doc.createElement('aside');shell.className='juyu-bottom-ad';shell.hidden=true;shell.setAttribute('aria-label','하단 광고');
+  shell.innerHTML='<button type="button" class="juyu-bottom-ad-toggle" aria-controls="juyuBottomAdPanel" aria-expanded="true">광고 접기</button><section id="juyuBottomAdPanel" class="juyu-bottom-ad-panel" aria-label="광고"></section>';
+  const button=shell.querySelector('.juyu-bottom-ad-toggle'),panel=shell.querySelector('.juyu-bottom-ad-panel');
+  let expanded=true,resizeObserver;
+  try{const stored=win.sessionStorage.getItem(BOTTOM_AD_STORAGE_KEY);if(stored!==null)expanded=stored==='true';}catch{}
+  const syncSpace=()=>{const height=shell.hidden?0:Math.ceil(shell.getBoundingClientRect().height);doc.body.style.setProperty('--juyu-bottom-ad-space',`${height}px`);doc.body.classList.toggle('juyu-bottom-ad-active',height>0);};
+  const node=createAdNode(slot,{onState:state=>{if(state==='empty'){shell.hidden=true;syncSpace();}else syncSpace();}});
+  panel.append(node);doc.body.append(shell);shell.hidden=false;
+  const sync=()=>{panel.hidden=!expanded;button.textContent=expanded?'광고 접기':'광고 펼치기';button.setAttribute('aria-expanded',String(expanded));node.hidden=!expanded||node.dataset.state==='empty';syncSpace();};
+  const setExpanded=value=>{expanded=Boolean(value);try{win.sessionStorage.setItem(BOTTOM_AD_STORAGE_KEY,String(expanded));}catch{}sync();};
+  const toggle=()=>setExpanded(!expanded);button.addEventListener('click',toggle);
+  resizeObserver=win.ResizeObserver?new win.ResizeObserver(syncSpace):null;resizeObserver?.observe(shell);sync();
+  bottomController={setExpanded,destroy(){resizeObserver?.disconnect();button.removeEventListener('click',toggle);shell.remove();doc.body.style.setProperty('--juyu-bottom-ad-space','0px');doc.body.classList.remove('juyu-bottom-ad-active');bottomController=null;}};
+  return bottomController;
 }
