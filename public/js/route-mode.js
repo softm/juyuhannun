@@ -49,7 +49,7 @@ export function createRouteModeController({apiBase='',requestJSON,clock=Date.now
     state.lastRequest=request;
     try{
       if(!apiBase){
-        const response=unavailableResult('운영 경로 API가 아직 연결되지 않았습니다. PUBLIC_API_BASE에 키를 보호하는 HTTPS 엔드포인트를 설정해 주세요.');
+        const response=unavailableResult('경로 서비스를 아직 연결하지 못했습니다. 연결이 완료되면 목적지까지 실제 경로의 주유소를 바로 보여드립니다.');
         if(ticket===generation){state.response=response;state.error=response.error;}
         return response;
       }

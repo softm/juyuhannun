@@ -154,22 +154,22 @@ export function sortRouteCandidates(candidates,{sort='recommended',maxDetourMinu
   const accepted=row=>verifiedComparable(row,maxDetourMinutes);
   const price=row=>row.confidence?.eligible&&finite(row.currentPrice?.price)?row.currentPrice.price:Infinity;
   const duration=row=>row.detour?.verified&&finite(row.detour.durationSeconds)?row.detour.durationSeconds:Infinity;
+  const durationMinute=row=>finite(duration(row))?Math.ceil(duration(row)/60):Infinity;
   const distance=row=>row.detour?.verified&&finite(row.detour.distanceMeters)?row.detour.distanceMeters:Infinity;
-  const recommendedValue=row=>finite(row.costs?.totalWon)?row.costs.totalWon:price(row);
   const compare=sort==='price'
     ?(a,b)=>price(a)-price(b)||duration(a)-duration(b)||a.progressMeters-b.progressMeters
     :sort==='detour'
       ?(a,b)=>duration(a)-duration(b)||distance(a)-distance(b)||price(a)-price(b)
       :sort==='progress'
         ?(a,b)=>a.progressMeters-b.progressMeters||a.proximityMeters-b.proximityMeters
-        :(a,b)=>Number(accepted(b))-Number(accepted(a))||recommendedValue(a)-recommendedValue(b)||duration(a)-duration(b)||distance(a)-distance(b)||price(a)-price(b)||a.progressMeters-b.progressMeters;
+        :(a,b)=>Number(accepted(b))-Number(accepted(a))||durationMinute(a)-durationMinute(b)||price(a)-price(b)||duration(a)-duration(b)||distance(a)-distance(b)||a.progressMeters-b.progressMeters;
   return rows.sort((a,b)=>compare(a,b)||String(a.id).localeCompare(String(b.id)));
 }
 
 export function applyRecommendationRanks(candidates,{maxDetourMinutes=Infinity,limit=5}={}){
   const eligible=sortRouteCandidates(candidates,{sort:'recommended',maxDetourMinutes}).filter(row=>verifiedComparable(row,maxDetourMinutes)).slice(0,clamp(limit,1,5));
   const ranks=new Map(eligible.map((row,index)=>[String(row.id),index+1]));
-  return candidates.map(row=>({...row,rank:ranks.get(String(row.id))||null,reason:ranks.has(String(row.id))?(finite(row.costs?.totalWon)?'추천: 주유비+추가 이동비 예상 합계':'추천: 유효 가격과 실제 우회가 작은 순서'):row.reason||null}));
+  return candidates.map(row=>({...row,rank:ranks.get(String(row.id))||null,reason:ranks.has(String(row.id))?'추천: 실제 우회가 적은 순, 같은 분이면 가격이 낮은 순':row.reason||null}));
 }
 
 export function kakaoRouteURLs(origin,station,destination){

@@ -340,7 +340,9 @@ export class MapController {
   resize() {
     if (!this.map || this._destroyed || this._resizeFrame) return;
     // Capture before a layout switch and resize after its CSS has taken effect.
-    const initialCenter = this.getCenter(), initialZoom = this.map.getZoom();
+    let initialCenter, initialZoom;
+    try { initialCenter = this.getCenter(); initialZoom = this.map.getZoom(); }
+    catch (error) { if (this.provider === 'naver') void this._fallback(error).catch(() => {}); return; }
     const navigationRevision = this._navigationRevision;
     this._resizeFrame = requestAnimationFrame(() => {
       this._resizeFrame = null;
@@ -349,15 +351,17 @@ export class MapController {
       const unchanged = navigationRevision === this._navigationRevision;
       const center = unchanged ? initialCenter : this.getCenter();
       const zoom = unchanged ? initialZoom : this.map.getZoom();
-      this._internal(() => {
-        if (this.provider === 'naver') {
-          globalThis.naver.maps.Event.trigger(this.map, 'resize');
-          this.map.setCenter(this._naverPoint(center));
-        } else {
-          this.map.invalidateSize({ animate: false, pan: false });
-          this.map.setView([center.lat, center.lng], zoom, { animate: false });
-        }
-      });
+      try {
+        this._internal(() => {
+          if (this.provider === 'naver') {
+            globalThis.naver.maps.Event.trigger(this.map, 'resize');
+            this.map.setCenter(this._naverPoint(center));
+          } else {
+            this.map.invalidateSize({ animate: false, pan: false });
+            this.map.setView([center.lat, center.lng], zoom, { animate: false });
+          }
+        });
+      } catch (error) { if (this.provider === 'naver') void this._fallback(error).catch(() => {}); return; }
       this._scheduleMarkers();
       this._scheduleViewportChange();
     });
