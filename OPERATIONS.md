@@ -9,6 +9,9 @@
 | `PUBLIC_API_BASE` | [Actions variables](https://github.com/softm/juyuhannun/settings/variables/actions) | 선택 설정: HTTPS 조회 API의 `/api`까지 포함한 주소 |
 | `OPINET_API_KEY` | 조회 서버 `.env` | 선택 설정: 주유소 상세 조회 등 서버 API |
 | `NAVER_MAPS_API_KEY_ID` / `NAVER_MAPS_API_KEY` | 조회 서버 `.env` | NAVER Directions 도로 경로 조회 |
+| `NAVER_DAILY_LIMIT` | 조회 서버 `.env` | Directions 요청의 KST 일일 앱 자체 한도 |
+| `NAVER_RECOMMENDATION_CONCURRENCY` / `NAVER_RECOMMENDATION_LIMIT` | 조회 서버 `.env` | 가는 길 주유의 동시 경유 검증 수(최대 3)와 요청당 검증 후보 수 |
+| `ROUTE_RECOMMENDATION_RATE_PER_MINUTE` | 조회 서버 `.env` | IP별 경로 추천 POST 요청의 분당 한도 |
 | `API_ALLOWED_ORIGINS` | 조회 서버 `.env` | `https://softm.github.io` 및 필요한 로컬/운영 원점만 명시 |
 | `naverClientId` | `public/config.js` | 공개 브라우저용 지도 Application ID, 원본에서 재사용 |
 
@@ -42,7 +45,9 @@
 
 지도 인증 실패 시 OpenStreetMap 실제 지도로 대체하고 그 상태를 표시합니다. 대체 지도에서는 네이버 주소 검색이 지원되지 않습니다. 지도 중심 선택·현위치·목록 검색은 계속 사용할 수 있습니다.
 
-도로 경로는 Node 서버의 `/api/route`에서 수행합니다. 서버 배포 뒤 `PUBLIC_API_BASE=https://운영서버/api`를 지정하여 다시 배포합니다. `HOST=0.0.0.0`은 컨테이너 호스팅 등 외부 리스닝이 필요한 경우에만 서버 환경으로 설정합니다. HTTPS reverse proxy의 접근 로그에 위치 쿼리를 보관하지 않도록 운영 설정도 확인합니다.
+단일 도로 경로는 Node 서버의 `GET /api/route`, 가는 길 주유 추천은 `POST /api/route/recommendations`에서 수행합니다. 추천 요청은 본문 크기·좌표·유종·반경·우회시간을 검증하며 기본경로 1회와 최대 8곳의 경유 경로만 조회합니다. 가격이 오래됐거나 우회가 미검증이거나 제한을 넘은 후보는 TOP 5 추천에서 제외합니다. 같은 입력은 짧게 캐시하고 Directions 호출은 기본 동시 3건 이하로 제한합니다.
+
+서버 배포 뒤 `PUBLIC_API_BASE=https://운영서버/api`를 지정하여 다시 배포합니다. GitHub Pages의 HTTPS 화면에서는 HTTP API 주소를 사용하지 않습니다. `HOST=0.0.0.0`은 컨테이너 호스팅 등 외부 리스닝이 필요한 경우에만 서버 환경으로 설정합니다. 위치·경로 요청 본문이나 응답을 애플리케이션 로그에 기록하지 않고, HTTPS reverse proxy 접근 로그에도 좌표를 남기지 않도록 운영 설정을 확인합니다.
 
 ## 2. 수집 범위와 호출 한도
 
@@ -136,5 +141,5 @@ PR 작업은 테스트·빌드만 수행하고 수집키 접근, 운영 cache �
 - 수소 월평균 레코드 수집과 화면 표시
 - 전국 가격 파일 대비 좌표 확보 범위와 누락 지역, 좌표 보완 진행률. 프리미엄 계약 API는 별도 검토 대상
 
-모바일 지도·검색·대화상자·계산기를 브라우저에서 확인하며, 사용자의 실제 위치 권한은 테스트를 위해 임의 승인하지 않습니다.
+모바일 지도·검색·대화상자·가는 길 주유 화면을 브라우저에서 확인하며, 사용자의 실제 위치 권한은 테스트를 위해 임의 승인하지 않습니다. 안드로이드에서는 카카오맵 앱 스킴을 우선 열고 앱이 없으면 동일 출발지·경유지·목적지를 카카오맵 모바일 웹으로 전환하는지 확인합니다.
 
