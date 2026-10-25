@@ -26,7 +26,7 @@ export async function geocodeBusinessAddresses({
   dataDirectory=resolve(ROOT,'public/data/nationwide'),
   apiKeyId=process.env.NAVER_MAPS_API_KEY_ID||process.env.NAVER_CLIENT_ID||'',
   apiKey=process.env.NAVER_MAPS_API_KEY||process.env.NAVER_CLIENT_SECRET||'',
-  maxCalls=Number(process.env.NAVER_GEOCODE_MAX_PER_RUN||1000),
+  maxCalls=Number(process.env.NAVER_GEOCODE_MAX_PER_RUN||3000),
   fetchImpl=fetch,
   clock=Date.now,
 }={}){
