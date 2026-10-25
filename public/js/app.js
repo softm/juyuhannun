@@ -2,6 +2,7 @@ import {APP_CONFIG} from '../config.js';
 import {MapController} from './map.js';
 import {setupMobileMapView} from './mobile-map-view.js';
 import {createMapLoadingController} from '../shared/map-loading.js';
+import {mountStationDetailAd} from './adfit.js';
 import {loadStationData,mergeStationData,reselectStationPrices} from './data-loader.js';
 import {FUEL_TYPES,BRANDS,escapeHTML as esc,money,finite,distanceMeters,getFuelPrice,freshness,formatTime,filterStations,summarizeVisiblePrices,hasMapCoordinates,stationNavigationURL} from './core.js';
 
@@ -209,7 +210,9 @@ function renderDetail(){
      <dl class="focus-detail-meta"><dt>선택 유종</dt><dd>${esc(currentFuel)} ${selectedPrice?money(selectedPrice.price)+'원/L':'가격 미제공'}</dd><dt>가격 기준</dt><dd>${esc(priceBasis)}</dd><dt>수집 시각</dt><dd>${esc(formatTime(selectedPrice?.fetchedAt))}</dd><dt>자료 출처</dt><dd><a href="https://www.opinet.co.kr/" target="_blank" rel="noopener noreferrer">${esc(selectedPrice?.source?.name||'한국석유공사 오피넷')} ↗</a></dd><dt>시설</dt><dd>${esc(facilityLabels.join(' · ')||'시설 정보 미제공')}</dd><dt>거리</dt><dd>${hasMapCoordinates(station)?`검색 중심에서 직선 ${(distanceMeters(state.center,station)/1000).toFixed(1)} km`:'좌표 확인 중'}</dd></dl>
      ${!confidence.eligible?'<p class="detail-warn">가격 기준시각이 확인되지 않았거나 오래된 자료는 최저가·절약액 추천에서 제외합니다.</p>':''}
    </section>
+   <div id="station-detail-ad-host" class="station-detail-ad-host"></div>
  </div>`;
+ mountStationDetailAd($('station-detail-ad-host'));
  $('detail-content').querySelectorAll('[data-detail-tab]').forEach(button=>button.addEventListener('click',()=>{
    const tab=button.dataset.detailTab;
    $('detail-content').querySelectorAll('[data-detail-tab]').forEach(item=>{const active=item===button;item.classList.toggle('active',active);item.setAttribute('aria-selected',String(active));});
