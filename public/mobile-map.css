@@ -504,3 +504,44 @@
  body.mobile-map-collapsed.driving-mode #map-type-toggle{display:none!important}
  body.driving-mode .map-you.is-driving{filter:drop-shadow(0 3px 6px #17362e45)}
 }
+
+/* Going-there planner reuses the map-browse and draggable list-sheet states. */
+@media(max-width:1000px){
+ body.mobile-map-browse .workspace>.sidebar>nav.view-tabs,
+ body.mobile-map-expanded .workspace>.sidebar>nav.view-tabs{
+   display:flex!important;position:fixed;left:16px;right:16px;top:calc(132px + env(safe-area-inset-top,0px));z-index:181;height:46px;padding:0 7px;border:1px solid #e0e7e3;border-radius:23px;background:#fffffff2;box-shadow:0 6px 20px #17362e20;pointer-events:auto;backdrop-filter:blur(10px)
+ }
+ body.mobile-map-browse .workspace>.sidebar>nav.view-tabs .view-tab,
+ body.mobile-map-expanded .workspace>.sidebar>nav.view-tabs .view-tab{padding:0 4px;border-bottom:0;border-radius:18px;font-size:10px}
+ body.mobile-map-browse .workspace>.sidebar>nav.view-tabs .view-tab.active,
+ body.mobile-map-expanded .workspace>.sidebar>nav.view-tabs .view-tab.active{background:#e6f4f1;color:#0a6358}
+ body.route-mode.mobile-map-browse .workspace>.sidebar>.route-panel,
+ body.route-mode.mobile-map-expanded .workspace>.sidebar>.route-panel{
+   display:block!important;position:fixed;left:10px;right:10px;top:calc(184px + env(safe-area-inset-top,0px));bottom:calc(92px + env(safe-area-inset-bottom,0px));z-index:184;max-height:none;padding:17px 16px 24px;border:1px solid #dce7e2;border-radius:24px;background:#fffffff5;box-shadow:0 10px 34px #17362e2c;overflow:auto;pointer-events:auto;backdrop-filter:blur(13px)
+ }
+ body.route-mode.mobile-map-browse #map-section .map-actions,
+ body.route-mode.mobile-map-browse .map-secondary-actions,
+ body.route-mode.mobile-map-browse .mobile-map-toggle,
+ body.route-mode.mobile-map-browse .focus-rescan,
+ body.route-mode.mobile-map-expanded #map-section .map-actions,
+ body.route-mode.mobile-map-expanded .map-secondary-actions,
+ body.route-mode.mobile-map-expanded .mobile-map-toggle{display:none!important}
+ body.route-mode.mobile-map-browse .mobile-focus-dock{z-index:186}
+ body.route-mode.mobile-list-sheet .workspace>.sidebar>.route-panel{display:none!important}
+ body.route-mode.mobile-list-sheet .workspace>.sidebar>.results-header{display:flex!important}
+ body.route-mode.mobile-list-sheet .workspace>.sidebar>.results{display:block!important}
+ body.route-mode .route-panel-head h2{font-size:18px}
+ body.route-mode .route-intro{font-size:10px}
+ body.route-mode .route-settings-grid{gap:8px}
+ body.route-mode .route-coordinate-note{padding-bottom:4px}
+}
+@media(max-width:430px){
+ body.mobile-map-browse .workspace>.sidebar>nav.view-tabs,
+ body.mobile-map-expanded .workspace>.sidebar>nav.view-tabs{left:10px;right:10px}
+ body.route-mode.mobile-map-browse .workspace>.sidebar>.route-panel,
+ body.route-mode.mobile-map-expanded .workspace>.sidebar>.route-panel{left:6px;right:6px;padding-left:13px;padding-right:13px}
+}
+@media(max-height:680px) and (max-width:1000px){
+ body.route-mode.mobile-map-browse .workspace>.sidebar>.route-panel,
+ body.route-mode.mobile-map-expanded .workspace>.sidebar>.route-panel{top:calc(176px + env(safe-area-inset-top,0px));bottom:calc(78px + env(safe-area-inset-bottom,0px))}
+}
