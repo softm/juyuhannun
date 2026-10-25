@@ -23,6 +23,8 @@ if(process.env.PUBLIC_API_BASE){
 // Immutable code paths keep old CDN/browser assets from mixing with a new build.
 // Price data is intentionally outside this namespace and fetched with no-store.
 const hash=createHash('sha256');
+const immutablePaths=['js','shared','config.js','adfit-config.js',...(await readdir(`${root}dist`)).filter(name=>name.endsWith('.css'))];
+hash.update('immutable-paths\0').update(immutablePaths.join('\0')).update('\0');
 async function hashCode(directory,prefix=''){
  for(const entry of (await readdir(directory,{withFileTypes:true})).sort((a,b)=>a.name.localeCompare(b.name))){
   if(entry.name==='data'||entry.name==='_app')continue;
@@ -34,7 +36,7 @@ async function hashCode(directory,prefix=''){
 await hashCode(`${root}dist`);
 const revision=hash.digest('hex').slice(0,12),versionRoot=`${root}dist/_app/${revision}`;
 await mkdir(versionRoot,{recursive:true});
-for(const path of ['js','shared','config.js','adfit-config.js',...(await readdir(`${root}dist`)).filter(name=>name.endsWith('.css'))])await cp(`${root}dist/${path}`,`${versionRoot}/${path}`,{recursive:true});
+for(const path of immutablePaths)await cp(`${root}dist/${path}`,`${versionRoot}/${path}`,{recursive:true});
 for(const name of (await readdir(`${root}dist`)).filter(name=>name.endsWith('.html'))){
  let html=await readFile(`${root}dist/${name}`,'utf8');
  html=html.replace(/(href|src)="\.\/((?:js\/[^\"]+\.js)|(?:[^\"/]+\.css))"/g,(_,attr,path)=>`${attr}="./_app/${revision}/${path}"`).replace('<html lang="ko">',`<html lang="ko" data-build="${revision}">`);
