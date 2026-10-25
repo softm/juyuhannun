@@ -212,6 +212,11 @@ test('Stitch search bar and fuel selector stay functional', () => {
 
 
 test('driving mode keeps map overlays upright and shows actual plus predicted travel guides', () => {
+  assert.match(html,/id="drive-mode"[^>]+type="button"|type="button"[^>]+id="drive-mode"/);
+  assert.match(html,/class="map-secondary-actions"[^>]+aria-label="주행 및 지도 도구"/);
+  assert.match(styles,/\.map-secondary-actions\{[^}]*display:flex/);
+  assert.match(styles,/@media\(min-width:761px\) and \(max-width:1366px\)\{\.map-secondary-action\{[^}]*width:48px/);
+  assert.match(app,/\$\('drive-mode'\)\.addEventListener\('click'/);
   assert.match(map,/projectPoint/);
   assert.match(map,/_renderDrivingGuides/);
   assert.match(map,/strokeStyle:\s*'shortdash'/);
