@@ -66,3 +66,12 @@ export function mountStationDetailAd(host){
   if(node.parentNode!==host)host.replaceChildren(node);
   node.hidden=node.dataset.state==='empty';
 }
+
+export function mountStationListAds(hosts){
+  if(NATIVE_ADS||!ADFIT_CONFIG.enabled||!isProduction())return;
+  [...hosts].forEach((host,index)=>{
+    const slot=ADFIT_CONFIG.list?.[index];if(!slot||host.clientWidth<slot.width)return;
+    const key=`list-${index}`;if(!nodes.has(key))nodes.set(key,createAdNode(slot));
+    const node=nodes.get(key);host.hidden=false;if(node.parentNode!==host)host.replaceChildren(node);
+  });
+}

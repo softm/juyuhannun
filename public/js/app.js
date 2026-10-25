@@ -2,7 +2,7 @@ import {APP_CONFIG} from '../config.js';
 import {MapController} from './map.js';
 import {setupMobileMapView} from './mobile-map-view.js';
 import {createMapLoadingController} from '../shared/map-loading.js';
-import {mountStationDetailAd} from './adfit.js';
+import {mountStationDetailAd,mountStationListAds} from './adfit.js';
 import {loadStationData,mergeStationData,reselectStationPrices} from './data-loader.js';
 import {FUEL_TYPES,BRANDS,escapeHTML as esc,money,finite,distanceMeters,getFuelPrice,freshness,formatTime,filterStations,summarizeVisiblePrices,hasMapCoordinates,stationNavigationURL} from './core.js';
 
@@ -112,7 +112,7 @@ function render(){
  if($('focus-list-count'))$('focus-list-count').textContent=filtered.length.toLocaleString('ko-KR');
  const total=state.envelope?.coverage?.totalPriceStations??state.all.length,mapped=collectionStats().mapped,summary=summarizeVisiblePrices(filtered);
  $('coverage-hint').textContent=state.driving.active?`주행방향 우선 ${filtered.length.toLocaleString('ko-KR')}곳 · 진행방향 표시 · 파랑=이동동선 · 초록 점선=예측동선`:`현재 지도 ${filtered.length.toLocaleString('ko-KR')}곳 · 최신 비교 ${summary.comparable.toLocaleString('ko-KR')}곳 · 좌표 ${mapped.toLocaleString('ko-KR')}/${total.toLocaleString('ko-KR')}곳 확보`;
- if(!filtered.length)renderEmpty();else $('results').innerHTML=filtered.slice(0,state.listLimit).map((s,i)=>card(s,i)).join('')+(filtered.length>state.listLimit?`<button class="load-more" data-action="load-more">${Math.min(60,filtered.length-state.listLimit)}곳 더 보기 · ${state.listLimit.toLocaleString('ko-KR')}/${filtered.length.toLocaleString('ko-KR')}곳</button>`:'');
+ if(!filtered.length)renderEmpty();else{const shown=filtered.slice(0,state.listLimit);$('results').innerHTML=shown.map((s,i)=>card(s,i)+([5,11,17].includes(i)?`<div class="station-detail-ad" data-list-ad="${[5,11,17].indexOf(i)}" aria-label="광고"></div>`:'')).join('')+(filtered.length>state.listLimit?`<button class="load-more" data-action="load-more">${Math.min(60,filtered.length-state.listLimit)}곳 더 보기 · ${state.listLimit.toLocaleString('ko-KR')}/${filtered.length.toLocaleString('ko-KR')}곳</button>`:'');mountStationListAds($('results').querySelectorAll('[data-list-ad]'));}
  if(state.mapReady)map.setStations(filtered,state.selected,state.fuel);
  const cheapest=summary.lowest;
  $('lowest-price').textContent=money(cheapest);$('summary-area').textContent='현재 지도 영역 · 검색 조건 기준';
