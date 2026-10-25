@@ -34,7 +34,7 @@ async function hashCode(directory,prefix=''){
 await hashCode(`${root}dist`);
 const revision=hash.digest('hex').slice(0,12),versionRoot=`${root}dist/_app/${revision}`;
 await mkdir(versionRoot,{recursive:true});
-for(const path of ['js','shared','config.js',...(await readdir(`${root}dist`)).filter(name=>name.endsWith('.css'))])await cp(`${root}dist/${path}`,`${versionRoot}/${path}`,{recursive:true});
+for(const path of ['js','shared','config.js','adfit-config.js',...(await readdir(`${root}dist`)).filter(name=>name.endsWith('.css'))])await cp(`${root}dist/${path}`,`${versionRoot}/${path}`,{recursive:true});
 for(const name of (await readdir(`${root}dist`)).filter(name=>name.endsWith('.html'))){
  let html=await readFile(`${root}dist/${name}`,'utf8');
  html=html.replace(/(href|src)="\.\/((?:js\/[^\"]+\.js)|(?:[^\"/]+\.css))"/g,(_,attr,path)=>`${attr}="./_app/${revision}/${path}"`).replace('<html lang="ko">',`<html lang="ko" data-build="${revision}">`);
