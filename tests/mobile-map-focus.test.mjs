@@ -2,9 +2,10 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 
-const [html, app, map, view, css, styles] = await Promise.all([
+const [html, app, routeMode, map, view, css, styles] = await Promise.all([
   readFile(new URL('../public/index.html', import.meta.url), 'utf8'),
   readFile(new URL('../public/js/app.js', import.meta.url), 'utf8'),
+  readFile(new URL('../public/js/route-mode.js', import.meta.url), 'utf8'),
   readFile(new URL('../public/js/map.js', import.meta.url), 'utf8'),
   readFile(new URL('../public/js/mobile-map-view.js', import.meta.url), 'utf8'),
   readFile(new URL('../public/mobile-map.css', import.meta.url), 'utf8'),
@@ -126,11 +127,12 @@ test('desktop station detail uses a dedicated readable modal layout', () => {
   assert.match(styles, /\.detail-dialog \.fuel-price-grid/);
 });
 
-test('compare basket and route-cost workflow are removed from the driving-first UI', () => {
+test('compare basket stays retired while route-aware station discovery is available', () => {
   assert.doesNotMatch(html, /focus-dock-compare/);
   assert.doesNotMatch(app, /storedCompare|state\.compare|toggleCompare|data-action="compare"/);
-  assert.doesNotMatch(html, /data-view="route"/);
-  assert.doesNotMatch(html, /id="route-panel"/);
+  assert.match(html, /data-view="route"/);
+  assert.match(html, /id="route-panel"/);
+  assert.match(routeMode, /route\/recommendations/);
   assert.doesNotMatch(html, /id="open-calculator"/);
   assert.doesNotMatch(app, /compareSelectedRoute/);
 });
@@ -150,8 +152,10 @@ test('detail expand control visibly includes the expansion icon on mobile', () =
 });
 
 
-test('driving-first copy no longer advertises route-cost calculation', () => {
-  assert.doesNotMatch(html, /경로 비용 비교|예상 절약액의 계산 기준|가격부터 이동 비용까지/);
+test('route mode labels assumptions and does not revive the retired generic route calculator', () => {
+  assert.match(html, /예시 가정/);
+  assert.match(html, /추가 주행 연료 기준 단가/);
+  assert.match(html, /입력하지 않으면 총비용·절약액을 계산하지 않습니다/);
   assert.doesNotMatch(app, /invalidateRoutes|routeGeneration|state\.routes/);
 });
 
