@@ -37,4 +37,7 @@ test('status uses final shared quota and coordinate progress without copying the
  assert.deepEqual(d.quota,quota);assert.equal(d.coordinates.queue.enrichedCount,1);
  assert.equal(d.coordinates.stations,undefined);assert.equal(d.coordinates.failures,undefined);
  assert.equal(d.coordinates.lastAttempt.stopReason,'reserved_for_prices');
+ assert.deepEqual(d.addressGeocoding.policy.scheduleKst,['08:17','14:17','20:17']);
+ assert.equal(d.addressGeocoding.policy.maxCallsPerRun,3000);
+ assert.equal(d.addressGeocoding.policy.trigger,'사업자 기본정보 수집 직후');
 });
