@@ -10,5 +10,6 @@ export const ADFIT_CONFIG=Object.freeze({
     desktop:{unit:'DAN-HpBNRNLNOH0TTRji',width:728,height:90},
     mobile:{unit:'DAN-VR0n4syKiJiIKlN7',width:320,height:100}
   },
+  bottom:{unit:'DAN-VR0n4syKiJiIKlN7',width:320,height:100},
   list:[6,12,18].map(after=>Object.freeze({after,unit:'DAN-VR0n4syKiJiIKlN7',width:320,height:100}))
 });

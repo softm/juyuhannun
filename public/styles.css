@@ -16,6 +16,13 @@ dialog{padding:34px;border:1px solid #dce6d6;border-radius:20px;background:#fff;
 .station-detail-ad-label{display:block;margin-bottom:6px;color:#8a9691;font-size:9px;line-height:1}
 .station-detail-ad-body{display:flex;justify-content:center;width:100%;overflow:hidden}
 @media(max-width:1000px){.station-detail-ad-host{margin-top:18px;padding-bottom:max(12px,env(safe-area-inset-bottom))}}
+.juyu-bottom-ad{position:fixed;inset:auto 0 0;z-index:930;display:flex;align-items:center;flex-direction:column;padding-bottom:env(safe-area-inset-bottom);background:#fff;border-top:1px solid var(--line);box-shadow:0 -3px 16px #17362b1c}
+.juyu-bottom-ad[hidden],.juyu-bottom-ad-panel[hidden]{display:none!important}
+.juyu-bottom-ad-toggle{min-width:108px;min-height:38px;padding:7px 16px;color:#52695b;font-size:11px;font-weight:700}
+.juyu-bottom-ad-panel{display:flex;justify-content:center;width:100%;min-height:100px;padding:0 0 8px;overflow:hidden}
+body.juyu-bottom-ad-active:not(.energy-page) .workspace{height:calc(100dvh - 66px - var(--juyu-bottom-ad-space,0px))}
+body.juyu-bottom-ad-active.energy-page .energy-workspace{height:calc(100dvh - 140px - var(--juyu-bottom-ad-space,0px))}
+@media(max-width:760px){body.juyu-bottom-ad-active:not(.energy-page) .workspace{height:calc(100dvh - 60px - var(--juyu-bottom-ad-space,0px))}body.juyu-bottom-ad-active.energy-page .energy-workspace{height:calc(100dvh - 117px - var(--juyu-bottom-ad-space,0px))}}
 .map-section #map{position:absolute;inset:0;min-height:0}
 .map-section #map>.map-surface{width:100%;height:100%}
 .empty-icon svg,.small-button>svg{fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
