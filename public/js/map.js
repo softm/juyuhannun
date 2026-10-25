@@ -216,6 +216,8 @@ function installMarkerStyles() {
     '.map-you{display:block;position:relative;width:18px;height:18px;border:3px solid #fff;border-radius:50%;background:#2674db;box-shadow:0 0 0 7px #2674db30,0 2px 8px #193a6040}',
     '.map-you.is-driving{width:30px;height:30px;border-width:4px;background:#1769d7;box-shadow:0 0 0 9px #2674db26,0 4px 14px #193a6050}',
     '.map-you.is-driving:before{content:"";position:absolute;left:50%;top:-15px;width:0;height:0;border-left:7px solid transparent;border-right:7px solid transparent;border-bottom:15px solid #1769d7;transform:translateX(-50%) rotate(var(--drive-heading,0deg));transform-origin:50% 30px;filter:drop-shadow(0 1px 1px #fff)}',
+    '.route-endpoint{display:flex;align-items:center;justify-content:center;width:36px;height:36px;border:3px solid #fff;border-radius:50%;color:#fff;box-shadow:0 4px 13px #183a3445;font:900 12px/1 system-ui,sans-serif}',
+    '.route-endpoint-start{background:#119da4}.route-endpoint-destination{background:#174f45}',
     '.juyuhannun-map .leaflet-control-attribution{font-size:10px;background:rgba(255,255,255,.92)}',
     '@media(max-width:1000px){.station-marker .price-pin.selected{width:70px;height:70px;min-width:70px;min-height:70px}.selected-station-callout{font-size:14px;min-height:46px}.lowest-price-badge{height:40px;min-width:98px;font-size:14px}}',
     '@media(prefers-reduced-motion:reduce){.price-pin{transition:none}.station-marker .price-pin.selected,.lowest-price-badge{animation:none}}'
@@ -252,6 +254,13 @@ export class MapController {
     this._renderRevision = 0;
     this._queryCenter = { ...this._center };
     this._routeCoords = [];
+    this._baseRouteCoords = [];
+    this._viaRouteCoords = [];
+    this._routeEndpoints = null;
+    this._baseRoute = null;
+    this._viaRoute = null;
+    this._routeStart = null;
+    this._routeDestination = null;
     this._listeners = [];
     this._userIntent = false;
     this._suppressUntil = 0;
@@ -446,7 +455,8 @@ export class MapController {
       this._notice('네이버 지도를 연결하지 못해 OpenStreetMap 지도로 표시합니다.');
       this._state('fallback', 'OpenStreetMap 지도 · 네이버 지도 연결을 확인하지 못했습니다.');
       this.setStations(this._stations, this._selectedId, this._fuel);
-      if (this._routeCoords.length > 1) this.showRoute(this._routeCoords);
+      if (this._baseRouteCoords.length > 1) this.showRoute(this._baseRouteCoords,{kind:'base',fitBounds:true,...(this._routeEndpoints||{})});
+      if (this._viaRouteCoords.length > 1) this.showRoute(this._viaRouteCoords,{kind:'via',fitBounds:false});
       if (this._youPoint) this._showYou(this._youPoint, { heading: this._driveHeading, driving: this._driveWatchId != null });
       if (this._driveWatchId != null) { this._setDrivingHeadingUp(this._driveHeading, true); this._setDrivingInteraction(true); }
     })().catch(error => {
@@ -536,6 +546,11 @@ export class MapController {
       else this.map.setZoom(next, { animate: false });
     });
     return next;
+  }
+
+  getZoom(){
+    const zoom=Number(this.map?.getZoom?.());
+    return Number.isFinite(zoom)?zoom:this._defaultZoom();
   }
 
   zoomBy(delta = 1) {
@@ -654,9 +669,10 @@ export class MapController {
     const presentation = this.markerPresentation?.(row, { fuel: this._fuel });
     const confidence = info ? freshness(info.priceUpdatedAt, info.fetchedAt, now, info.priceTimeStatus, info.sourceDate) : { eligible: false, label: '가격 미제공' };
     const stale = presentation ? presentation.stale !== false : !confidence.eligible;
-    const tone = presentation ? (stale ? 'slate' : 'orange') : markerTone(info, stale, this._priceBands);
+    const tone = presentation ? (stale ? 'slate' : presentation.tone||'orange') : markerTone(info, stale, this._priceBands);
     const numericPrice=Number(info?.price);
-    const priceRank=!presentation&&!stale?(this._priceRanks?.get(id)??null):null;
+    const presentationRank=Number(presentation?.rank);
+    const priceRank=Number.isInteger(presentationRank)&&presentationRank>=1&&presentationRank<=5?presentationRank:!presentation&&!stale?(this._priceRanks?.get(id)??null):null;
     const isTopPrice=Number.isInteger(priceRank)&&priceRank>=1&&priceRank<=5;
     const sourceKey = JSON.stringify([point, row.name, row.brand, row.facilities?.self, row.roadAddress, row.address, this._fuel, selected, priceRank, info, presentation, tone, this._priceBands, Math.floor(now / 60000)]);
     if (cached && previous?.sourceKey === sourceKey) return false;
@@ -668,7 +684,7 @@ export class MapController {
     const unit = presentation ? String(presentation.unit || '') : info ? '원' : '';
     const facts = [BRANDS[row.brand] || row.brand, row.facilities?.self === true ? '셀프' : row.facilities?.self === false ? '일반' : null, info?.sourceDate ? info.sourceDate + ' 기준' : confidence.label].filter(Boolean).join(' · ');
     const callout=selected?'<div class="selected-station-callout"><span class="callout-pump" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="12" height="17" rx="2"/><path d="M6 7h6v4H6ZM1 21h16m-2-8h2v5a2 2 0 0 0 4 0V8l-4-4m3 3v4h1"/></svg></span><strong>'+escapeHTML(row.name||'주유소')+'</strong><b aria-hidden="true">›</b></div>':'';
-    const rankLabel=priceRank===1?'최저':priceRank?priceRank+'위':'';
+    const rankLabel=presentation?.badgeLabel&&priceRank?String(presentation.badgeLabel).replace('{rank}',String(priceRank)):priceRank===1?'최저':priceRank?priceRank+'위':'';
     const rankDelay=priceRank?((priceRank-1)*0.12).toFixed(2)+'s':'0s';
     const lowestBadge=isTopPrice&&!selected?'<button type="button" class="lowest-price-badge rank-'+priceRank+'" style="--rank-delay:'+rankDelay+'" data-station-id="'+escapeHTML(id)+'" aria-label="'+escapeHTML((row.name||'주유소')+' '+rankLabel+' '+visiblePrice+'원 상세 보기')+'" title="'+escapeHTML((row.name||'주유소')+' 상세 보기')+'"><span class="lowest-tag">'+escapeHTML(rankLabel)+'</span><strong>'+escapeHTML(visiblePrice)+'원</strong></button>':'';
     const detailLabel=selected?'':'<span class="price-pin-name"><span class="price-label-title">'+escapeHTML(row.name || '주유소')+'</span><span class="price-label-value">'+escapeHTML(visiblePrice+(visiblePrice!=='—'?unit:''))+'</span><span class="price-label-detail">'+escapeHTML(facts)+'</span></span>';
@@ -1043,34 +1059,61 @@ export class MapController {
     }
   }
 
-  showRoute(coordinates) {
+  showRoute(coordinates,{kind='via',fitBounds=true,origin=null,destination=null}={}) {
     if (!Array.isArray(coordinates) || coordinates.length < 2 ||
       !coordinates.every(pair => Array.isArray(pair) && pair.length >= 2 && validPoint({ lat: pair[1], lng: pair[0] }))) {
       throw new Error('도로 경로 좌표가 올바르지 않습니다.');
     }
+    if(!['base','via'].includes(kind))throw new Error('경로 종류를 확인해 주세요.');
     this._navigationRevision++;
-    this.clearRoute();
-    this._routeCoords = coordinates.map(pair => [pair[0], pair[1]]);
+    this.clearRoute(kind,{keepCoordinates:false,keepEndpoints:true});
+    const routeCoords=coordinates.map(pair => [pair[0], pair[1]]);
+    if(kind==='base'){this._baseRouteCoords=routeCoords;this._routeCoords=routeCoords;if(validPoint(origin)&&validPoint(destination))this._routeEndpoints={origin:{...origin},destination:{...destination}};}
+    else this._viaRouteCoords=routeCoords;
     if (!this.map) return;
     this._internal(() => {
       if (this.provider === 'naver') {
         const maps = globalThis.naver.maps;
-        const path = this._routeCoords.map(pair => new maps.LatLng(pair[1], pair[0]));
-        this._route = new maps.Polyline({ map: this.map, path, strokeColor: '#146d45', strokeWeight: 5, strokeOpacity: 0.9 });
-        const bounds = new maps.LatLngBounds();
-        path.forEach(point => bounds.extend(point));
-        this.map.fitBounds(bounds, { top: 70, right: 45, bottom: 65, left: 45 });
+        const path = routeCoords.map(pair => new maps.LatLng(pair[1], pair[0]));
+        const polyline = new maps.Polyline({ map: this.map, path, strokeColor: kind==='base'?'#119da4':'#146d45', strokeWeight: kind==='base'?5:7, strokeOpacity: kind==='base'?.78:.94, strokeStyle:kind==='base'?'shortdash':'solid',zIndex:kind==='base'?130:150 });
+        if(kind==='base')this._baseRoute=polyline;else this._viaRoute=polyline;
+        if(fitBounds){const bounds=new maps.LatLngBounds();path.forEach(point=>bounds.extend(point));const mobile=globalThis.matchMedia?.('(max-width:1000px)')?.matches===true;this.map.fitBounds(bounds,{top:mobile?110:80,right:55,bottom:mobile?150:90,left:mobile?55:470});}
       } else {
-        this._route = globalThis.L.polyline(this._routeCoords.map(pair => [pair[1], pair[0]]), { color: '#146d45', weight: 5 }).addTo(this.map);
-        this.map.fitBounds(this._route.getBounds(), { padding: [50, 60], animate: false });
+        const polyline=globalThis.L.polyline(routeCoords.map(pair=>[pair[1],pair[0]]),{color:kind==='base'?'#119da4':'#146d45',weight:kind==='base'?5:7,opacity:kind==='base'?.78:.94,dashArray:kind==='base'?'10 8':null}).addTo(this.map);
+        if(kind==='base')this._baseRoute=polyline;else this._viaRoute=polyline;
+        if(fitBounds){const mobile=globalThis.matchMedia?.('(max-width:1000px)')?.matches===true;this.map.fitBounds(polyline.getBounds(),{paddingTopLeft:[mobile?55:470,mobile?110:80],paddingBottomRight:[55,mobile?150:90],animate:false});}
       }
     });
+    if(kind==='base'&&this._routeEndpoints)this._renderRouteEndpoints();
   }
 
-  clearRoute() {
-    if (this._route) this._removeMarker(this._route);
-    this._route = null;
-    this._routeCoords = [];
+  _renderRouteEndpoints(){
+    this._clearRouteEndpoints();
+    if(!this.map||!this._routeEndpoints)return;
+    const make=(point,label,tone)=>{
+      const content=`<span class="route-endpoint route-endpoint-${tone}" aria-label="${label}">${tone==='start'?'출':'도'}</span>`;
+      if(this.provider==='naver')return new globalThis.naver.maps.Marker({map:this.map,position:this._naverPoint(point),title:label,zIndex:5200,icon:{content,anchor:new globalThis.naver.maps.Point(18,18)}});
+      return globalThis.L.marker([point.lat,point.lng],{title:label,interactive:false,zIndexOffset:5200,icon:globalThis.L.divIcon({className:'price-marker-shell',html:content,iconSize:[36,36],iconAnchor:[18,18]})}).addTo(this.map);
+    };
+    this._routeStart=make(this._routeEndpoints.origin,'출발지','start');
+    this._routeDestination=make(this._routeEndpoints.destination,'목적지','destination');
+  }
+
+  _clearRouteEndpoints(){
+    if(this._routeStart)this._removeMarker(this._routeStart);if(this._routeDestination)this._removeMarker(this._routeDestination);
+    this._routeStart=null;this._routeDestination=null;
+  }
+
+  clearRoute(kind='all',{keepCoordinates=false,keepEndpoints=false}={}) {
+    if(kind==='all'||kind==='base'){
+      if(this._baseRoute)this._removeMarker(this._baseRoute);this._baseRoute=null;
+      if(!keepCoordinates){this._baseRouteCoords=[];this._routeCoords=[];}
+    }
+    if(kind==='all'||kind==='via'){
+      if(this._viaRoute)this._removeMarker(this._viaRoute);this._viaRoute=null;
+      if(!keepCoordinates)this._viaRouteCoords=[];
+    }
+    if(!keepEndpoints&&(kind==='all'||kind==='base')){this._clearRouteEndpoints();this._routeEndpoints=null;}
   }
 
   async searchAddress(query) {
@@ -1132,7 +1175,10 @@ export class MapController {
     this._markerPool.clear();
     this._markerState.clear();
     this._retainedLabels.clear();
-    this._route = null;
+    this._baseRoute = null;
+    this._viaRoute = null;
+    this._routeStart = null;
+    this._routeDestination = null;
     this._you = null;
     this.ready = false;
     this.canvas.replaceChildren();
