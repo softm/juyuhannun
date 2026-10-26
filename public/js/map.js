@@ -1,6 +1,7 @@
 import { APP_CONFIG } from '../config.js';
 import { escapeHTML, getFuelPrice, freshness, FUEL_TYPES, BRANDS } from './core.js';
 import { markerScale, labelBudget, markerDensityLimit, visibleStations, labelCandidates } from './marker-display.js';
+import { normalizeAddressSearchResults } from './address-search.js';
 import '../shared/care-location.js';
 import '../shared/care-popup-geometry.js';
 import '../shared/map-marker-placement.js';
@@ -1180,11 +1181,7 @@ export class MapController {
         service.geocode({ query: text }, (status, response) => {
           if (revision !== this._geocodeRevision || this._destroyed) return finish(abortError());
           if (status !== service.Status.OK) return finish(new Error('주소를 확인하지 못했습니다. 도로명 또는 지번 주소로 다시 검색해 주세요.'));
-          const results = (response?.v2?.addresses || []).map(item => ({
-            name: item.roadAddress || item.jibunAddress || '',
-            address: item.roadAddress || item.jibunAddress || '',
-            lat: Number(item.y), lng: Number(item.x)
-          })).filter(item => item.address && validPoint(item));
+          const results = normalizeAddressSearchResults(response?.v2?.addresses || []);
           finish(null, results);
         });
       } catch { finish(new Error('주소 검색에 실패했습니다. 잠시 후 다시 시도해 주세요.')); }
