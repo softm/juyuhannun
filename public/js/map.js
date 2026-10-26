@@ -218,6 +218,7 @@ function installMarkerStyles() {
     '.map-you.is-driving:before{content:"";position:absolute;left:50%;top:-15px;width:0;height:0;border-left:7px solid transparent;border-right:7px solid transparent;border-bottom:15px solid #1769d7;transform:translateX(-50%) rotate(var(--drive-heading,0deg));transform-origin:50% 30px;filter:drop-shadow(0 1px 1px #fff)}',
     '.route-endpoint{display:flex;align-items:center;justify-content:center;width:36px;height:36px;border:3px solid #fff;border-radius:50%;color:#fff;box-shadow:0 4px 13px #183a3445;font:900 12px/1 system-ui,sans-serif}',
     '.route-endpoint-start{background:#119da4}.route-endpoint-destination{background:#174f45}',
+    '.route-simulation-car{display:flex;align-items:center;justify-content:center;width:42px;height:42px;border:3px solid #fff;border-radius:50%;background:#0f6b57;color:#fff;box-shadow:0 0 0 7px #0f6b5726,0 6px 18px #173a3150;font:24px/1 system-ui,sans-serif}',
     '.juyuhannun-map .leaflet-control-attribution{font-size:10px;background:rgba(255,255,255,.92)}',
     '@media(max-width:1000px){.station-marker .price-pin.selected{width:70px;height:70px;min-width:70px;min-height:70px}.selected-station-callout{font-size:14px;min-height:46px}.lowest-price-badge{height:40px;min-width:98px;font-size:14px}}',
     '@media(prefers-reduced-motion:reduce){.price-pin{transition:none}.station-marker .price-pin.selected,.lowest-price-badge{animation:none}}'
@@ -261,6 +262,8 @@ export class MapController {
     this._viaRoute = null;
     this._routeStart = null;
     this._routeDestination = null;
+    this._routeSimulationMarker = null;
+    this._routeSimulationPoint = null;
     this._listeners = [];
     this._userIntent = false;
     this._suppressUntil = 0;
@@ -462,6 +465,7 @@ export class MapController {
       if (this._baseRouteCoords.length > 1) this.showRoute(this._baseRouteCoords,{kind:'base',fitBounds:true,...(this._routeEndpoints||{})});
       if (this._viaRouteCoords.length > 1) this.showRoute(this._viaRouteCoords,{kind:'via',fitBounds:false});
       if (this._youPoint) this._showYou(this._youPoint, { heading: this._driveHeading, driving: this._driveWatchId != null });
+      if (this._routeSimulationPoint) this.setRouteSimulationPoint(this._routeSimulationPoint);
       if (this._driveWatchId != null) { this._setDrivingHeadingUp(this._driveHeading, true); this._setDrivingInteraction(true); }
     })().catch(error => {
       this.ready = false;
@@ -1063,6 +1067,36 @@ export class MapController {
     }
   }
 
+  setRouteSimulationPoint(point,{follow=false}={}){
+    if(!validPoint(point))return false;
+    this._routeSimulationPoint={lat:Number(point.lat),lng:Number(point.lng)};
+    if(!this.map||!this.ready)return false;
+    const content='<span class="route-simulation-car" aria-label="모의주행 차량">🚗</span>';
+    if(this.provider==='naver'){
+      const icon={content,anchor:new globalThis.naver.maps.Point(21,21)};
+      if(this._routeSimulationMarker){this._routeSimulationMarker.setPosition(this._naverPoint(point));this._routeSimulationMarker.setIcon(icon);}
+      else this._routeSimulationMarker=new globalThis.naver.maps.Marker({map:this.map,position:this._naverPoint(point),title:'모의주행 차량',zIndex:7000,icon});
+    }else{
+      const icon=globalThis.L.divIcon({className:'price-marker-shell',html:content,iconSize:[42,42],iconAnchor:[21,21]});
+      if(this._routeSimulationMarker){this._routeSimulationMarker.setLatLng([point.lat,point.lng]);this._routeSimulationMarker.setIcon(icon);}
+      else this._routeSimulationMarker=globalThis.L.marker([point.lat,point.lng],{icon,title:'모의주행 차량',interactive:false,zIndexOffset:7000}).addTo(this.map);
+    }
+    if(follow){
+      const bounds=this.getBounds();
+      if(bounds){
+        const latMargin=(bounds.north-bounds.south)*.12,lngMargin=(bounds.east-bounds.west)*.12;
+        const nearEdge=point.lat<bounds.south+latMargin||point.lat>bounds.north-latMargin||point.lng<bounds.west+lngMargin||point.lng>bounds.east-lngMargin;
+        if(nearEdge)this._internal(()=>{if(this.provider==='naver')this.map.panTo(this._naverPoint(point));else this.map.panTo([point.lat,point.lng],{animate:true,duration:.35});});
+      }
+    }
+    return true;
+  }
+
+  clearRouteSimulationPoint(){
+    if(this._routeSimulationMarker)this._removeMarker(this._routeSimulationMarker);
+    this._routeSimulationMarker=null;this._routeSimulationPoint=null;
+  }
+
   showRoute(coordinates,{kind='via',fitBounds=true,origin=null,destination=null}={}) {
     if (!Array.isArray(coordinates) || coordinates.length < 2 ||
       !coordinates.every(pair => Array.isArray(pair) && pair.length >= 2 && validPoint({ lat: pair[1], lng: pair[0] }))) {
@@ -1109,6 +1143,7 @@ export class MapController {
   }
 
   clearRoute(kind='all',{keepCoordinates=false,keepEndpoints=false}={}) {
+    if(kind==='all')this.clearRouteSimulationPoint();
     if(kind==='all'||kind==='base'){
       if(this._baseRoute)this._removeMarker(this._baseRoute);this._baseRoute=null;
       if(!keepCoordinates){this._baseRouteCoords=[];this._routeCoords=[];}
@@ -1183,6 +1218,7 @@ export class MapController {
     this._viaRoute = null;
     this._routeStart = null;
     this._routeDestination = null;
+    this._routeSimulationMarker = null;
     this._you = null;
     this.ready = false;
     this.canvas.replaceChildren();
