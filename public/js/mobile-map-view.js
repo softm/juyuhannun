@@ -1,3 +1,19 @@
+export function pickListScrollStation(items, viewport) {
+  const top = Number(viewport?.top);
+  const bottom = Number(viewport?.bottom);
+  if (!Number.isFinite(top) || !Number.isFinite(bottom) || bottom <= top) return null;
+  const visible = (Array.isArray(items) ? items : []).filter(item => {
+    const itemTop = Number(item?.top), itemBottom = Number(item?.bottom);
+    return item?.id != null && Number.isFinite(itemTop) && Number.isFinite(itemBottom) && itemBottom > top && itemTop < bottom;
+  });
+  if (!visible.length) return null;
+  const anchor = top + (bottom - top) * .4;
+  const anchored = visible.find(item => Number(item.top) <= anchor && Number(item.bottom) >= anchor);
+  if (anchored) return String(anchored.id);
+  visible.sort((a,b) => Math.abs((Number(a.top) + Number(a.bottom)) / 2 - anchor) - Math.abs((Number(b.top) + Number(b.bottom)) / 2 - anchor));
+  return String(visible[0].id);
+}
+
 export function setupMobileMapView({
   workspace,
   sidebar,
@@ -69,13 +85,15 @@ export function setupMobileMapView({
 
   function applyBodyMode(next){
     const active=focusModes.has(next);
+    const listOpen=listModes.has(next);
     body.classList.toggle('mobile-map-mode',active);
     body.classList.toggle('mobile-map-focus',next==='focus-detail');
     body.classList.toggle('mobile-map-expanded',toolsModes.has(next));
     body.classList.toggle('mobile-map-browse',next==='map-browse');
     body.classList.toggle('mobile-map-collapsed',next==='map-collapsed');
-    body.classList.toggle('mobile-list-sheet',listModes.has(next));
+    body.classList.toggle('mobile-list-sheet',listOpen);
     body.classList.toggle('mobile-list-expanded',next==='list-sheet-expanded');
+    sidebar.toggleAttribute('data-map-overlay',listOpen);
     if(active)workspace.classList.remove('list-expanded');
     sidebar.inert=next==='focus-detail'||next==='map-collapsed';
   }
@@ -92,7 +110,7 @@ export function setupMobileMapView({
 
   function enterDetail({expanded=false}={}){
     if(destroyed||!media.matches)return false;
-    snapshot();armHistory();detailReturnMode=mode==='map-collapsed'?'map-collapsed':'map-browse';showDetail();setMode(expanded?'expanded-tools':'focus-detail');return true;
+    snapshot();armHistory();detailReturnMode=listModes.has(mode)?'map-browse':mode==='map-collapsed'?'map-collapsed':'map-browse';showDetail();setMode(expanded?'expanded-tools':'focus-detail');return true;
   }
   function closeDetail(){if(destroyed)return;if(!media.matches){hideDetail();return;}hideDetail();disarmHistoryInPlace();setMode(detailReturnMode||'map-browse');}
   function clearLiveDetailHeight(){
@@ -118,11 +136,12 @@ export function setupMobileMapView({
   function listViewportHeight(){return Math.max(420,window.innerHeight||document.documentElement.clientHeight||800);}
   function listSnapHeight(snap=listSnap){
     const viewport=listViewportHeight();
-    return Math.round(viewport*(snap==='compact'?.28:snap==='expanded'?.82:.52));
+    if(snap==='compact')return Math.round(Math.min(340,Math.max(270,viewport*.38)));
+    return Math.round(viewport*(snap==='expanded'?.84:.54));
   }
   function applyListHeight(height){
     const viewport=listViewportHeight();
-    const min=Math.round(viewport*.24),max=Math.round(viewport*.88);
+    const min=listSnapHeight('compact'),max=Math.round(viewport*.9);
     sidebar.style.setProperty('--list-live-height',Math.max(min,Math.min(max,Math.round(height)))+'px');
   }
   function setListSnap(next){
@@ -210,15 +229,14 @@ export function setupMobileMapView({
     const dragState=listDrag;
     const dy=(event.clientY??dragState.lastY)-dragState.startY;
     const elapsed=Math.max(1,performance.now()-dragState.startedAt),velocity=dy/elapsed;
-    const currentHeight=Math.max(1,dragState.startHeight-dy),viewport=listViewportHeight();
+    const currentHeight=Math.max(1,dragState.startHeight-dy);
     listDrag=null;sidebar.classList.remove('is-dragging');
     if(cancelled){applyListHeight(listSnapHeight());return;}
     let next;
-    const ratio=currentHeight/viewport;
     if(velocity<-.65)next=listSnap==='compact'?'medium':'expanded';
     else if(velocity>.65)next=listSnap==='expanded'?'medium':'compact';
-    else if(ratio<.4)next='compact';
-    else if(ratio>.68)next='expanded';
+    else if(currentHeight<(listSnapHeight('compact')+listSnapHeight('medium'))/2)next='compact';
+    else if(currentHeight>(listSnapHeight('medium')+listSnapHeight('expanded'))/2)next='expanded';
     else next='medium';
     setListSnap(next);
   }
@@ -228,7 +246,7 @@ export function setupMobileMapView({
   function afterLayout(callback){if(typeof callback!=='function')return;requestAnimationFrame(()=>requestAnimationFrame(()=>{if(!destroyed)callback();}));}
   function onKeyDown(event){if(!media.matches||event.key!=='Escape')return;if(document.querySelector('dialog[open]:not(#detail-dialog)'))return;if(mode==='expanded-tools'){event.preventDefault();setDetailMode('focus-detail');return;}if(detailModes.has(mode)){event.preventDefault();closeDetail();return;}if(mode==='list-sheet-expanded'){event.preventDefault();setMode('list-sheet');return;}if(mode==='list-sheet'){event.preventDefault();closeListSheet();return;}if(mode==='map-browse'){event.preventDefault();setMode('map-collapsed');return;}if(mode==='map-collapsed'){event.preventDefault();setMode('map-browse');}}
   function onPopState(){if(!historyArmed)return;historyArmed=false;if(detailModes.has(mode)){hideDetail();setMode(detailReturnMode||'map-browse');}else if(listModes.has(mode))setMode('map-browse');}
-  function onMediaChange(){if(media.matches){startMobileExpanded();return;}disarmHistoryInPlace();hideDetail();body.classList.remove('mobile-map-mode','mobile-map-focus','mobile-map-expanded','mobile-map-browse','mobile-map-collapsed','mobile-list-sheet','mobile-list-expanded');sidebar.inert=false;sidebar.style.removeProperty('--list-drag-y');sidebar.style.removeProperty('--list-live-height');mode='default';requestResize();syncButtons();}
+  function onMediaChange(){if(media.matches){startMobileExpanded();return;}disarmHistoryInPlace();hideDetail();body.classList.remove('mobile-map-mode','mobile-map-focus','mobile-map-expanded','mobile-map-browse','mobile-map-collapsed','mobile-list-sheet','mobile-list-expanded');sidebar.inert=false;sidebar.removeAttribute('data-map-overlay');sidebar.style.removeProperty('--list-drag-y');sidebar.style.removeProperty('--list-live-height');mode='default';requestResize();syncButtons();}
 
   const onWindowPointerUp=e=>finishHandleDrag(e);
   const onWindowPointerCancel=e=>finishHandleDrag(e,true);
@@ -243,7 +261,8 @@ export function setupMobileMapView({
   window.addEventListener('pointermove',onHandlePointerMove,{passive:false});
   window.addEventListener('pointerup',onWindowPointerUp);
   window.addEventListener('pointercancel',onWindowPointerCancel);
-  listSheetHandle?.addEventListener('click',()=>setListSnap(listSnap==='compact'?'medium':listSnap==='medium'?'expanded':'medium'));
+  const onListHandleClick=()=>setListSnap(listSnap==='compact'?'medium':listSnap==='medium'?'expanded':'compact');
+  listSheetHandle?.addEventListener('click',onListHandleClick);
   listSheetHandle?.addEventListener('pointerdown',onListPointerDown);
   listSheetHandle?.addEventListener('pointermove',onListPointerMove);
   listSheetHandle?.addEventListener('pointerup',e=>finishListDrag(e));
@@ -254,5 +273,5 @@ export function setupMobileMapView({
   media.addEventListener('change',onMediaChange);
   if(media.matches)startMobileExpanded();else syncButtons();
 
-  return {startMobileExpanded,enterDetail,closeDetail,toggleDetailExpanded,openListSheet,closeListSheet,toggleMapChrome,exit,afterLayout,isActive:()=>focusModes.has(mode),isDetailOpen:()=>detailModes.has(mode),isMobile:()=>media.matches,getMode:()=>mode,destroy(){if(destroyed)return;disarmHistoryInPlace();hideDetail();body.classList.remove('mobile-map-mode','mobile-map-focus','mobile-map-expanded','mobile-map-browse','mobile-map-collapsed','mobile-list-sheet','mobile-list-expanded');destroyed=true;toggleButton.removeEventListener('click',toggleMapChrome);listButton.removeEventListener('click',toggleList);detailExpandButton?.removeEventListener('click',toggleDetailExpanded);detailHandle?.removeEventListener('click',onHandleClick);detailHandle?.removeEventListener('pointerdown',onHandlePointerDown);window.removeEventListener('pointermove',onHandlePointerMove);window.removeEventListener('pointerup',onWindowPointerUp);window.removeEventListener('pointercancel',onWindowPointerCancel);listSheetHandle?.removeEventListener('pointerdown',onListPointerDown);listSheetHandle?.removeEventListener('pointermove',onListPointerMove);listSheetClose?.removeEventListener('click',closeListSheet);document.removeEventListener('keydown',onKeyDown);window.removeEventListener('popstate',onPopState);media.removeEventListener('change',onMediaChange);}};
+  return {startMobileExpanded,enterDetail,closeDetail,toggleDetailExpanded,openListSheet,closeListSheet,toggleMapChrome,exit,afterLayout,isActive:()=>focusModes.has(mode),isDetailOpen:()=>detailModes.has(mode),isMobile:()=>media.matches,getMode:()=>mode,destroy(){if(destroyed)return;disarmHistoryInPlace();hideDetail();body.classList.remove('mobile-map-mode','mobile-map-focus','mobile-map-expanded','mobile-map-browse','mobile-map-collapsed','mobile-list-sheet','mobile-list-expanded');sidebar.removeAttribute('data-map-overlay');destroyed=true;toggleButton.removeEventListener('click',toggleMapChrome);listButton.removeEventListener('click',toggleList);detailExpandButton?.removeEventListener('click',toggleDetailExpanded);detailHandle?.removeEventListener('click',onHandleClick);detailHandle?.removeEventListener('pointerdown',onHandlePointerDown);window.removeEventListener('pointermove',onHandlePointerMove);window.removeEventListener('pointerup',onWindowPointerUp);window.removeEventListener('pointercancel',onWindowPointerCancel);listSheetHandle?.removeEventListener('click',onListHandleClick);listSheetHandle?.removeEventListener('pointerdown',onListPointerDown);listSheetHandle?.removeEventListener('pointermove',onListPointerMove);listSheetClose?.removeEventListener('click',closeListSheet);document.removeEventListener('keydown',onKeyDown);window.removeEventListener('popstate',onPopState);media.removeEventListener('change',onMediaChange);}};
 }

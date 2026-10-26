@@ -1,6 +1,6 @@
 import {APP_CONFIG} from '../config.js';
 import {MapController} from './map.js';
-import {setupMobileMapView} from './mobile-map-view.js';
+import {pickListScrollStation,setupMobileMapView} from './mobile-map-view.js';
 import {createMapLoadingController} from '../shared/map-loading.js';
 import {mountBottomAd,mountStationDetailAd,mountStationListAds} from './adfit.js';
 import {loadStationData,mergeStationData,reselectStationPrices} from './data-loader.js';
@@ -51,6 +51,8 @@ let routePickTarget=null;
 let routeOriginRequest=null;
 let nearbyMapSnapshot=null;
 let lastLocatedPoint=null;
+let listSelectionFrame=0;
+let listFocusedStationId=null;
 const DATA_REFRESH_MS=5*60*1000;
 function collectionStats(){const now=Date.now(),minute=Math.floor(now/60000);if(recordStats?.source===state.all&&recordStats.fuel===state.fuel&&recordStats.minute===minute)return recordStats;let mapped=0,fresh=0;for(const station of state.all){if(!hasMapCoordinates(station))continue;mapped++;const p=getFuelPrice(station,state.fuel);if(p&&freshness(p.priceUpdatedAt,p.fetchedAt,now,p.priceTimeStatus,p.sourceDate).eligible)fresh++;}return recordStats={source:state.all,fuel:state.fuel,minute,mapped,fresh};}
 function refreshPriceSelection(now){const sources=state.envelope?.sourceSnapshots,minute=Math.floor(now/60000);if(!sources||(priceSelection?.sources===sources&&priceSelection.minute===minute))return;state.all=reselectStationPrices(state.all,sources,{now});priceSelection={sources,minute};}
@@ -63,7 +65,7 @@ function handleMapState({provider,status,message}){const typeButton=$('map-type-
 const map=new MapController($('map'),{onViewportChange:updateViewport,onSelect:id=>selectStation(id),onPick:point=>handleRouteMapPick(point),onState:handleMapState,markerPresentation:row=>state.view==='route'&&finite(row.progressMeters)?{value:row.currentPrice?.price,unit:'원',label:`${row.name} · 경로 ${(row.progressMeters/1000).toFixed(1)}km 지점`,stale:row.confidence?.eligible!==true,rank:row.routeRank,badgeLabel:'추천 {rank}',tone:'green'}:null});
 const routeSimulation=createRouteSimulationController({host:$('route-simulation'),onPosition:(point,options)=>map.setRouteSimulationPoint(point,options),onClear:()=>map.clearRouteSimulationPoint()});
 const mapLoading=createMapLoadingController($('map-loading'));
-const mobileMapView=setupMobileMapView({workspace:document.querySelector('.workspace'),sidebar:$('station-sidebar'),mapSection:$('map-section'),results:$('results'),toggleButton:$('mobile-map-toggle'),listButton:$('mobile-list-toggle'),detailDialog:$('detail-dialog'),detailExpandButton:$('detail-expand-toggle'),detailHandle:$('detail-sheet-handle'),listSheetHandle:$('mobile-list-sheet-handle'),listSheetClose:$('mobile-list-sheet-close'),focusDock:$('mobile-focus-dock'),focusDockList:$('focus-dock-list'),onResize:()=>map.resize(),onModeChange:next=>{if(!['focus-detail','expanded-tools','map-browse','list-sheet','list-sheet-expanded'].includes(next))return;const station=state.all.find(s=>s.id===state.selected);if(station&&state.mapReady&&hasMapCoordinates(station)&&!['list-sheet','list-sheet-expanded'].includes(next))requestAnimationFrame(()=>map.focus(station,{preserveZoom:true}));},icon});
+const mobileMapView=setupMobileMapView({workspace:document.querySelector('.workspace'),sidebar:$('station-sidebar'),mapSection:$('map-section'),results:$('results'),toggleButton:$('mobile-map-toggle'),listButton:$('mobile-list-toggle'),detailDialog:$('detail-dialog'),detailExpandButton:$('detail-expand-toggle'),detailHandle:$('detail-sheet-handle'),listSheetHandle:$('mobile-list-sheet-handle'),listSheetClose:$('mobile-list-sheet-close'),focusDock:$('mobile-focus-dock'),focusDockList:$('focus-dock-list'),onResize:()=>map.resize(),onModeChange:next=>{if(!['focus-detail','expanded-tools','map-browse','list-sheet','list-sheet-expanded'].includes(next))return;if(['list-sheet','list-sheet-expanded'].includes(next)){listFocusedStationId=null;scheduleListScrollSelection();return;}listFocusedStationId=null;const station=state.all.find(s=>s.id===state.selected);if(station&&state.mapReady&&hasMapCoordinates(station))requestAnimationFrame(()=>map.focus(station,{preserveZoom:true}));},icon});
 
 async function requestJSON(url,signal,options={}){const response=await fetch(url,{...options,signal,cache:'no-store',credentials:'omit',headers:{Accept:'application/json',...(options.headers||{})}});let data;try{data=await response.json();}catch{throw new Error('서버에서 올바른 자료를 받지 못했습니다.');}if(!response.ok){const error=new Error((typeof data?.error==='string'?data.error:data?.error?.message)||'자료를 가져오지 못했습니다. 잠시 후 다시 시도해 주세요.');error.code=data?.error?.code;throw error;}return data;}
 routeMode=createRouteModeController({requestJSON});
@@ -116,10 +118,27 @@ function routeViewOptions(){return{sort:state.routeSort,brand:state.brand,selfOn
 function routeFallbackMapStations(now=Date.now()){
  return filterStations(state.all,{fuel:state.fuel,center:state.center,bounds:state.bounds,query:state.query,brand:state.brand,self:state.self,freshOnly:state.freshOnly,favorites:nearbyMapSnapshot?.sourceView==='saved'?state.favorites:null,sort:state.sort,now});
 }
+function activateScrolledStation(id){
+ const station=state.all.find(row=>String(row.id)===String(id));
+ if(!station||String(listFocusedStationId)===String(station.id))return;
+ listFocusedStationId=station.id;
+ state.selected=station.id;
+ $('results').querySelectorAll('.station-card[data-station]').forEach(card=>{const active=String(card.dataset.station)===String(station.id);card.classList.toggle('selected',active);if(active)card.setAttribute('aria-current','true');else card.removeAttribute('aria-current');});
+ if(state.mapReady&&hasMapCoordinates(station)){try{map.focus(station,{preserveZoom:true});}catch{}}
+}
+function syncListScrollSelection(){
+ listSelectionFrame=0;
+ if(!mobileMapView.isMobile()||!['list-sheet','list-sheet-expanded'].includes(mobileMapView.getMode()))return;
+ const results=$('results'),viewport=results.getBoundingClientRect();
+ const items=[...results.querySelectorAll('.station-card[data-station]')].map(card=>{const rect=card.getBoundingClientRect();return{id:card.dataset.station,top:rect.top,bottom:rect.bottom};});
+ const id=pickListScrollStation(items,{top:viewport.top,bottom:viewport.bottom});
+ if(id)activateScrolledStation(id);
+}
+function scheduleListScrollSelection(){if(listSelectionFrame)cancelAnimationFrame(listSelectionFrame);listSelectionFrame=requestAnimationFrame(syncListScrollSelection);}
 function routePriceBasis(row){const price=row.currentPrice;if(['daily_current_file','daily_price_file'].includes(price?.priceTimeStatus))return price.sourceDate?`${price.sourceDate} 기준`:'기준일 미확인';return formatTime(price?.priceUpdatedAt,true);}
 function routeCard(row,index,{lowest,fastestId}={}){
  const saved=state.favorites.has(row.id),verified=row.detour?.verified===true,extraKm=verified?(row.detour.distanceMeters/1000).toFixed(1):null,extraMinutes=verified?Math.ceil(row.detour.durationSeconds/60):null;
- const rank=row.routeRank===1?'<span class="route-rank">추천</span>':'',lowestBadge=row.confidence?.eligible&&row.currentPrice.price===lowest?'<span class="route-lowest">경로 최저가</span>':'',fastestBadge=verified&&String(row.id)===String(fastestId)?'<span class="route-fastest">우회 최소</span>':'';
+ const rank=Number(row.routeRank)>=1&&Number(row.routeRank)<=3?`<span class="route-rank rank-${Number(row.routeRank)}">추천 ${Number(row.routeRank)}</span>`:'',lowestBadge=row.confidence?.eligible&&row.currentPrice.price===lowest?'<span class="route-lowest">경로 최저가</span>':'',fastestBadge=verified&&String(row.id)===String(fastestId)?'<span class="route-fastest">우회 최소</span>':'';
  const detour=verified?`<span>우회 +${extraMinutes}분</span><small>거리 +${extraKm}km</small>`:'<span>경로 인근 주유소</span><small>우회시간 미확인</small>';
  const proximity=finite(row.proximityMeters)?` · 경로에서 직선 ${(row.proximityMeters/1000).toFixed(1)}km`:'';
  const reason=verified?(row.routeRank===1?'우회가 적고 가격이 낮은 추천 주유소':'실제 자동차 경유 경로 확인됨'):'실제 경유 경로를 아직 확인하지 못했습니다';
@@ -151,7 +170,7 @@ function renderRouteView(){
  if(state.mapReady&&!routeMode.state.loading){const mapRows=rows.length?rows:routeFallbackMapStations();map.setStations(mapRows,rows.length?state.selected:null,state.fuel);}
  const comparable=rows.filter(row=>row.confidence?.eligible),lowest=comparable.length?Math.min(...comparable.map(row=>row.currentPrice.price)):null;
  $('lowest-price-label').textContent='경로상 최저가';$('lowest-price').textContent=money(lowest);$('summary-area').textContent='목적지 가는 길 · 선택 유종 기준';$('summary-caption').textContent=lowest?`${FUEL_TYPES.find(f=>f.code===state.fuel)?.name||'유종'} · 우회시간 확인 ${Number(response?.checkedCount||0)}곳 · 참고 가격 제외`:'경로에서 확인 가능한 최신 가격이 없습니다';
- renderRoutePanelState(rows);renderStatus();
+ renderRoutePanelState(rows);renderStatus();scheduleListScrollSelection();
 }
 function render(){
  if(state.view==='route'){renderRouteView();return;}
@@ -169,7 +188,7 @@ function render(){
  const cheapest=summary.lowest;
  $('lowest-price-label').textContent='비교 가능한 최저가';$('lowest-price').textContent=money(cheapest);$('summary-area').textContent='현재 지도 영역 · 검색 조건 기준';
  $('summary-caption').textContent=cheapest?`${FUEL_TYPES.find(f=>f.code===state.fuel).name} · 최신 비교 ${summary.comparable}곳${summary.reference?` · 참고 가격 ${summary.reference}곳 제외`:''}${state.envelope?.coverage?.complete===false?' · 일부 자료':''}`:filtered.length?`표시된 ${filtered.length}곳은 참고 가격입니다 · 최저가 비교 제외`:'현재 지도에서 비교 가능한 가격이 없습니다';
- renderStatus();
+ renderStatus();scheduleListScrollSelection();
 }
 function renderStatus(){
  const e=state.envelope,fresh=collectionStats().fresh;
@@ -358,6 +377,7 @@ $('route-submit').addEventListener('click',planRoute);
 document.querySelectorAll('[data-route-sort]').forEach(button=>button.addEventListener('click',()=>{state.routeSort=button.dataset.routeSort;render();}));
 for(const id of ['route-corridor','route-max-detour','route-option'])$(id).addEventListener('change',()=>{if(routeMode.state.response){routeMode.invalidate();routeSimulation.set(null);if(state.mapReady)map.clearRoute();toast('탐색 조건이 바뀌었습니다. 다시 확인해 주세요.');}if(state.view==='route')render();});
 renderRecentDestinations();
+$('results').addEventListener('scroll',scheduleListScrollSelection,{passive:true});
 $('refresh').addEventListener('click',loadData);
 function syncDrivingButton(){
  const button=$('drive-mode');if(!button)return;
