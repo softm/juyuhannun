@@ -39,6 +39,8 @@ test('expanded mobile mode exposes search/filter layout and safe-area sheet', ()
 
 test('map controller uses actual SDK zoom and Naver map type APIs', () => {
   assert.match(map, /zoomBy\(delta = 1\)/);
+  assert.match(map, /zoomControl: false/);
+  assert.doesNotMatch(map, /zoomControlOptions/);
   assert.match(map, /toggleMapType\(\)/);
   assert.match(map, /setMapTypeId/);
   assert.match(map, /MapTypeId\.SATELLITE/);
