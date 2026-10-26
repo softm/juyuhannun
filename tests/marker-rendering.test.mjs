@@ -198,6 +198,17 @@ test('route recommendation bubbles keep one green body and color only rank text 
   assert.doesNotMatch(mapSource,/\.lowest-price-badge\.rank-2,\.lowest-price-badge\.rank-3[^']*background:/);
 });
 
+test('route lines use contrasting casings below station markers',()=>{
+  assert.match(mapSource,/base: Object\.freeze\(\{ color:'#1d4ed8', weight:6, casingWeight:11, zIndex:60 \}\)/);
+  assert.match(mapSource,/via: Object\.freeze\(\{ color:'#7c3aed', weight:7, casingWeight:12, zIndex:80 \}\)/);
+  assert.match(mapSource,/strokeColor:'#fff', strokeWeight:appearance\.casingWeight[^\n]+zIndex:appearance\.zIndex/);
+  assert.match(mapSource,/strokeColor:appearance\.color[^\n]+zIndex:appearance\.zIndex\+1/);
+  assert.match(mapSource,/body\.route-mode \.map-surface\[data-marker-scale="dot"\][^']*width:18px[^']*border-width:3px/);
+  assert.match(mapSource,/\.route-endpoint-start\{background:#1d4ed8\}\.route-endpoint-destination\{background:#111827\}/);
+  assert.match(mapSource,/if\(this\._baseRouteCasing\)this\._removeMarker\(this\._baseRouteCasing\)/);
+  assert.match(mapSource,/if\(this\._viaRouteCasing\)this\._removeMarker\(this\._viaRouteCasing\)/);
+});
+
 test('stale prices are excluded from top-five rank badges',()=>{
   const h=harness(),c=h.controller;
   const fresh=new Date().toISOString();
