@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
-import { pickListScrollStation } from '../public/js/mobile-map-view.js';
+import { pickListScrollStation, resolveListDragSnap } from '../public/js/mobile-map-view.js';
 
 const [html, app, routeMode, map, view, css, styles] = await Promise.all([
   readFile(new URL('../public/index.html', import.meta.url), 'utf8'),
@@ -107,14 +107,31 @@ test('five-state mobile focus flow includes map browse and draggable list sheet 
   assert.match(css, /--list-live-height/);
   assert.match(css, /54dvh/);
   assert.match(css, /84dvh/);
-  assert.match(css, /clamp\(270px,38dvh,340px\)/);
-  assert.match(view, /listSnapHeight\('compact'\)\+listSnapHeight\('medium'\)/);
+  assert.match(css, /clamp\(230px,38dvh,340px\)/);
+  assert.match(view, /resolveListDragSnap/);
   assert.match(html, /id="mobile-focus-dock"/);
   assert.match(html, /id="mobile-list-sheet-handle"/);
   assert.match(html, /id="mobile-list-sheet-close"[\s\S]{0,180}data-icon="back"/);
   assert.match(view, /sidebar\.toggleAttribute\('data-map-overlay',listOpen\)/);
   assert.match(css, /body\.mobile-map-browse \.mobile-focus-dock/);
   assert.match(css, /body\.mobile-list-sheet\.mobile-list-expanded/);
+});
+
+test('list handle follows the pointer outside its small hit area and closes when pulled fully down', () => {
+  const heights={compactHeight:230,mediumHeight:302,expandedHeight:417};
+  assert.equal(resolveListDragSnap({currentHeight:120,velocity:.3,currentSnap:'medium',...heights}),'closed');
+  assert.equal(resolveListDragSnap({currentHeight:240,velocity:0,currentSnap:'medium',...heights}),'compact');
+  assert.equal(resolveListDragSnap({currentHeight:310,velocity:0,currentSnap:'medium',...heights}),'medium');
+  assert.equal(resolveListDragSnap({currentHeight:430,velocity:0,currentSnap:'medium',...heights}),'expanded');
+  assert.match(view, /window\.addEventListener\('pointermove',onListWindowPointerMove/);
+  assert.match(view, /window\.addEventListener\('pointerup',onListWindowPointerUp/);
+  assert.match(view, /const toolsModes = new Set\(\['map-browse','expanded-tools'\]\)/);
+  assert.match(view, /Math\.max\(230,viewport\*\.38\)/);
+  assert.match(view, /Math\.min\(expanded-64,Math\.max\(compact\+72,viewport\*\.54\)\)/);
+  assert.match(view, /suppressListHandleClick/);
+  assert.match(view, /if\(next==='closed'\)\{closeListSheet\(\);return;\}/);
+  assert.match(css, /sidebar\.is-dragging\{min-height:64px!important/);
+  assert.match(html, /아래로 끝까지 끌면 닫기/);
 });
 
 test('scrolling the list selects the card crossing the focus line and activates its marker', () => {
