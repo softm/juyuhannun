@@ -101,7 +101,8 @@ export function createApp({ env = process.env, fetchImpl = fetch, projectRoot = 
           json(response, 200, await benchmarks.snapshot({ fuel: url.searchParams.get('fuel'), sido: url.searchParams.get('sido'), includeSigun: option === 'true' })); return;
         }
         if (pathname === '/api/highway-stations') {
-          json(response, 200, await highway.snapshot()); return;
+          const stationCatalog = await stationSnapshots.load().then(snapshot => snapshot.stations).catch(() => []);
+          json(response, 200, await highway.snapshot({ stationCatalog })); return;
         }
         const detailMatch = pathname.match(/^\/api\/stations\/([^/]+)$/);
         if (detailMatch) { json(response, 200, await opinet.detail(detailMatch[1], url.searchParams.get('fuel') ?? 'B027')); return; }
@@ -123,7 +124,8 @@ export function createApp({ env = process.env, fetchImpl = fetch, projectRoot = 
       response.end(body);
     } catch (error) {
       const safeError = error instanceof URIError ? new ServiceError('INVALID_URL', '올바르지 않은 요청 주소입니다.', 400) : error;
-      json(response, safeError instanceof ServiceError ? safeError.httpStatus : 500, { status: 'error', provider: requestPath.startsWith('/api/route')?'naver':'opinet', fetchedAt: null, stations: [], warnings: [], error: publicError(safeError) });
+      const provider = requestPath === '/api/highway-stations' ? 'ex' : requestPath.startsWith('/api/route') ? 'naver' : 'opinet';
+      json(response, safeError instanceof ServiceError ? safeError.httpStatus : 500, { status: 'error', provider, fetchedAt: null, stations: [], warnings: [], error: publicError(safeError) });
     }
   };
 }

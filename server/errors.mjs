@@ -14,7 +14,8 @@ export function publicError(error) {
 }
 
 export async function readJsonResponse(response, provider, maxBytes = 2_000_000) {
-  if (!response.ok) throw new ServiceError(`${provider}_HTTP_${response.status}`, `${provider === 'OPINET' ? '오피넷' : '경로 제공사'}가 요청에 응답하지 못했습니다.`, response.status === 429 ? 429 : 502);
+  const providerName = { OPINET: '오피넷', EX: '한국도로공사', NAVER: '경로 제공사' }[provider] ?? '데이터 제공사';
+  if (!response.ok) throw new ServiceError(`${provider}_HTTP_${response.status}`, `${providerName}가 요청에 응답하지 못했습니다.`, response.status === 429 ? 429 : 502);
   const reader = response.body?.getReader();
   if (!reader) throw new ServiceError(`${provider}_INVALID_RESPONSE`, '데이터 제공사의 응답 본문이 없습니다.');
   const chunks = [];

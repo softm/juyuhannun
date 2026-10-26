@@ -1,70 +1,70 @@
-# 한국도로공사 고속도로 주유소 연결 상태
+# 한국도로공사 고속도로 주유소 연결
 
-확인일: 2026-10-20 (Asia/Seoul)
+검증일: 2026-10-26 (Asia/Seoul)
 
-## 현재 상태
+## 연결 상태
 
-`server/highway.mjs`는 서버와 수집기의 응답 계약을 연결하는 **명시적 미연동 경계**다. 실가격 HTTP 어댑터 구현은 완료되지 않았다. 인증키를 등록해도 현재 파일만으로 실가격 수집이 시작되지 않는다.
+`server/highway.mjs`는 한국도로공사 OpenAPI 0312의 HTTPS 끝점에 연결해 고속도로 주유소 가격을 수집한다. 인증키가 없을 때는 외부 요청 없이 `awaiting_credentials`를 반환하며, 키가 있을 때만 페이지별 호출량을 먼저 예약한다.
 
-| 확인 항목 | 확인 결과 |
+| 확인 항목 | 검증 결과 |
 | --- | --- |
-| 공식 자료 등록 | [한국도로공사 주유소별 가격·업체 현황](https://www.data.go.kr/data/15076636/openapi.do) 확인 |
-| 제공 대상 | 고속도로 휴게소 주유소의 유가와 운영 업체 관련 자료 |
-| 제공 포맷 | 공식 등록 설명에 XML·JSON 명시 |
-| 상세 명세 위치 | [API0312 안내](https://data.ex.co.kr/openapi/basicinfo/openApiInfoM?apiId=0312) |
-| HTTP 끝점·필수 매개변수 | 공식 PDF 검색 색인의 §3.10.1, p41/56에서 `http://data.ex.co.kr/openapi/business/curStateStation` 및 필수 `key`, `type` 확인 |
-| 유종별 응답 필드·LPG 단위 | 확인하지 못함 |
-| 페이지 번호·총건수·최대 페이지 크기 | 확인하지 못함 |
-| 응답의 노선·시설 관련 필드 | 공식 PDF 검색 색인에서 `routeCode`, `serviceAreaCode`, `routeName`, `direction` 확인 |
-| 좌표·주소·전화번호 필드 | 확인하지 못함 |
-| 실제 가격 변경 시각 필드 | 확인하지 못함 |
+| 공식 자료 | [한국도로공사 주유소별 가격·업체 현황](https://data.ex.co.kr/openapi/basicinfo/openApiInfoM?apiId=0312) |
+| 끝점 | `https://data.ex.co.kr/openapi/business/curStateStation` |
+| 필수 요청값 | `key`, `type=json` |
+| 페이지 요청값 | `numOfRows`, `pageNo` |
+| 1회 최대 반환 | 99건. 1,000건을 요청해도 99건으로 제한됨 |
+| 2026-10-26 실제 응답 | 전체 226건, 99·99·28건의 3페이지 |
+| 정상 봉투 | `code=SUCCESS`, `message`, `count`, `pageNo`, `numOfRows`, `pageSize`, `list` |
+| 가격 | `gasolinePrice`, `diselPrice`, `lpgPrice`; `1,864원` 형태 또는 `X` |
+| 시설 정보 | `serviceAreaCode`, `serviceAreaCode2`, `serviceAreaName`, `routeCode`, `routeName`, `direction`, `oilCompany`, `lpgYn`, `telNo`, `svarAddr` |
+| 좌표 | 원본 API에 없음 |
+| 가격 변경시각 | 원본 API에 없음 |
 
-공공데이터포털의 요약 설명을 구체적인 응답 스키마로 취급하지 않는다. 등록 페이지의 실시간 표시는 API 접근·갱신 설명이며, 개별 주유소 가격의 변경 시각을 증명하지 않는다.
+공식 가이드 PDF는 `serviceAreaCode2`, `svarAddr`, 페이지 봉투를 모두 싣지 않은 오래된 문서다. 현재 안내 페이지와 실제 JSON 응답을 함께 검증해 계약을 확정했다. `diselPrice`는 제공기관의 실제 필드 철자를 그대로 읽고 앱에서는 `D047`로 정규화한다.
 
-### 공식 PDF에서 추가로 확인한 범위
+## 정규화 계약
 
-[한국도로공사 OpenOASIS 활용 가이드 PDF](https://data.ex.co.kr/guidedown/openoasis_guide.pdf)의 검색 색인에서 **§3.10.1, p41/56** 내용을 확인했다. PDF 전체를 성공적으로 내려받아 검증한 상태는 아니며, 가격 필드가 있는 후속 페이지와 정상·오류 JSON의 공통 구조는 확인하지 못했다.
-
-| 구분 | 검색 색인에서 확인한 이름 |
+| 원본 | 앱 필드 |
 | --- | --- |
-| 끝점 | `http://data.ex.co.kr/openapi/business/curStateStation` |
-| 필수 요청 매개변수 | `key`, `type` |
-| 선택 요청 매개변수 | `routeName`, `direction`, `oilCompany`, `serviceAreaName`, `routeCode`, `serviceAreaCode` |
-| 확인된 응답 필드 | `routeCode`, `serviceAreaCode`, `routeName`, `direction` |
+| `serviceAreaCode` | `id=EX-{serviceAreaCode}`, `serviceAreaCode` |
+| `serviceAreaCode2` | `serviceAreaCode2` |
+| `gasolinePrice` | `prices.B027.price` |
+| `diselPrice` | `prices.D047.price` |
+| `lpgPrice` | `prices.K015.price` |
+| `lpgYn` | `lpgAvailable`, `facilities.lpg` |
+| `oilCompany` | `oilCompanyCode`, 확인된 코드의 `oilCompanyName`·공통 `brand` |
+| `svarAddr`, `telNo` | `address`, `phone` |
 
-문서에 실린 HTTP 주소는 확인 사실로만 기록하며 현재 서버가 이 주소로 인증키를 전송하지 않는다. 실제 구현 전 가격 필드·단위·JSON 구조 및 HTTPS 전송 가능 여부를 검증해야 한다. **`EX_API_KEY`만 추가해도 현재 배포에서 실가격 연동이 시작되지는 않는다.**
+숫자 가격은 `KRW/L`로 저장한다. `X`는 0원이 아니라 해당 유종 가격 미제공으로 처리해 `prices`에서 제외한다. 원본에 가격 변경시각이 없으므로 모든 가격의 `priceUpdatedAt`은 `null`, `priceTimeStatus`는 `source_time_unavailable`이다. API를 받은 시각인 `fetchedAt`을 가격 변경시각으로 바꾸지 않는다.
 
-## 현재 동작 계약
+2026-10-26 응답에는 휘발유 211곳, 경유 212곳, LPG 149곳의 숫자 가격이 있었다. 14곳은 휘발유와 경유가 모두 `X`였다. 노선명 2곳과 방향 4곳은 원본이 비어 있어 추정하지 않고 `null`로 보관한다.
 
-```js
-const client = new HighwayClient({ apiKey, quota, fetchImpl, clock });
-const result = await client.snapshot();
-```
+## 기존 전국 자료와의 위치 보강
 
-| 조건 | 응답 |
-| --- | --- |
-| 키 없음 | `status: awaiting_credentials`, `EX_CREDENTIALS_REQUIRED` |
-| 키 있음 | `status: error`, `EX_SCHEMA_UNVERIFIED` |
-| 공통 | `implementationReady: false`, `provider: ex`, `dataGranularity: station`, `stations: []`, `fetchedAt: null`, `coverage.complete: false` |
-| `configured` | 키의 존재만 의미하며, 실연동 완료 여부가 아님 |
-| 외부 요청·쿼터 소모 | 없음 |
-| 비밀키 | 응답·오류·출처 URL에 포함하지 않음 |
+도로공사 응답 226곳 중 배포 중인 오피넷 전국 자료와 다음 근거로만 연결한다.
 
-기존 정상 스냅샷이 있는 운영 환경에서 실패 시각으로 기존 가격·수집 시각을 갱신하지 않는 처리는 수집기의 `preservePrevious()` 경계가 담당한다. 이 파일에는 검증되지 않은 가격 캐시를 새로 만드는 동작이 없다.
+1. 유효 좌표가 있는 공식 주유소의 전화번호가 유일하게 일치한다.
+2. 같은 전화번호가 여러 곳이면 방향을 포함한 정규화 명칭으로 한 곳만 결정된다.
+3. 전화번호 일치가 없을 때 방향 포함 명칭 또는 주소가 정확히 일치하고 결과가 한 곳뿐이다.
+4. 근거가 충돌하거나 단순 유사 명칭뿐이면 연결하지 않는다.
 
-## 실가격 연동을 완성하기 위해 필요한 검증
+실제 대조에서 202곳에 좌표를 연결했고 24곳은 좌표 없이 유지했다. 연결된 레코드는 도로공사 ID를 그대로 주 식별자로 사용하고 `opinetStationId`, `coordinateMatchedBy`, `coordinateSource`를 별도로 기록한다. 도로공사 주소는 `address`에 보존하며 연결된 현재 도로명주소는 `roadAddress`에 추가한다. 오피넷 가격으로 도로공사 가격을 덮어쓰지 않는다.
 
-1. 확인한 공식 끝점·필수 매개변수를 기준으로 HTTPS 전송 가능 여부와 정상·오류 JSON 구조를 검증한다.
-2. `B027`(휘발유), `D047`(경유), `K015`(자동차용 LPG)로 정규화할 원본 필드와 `KRW/L` 단위를 확인한다. LPG 여부와 LPG 판매가격은 분리한다.
-3. 정확한 시설 식별자 및 페이지 종료 조건을 확인하고, 실행당 요청 수·응답 크기·타임아웃 상한을 둔다. 현재 수집기 실행당 예산은 도로공사 20회다.
-4. 가격 원본 시각이 없는 경우 각 `prices[fuel].priceUpdatedAt`을 `null`로 유지한다. 수집 시각은 각 가격의 `fetchedAt`과 별도로 기록한다.
-5. 검증된 좌표가 없으면 `lat`, `lng`는 `null`이다. 이름을 이용한 위치 추정 및 오피넷 주유소와의 임의 병합은 하지 않는다.
-6. 실제 공식 예제를 시험 전용 fixture로 검증하고, HTTP 오류·잘못된 응답·중복 또는 상충 자료·페이지 중간 실패·키 누출·이전 정상 캐시 보존을 검증한다.
+## 페이지·오류·비밀키 경계
 
-예정된 주유소 UI 계약은 각 레코드의 `dataGranularity: station`, `unit: KRW/L`, `id`, `name`, `routeName`, `direction`, `operator`, `address`, `phone`, `lat`, `lng`, `fetchedAt`, `source`와 `prices.{B027,D047,K015}.{price,priceUpdatedAt,fetchedAt,unit}`이다. 확인되지 않은 원본 필드로 이 레코드를 생성하지 않는다.
+- 첫 페이지의 `count`, `numOfRows`, `pageSize`로 필요한 페이지 수를 계산하고 최대 20페이지를 넘으면 중단한다.
+- 모든 페이지의 전체 건수와 페이지 크기가 같고, 합친 행 수가 `count`와 일치해야 발행한다.
+- 식별자 중복, 잘못된 가격, LPG 여부와 가격의 모순, 오류 코드, 중간 페이지 실패는 새 스냅샷 전체 실패다.
+- 실패 시 저장 계층은 이전 정상 스냅샷의 원래 `fetchedAt`과 가격을 유지하고 `partial`, `cache.stale`, 실패 경고를 붙인다.
+- 인증키는 서버 환경과 GitHub Actions Secret에서만 읽는다. 공개 JSON, 오류, 출처 URL, 로그에는 넣지 않는다.
+- 제공기관의 HTTPS 끝점만 사용하며 리디렉션을 허용하지 않는다.
+
+## 실행과 검증
 
 ```bash
-node --test tests/highway.test.mjs
+EX_API_KEY=발급키 npm run collect:energy
+node --test tests/highway.test.mjs tests/collection.test.mjs tests/energy.test.mjs
+npm run check
 ```
 
-현재 시험은 미연동 상태를 성공으로 표시하지 않는지, 키 없이 외부 요청이 없는지, 비밀키가 공개 응답으로 나가지 않는지를 확인한다. 실제 도로공사 API와의 종단 검증을 통과했다는 의미는 아니다.
+테스트 fixture는 페이지 순회, `X` 처리, 단위·시각, 좌표 연결, 모순 응답 거부, 네트워크 오류의 인증키 비노출, 캐시·동시 요청을 검증한다. 실운영 응답 검증에서는 공개 결과에 인증키가 포함되지 않는지 별도로 확인한다.
