@@ -1,6 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
 import {createRouteModeController,DIRECTIONS_PROXY,normalizeDirectionsResponse} from '../public/js/route-mode.js';
+
+const appSource=readFileSync(new URL('../public/js/app.js',import.meta.url),'utf8');
 
 const now=()=>Date.parse('2026-10-26T03:00:00Z');
 const station=(price=1600)=>({
@@ -46,4 +49,33 @@ test('route mode refreshes the local price while retaining the verified detour',
   controller.syncStations([station(1500)],'B027');
   const [updated]=controller.rows({liters:30,kmPerLiter:12,referenceFuelWonPerL:1700,maxDetourMinutes:10});
   assert.equal(updated.currentPrice.price,1500);assert.equal(updated.costs.purchaseWon,45_000);assert.ok(updated.costs.totalWon>45_000);assert.equal(updated.routeRank,1);
+});
+
+test('base route retries one short transient proxy failure without repeating via checks',async()=>{
+  const waits=[];let calls=0;
+  const controller=createRouteModeController({clock:now,waitForRetry:async(delay,signal)=>{assert.equal(signal.aborted,false);waits.push(delay);},requestJSON:async(_url,_signal,options)=>{
+    calls+=1;
+    if(calls===1)throw Object.assign(new Error('경로 서버가 일시적으로 응답하지 않습니다.'),{code:510,retryable:true,retryAfterMs:800});
+    return proxyResponse({via:JSON.parse(options.body).waypoints.length===1});
+  }});points(controller);
+  const result=await controller.plan({stations:[station()],fuel:'B027',maxDetourMinutes:10,corridorMeters:2000});
+  assert.equal(result.status,'ready');
+  assert.equal(calls,3);
+  assert.deepEqual(waits,[800]);
+});
+
+test('base route does not retry a point that is not near a road',async()=>{
+  let calls=0;
+  const controller=createRouteModeController({clock:now,waitForRetry:async()=>assert.fail('waited'),requestJSON:async()=>{
+    calls+=1;throw Object.assign(new Error('출발지 또는 목적지가 도로에서 너무 멉니다.'),{code:2,retryable:false});
+  }});points(controller);
+  await assert.rejects(controller.plan({stations:[station()],fuel:'B027',maxDetourMinutes:10,corridorMeters:2000}),/도로에서 너무 멉니다/);
+  assert.equal(calls,1);
+  assert.equal(controller.state.error.code,2);
+});
+
+test('app forwards structured proxy retry metadata to route mode',()=>{
+  assert.match(appSource,/error\.code=data\?\.error\?\.code\?\?data\?\.code/);
+  assert.match(appSource,/error\.retryable=data\?\.retryable===true/);
+  assert.match(appSource,/error\.retryAfterMs=Number\.isFinite/);
 });
