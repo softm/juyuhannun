@@ -1,7 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
 import { markerScale, labelBudget, markerDensityLimit, visibleStations, labelCandidates } from '../public/js/marker-display.js';
 import { MapController } from '../public/js/map.js';
+
+const mapSource = await readFile(new URL('../public/js/map.js', import.meta.url), 'utf8');
 
 const nationwide = { south: 32, north: 40, west: 123, east: 133 };
 const row = (id, extra = {}) => ({ id: String(id), name: '테스트 ' + id, lat: 37.5, lng: 127, prices: { B027: { price: 1700, priceUpdatedAt: new Date().toISOString() }, D047: { price: 1600, priceUpdatedAt: new Date().toISOString() } }, ...extra });
@@ -186,6 +189,13 @@ test('top five current-fuel prices get bouncing clickable rank badges',()=>{
   }
   assert.doesNotMatch(c._markerState.get('rank6').content,/lowest-price-badge/);
   assert.equal(c._markerState.get('rank6').rank,null);
+});
+
+test('route recommendation bubbles keep one green body and color only rank text pills',()=>{
+  assert.match(mapSource,/\.lowest-price-badge\{[^']*background:#159b72/);
+  assert.match(mapSource,/\.lowest-price-badge:after\{[^']*background:#159b72/);
+  for(const rank of [1,2,3])assert.match(mapSource,new RegExp(`\\.lowest-price-badge\\.rank-${rank} \\.lowest-tag\\{background:#`));
+  assert.doesNotMatch(mapSource,/\.lowest-price-badge\.rank-2,\.lowest-price-badge\.rank-3[^']*background:/);
 });
 
 test('stale prices are excluded from top-five rank badges',()=>{

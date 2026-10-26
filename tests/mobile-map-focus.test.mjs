@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
+import { pickListScrollStation } from '../public/js/mobile-map-view.js';
 
 const [html, app, routeMode, map, view, css, styles] = await Promise.all([
   readFile(new URL('../public/index.html', import.meta.url), 'utf8'),
@@ -104,20 +105,49 @@ test('five-state mobile focus flow includes map browse and draggable list sheet 
   assert.match(view, /--list-live-height/);
   assert.match(view, /setListSnap/);
   assert.match(css, /--list-live-height/);
-  assert.match(css, /52dvh/);
-  assert.match(css, /82dvh/);
-  assert.match(view, /ratio<\.4/);
-  assert.match(view, /ratio>\.68/);
+  assert.match(css, /54dvh/);
+  assert.match(css, /84dvh/);
+  assert.match(css, /clamp\(270px,38dvh,340px\)/);
+  assert.match(view, /listSnapHeight\('compact'\)\+listSnapHeight\('medium'\)/);
   assert.match(html, /id="mobile-focus-dock"/);
   assert.match(html, /id="mobile-list-sheet-handle"/);
+  assert.match(html, /id="mobile-list-sheet-close"[\s\S]{0,180}data-icon="back"/);
+  assert.match(view, /sidebar\.toggleAttribute\('data-map-overlay',listOpen\)/);
   assert.match(css, /body\.mobile-map-browse \.mobile-focus-dock/);
   assert.match(css, /body\.mobile-list-sheet\.mobile-list-expanded/);
 });
 
+test('scrolling the list selects the card crossing the focus line and activates its marker', () => {
+  const viewport={top:100,bottom:500};
+  assert.equal(pickListScrollStation([
+    {id:'one',top:90,bottom:210},
+    {id:'two',top:215,bottom:370},
+    {id:'three',top:375,bottom:530},
+  ],viewport),'two');
+  assert.equal(pickListScrollStation([
+    {id:'one',top:-50,bottom:70},
+    {id:'two',top:80,bottom:190},
+    {id:'three',top:195,bottom:350},
+  ],viewport),'three');
+  assert.equal(pickListScrollStation([],viewport),null);
+  assert.match(app, /results'\)\.addEventListener\('scroll',scheduleListScrollSelection/);
+  assert.match(app, /activateScrolledStation/);
+  assert.match(app, /map\.focus\(station,\{preserveZoom:true\}\)/);
+});
+
 test('closing detail keeps the focused map session instead of restoring default layout', () => {
   assert.match(view, /hideDetail\(\);\s*setMode\('map-browse'\)/);
+  assert.match(view, /detailReturnMode=listModes\.has\(mode\)\?'map-browse'/);
   assert.match(app, /focus-dock-list/);
   assert.match(app, /focus-rescan/);
+});
+
+test('route recommendation labels differ by rank without recoloring the station card', () => {
+  assert.match(app,/route-rank rank-\$\{Number\(row\.routeRank\)\}/);
+  for(const rank of [1,2,3]){
+    assert.match(styles,new RegExp(`\\.route-rank\\.rank-${rank}`));
+  }
+  assert.match(app, /추천 \$\{Number\(row\.routeRank\)\}/);
 });
 
 
