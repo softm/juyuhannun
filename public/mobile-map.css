@@ -611,3 +611,41 @@
  body.route-mode .route-mode-chip{display:none}
  body.route-mode .route-destination-card>label small{font-size:8px}
 }
+
+/* Mobile hierarchy: view switching first, compact fuel/filter row second, map third. */
+@media(max-width:1000px){
+ body.mobile-map-browse .workspace>.sidebar>nav.view-tabs,
+ body.mobile-map-expanded .workspace>.sidebar>nav.view-tabs{
+   top:calc(10px + env(safe-area-inset-top,0px));z-index:187
+ }
+ body.mobile-map-browse .workspace>.sidebar>.search-block,
+ body.mobile-map-expanded .workspace>.sidebar>.search-block{
+   position:fixed!important;top:calc(66px + env(safe-area-inset-top,0px));z-index:186
+ }
+ body.mobile-map-browse .search-block .search-box,
+ body.mobile-map-expanded .search-block .search-box,
+ body.mobile-map-browse #search-candidates,
+ body.mobile-map-expanded #search-candidates{display:none!important}
+ body.mobile-map-browse .mobile-fuel-toggle,
+ body.mobile-map-expanded .mobile-fuel-toggle{top:0}
+ body.mobile-map-browse .search-block .filter-line,
+ body.mobile-map-expanded .search-block .filter-line{top:0}
+ body.mobile-map-browse .search-block .fuel-tabs,
+ body.mobile-map-expanded .search-block .fuel-tabs,
+ body.mobile-map-browse .search-block .extra-filters,
+ body.mobile-map-expanded .search-block .extra-filters{top:48px}
+ body.mobile-map-browse #map-section .map-actions,
+ body.mobile-map-expanded #map-section .map-actions,
+ body.mobile-map-browse .map-secondary-actions,
+ body.mobile-map-expanded .map-secondary-actions{top:calc(120px + env(safe-area-inset-top,0px))}
+ body.mobile-map-browse .mobile-map-toggle,
+ body.mobile-map-expanded .mobile-map-toggle{top:calc(174px + env(safe-area-inset-top,0px))}
+ body.route-mode.route-planner-open.mobile-map-browse .workspace>.sidebar>.route-panel,
+ body.route-mode.route-planner-open.mobile-map-expanded .workspace>.sidebar>.route-panel{top:calc(114px + env(safe-area-inset-top,0px))}
+}
+@media(min-width:640px) and (max-width:1000px){
+ body.mobile-map-browse .workspace>.sidebar>.search-block,
+ body.mobile-map-expanded .workspace>.sidebar>.search-block{left:18px;right:auto;width:470px}
+ body.route-mode.route-planner-open.mobile-map-browse .workspace>.sidebar>.route-panel,
+ body.route-mode.route-planner-open.mobile-map-expanded .workspace>.sidebar>.route-panel{height:min(620px,calc(100dvh - 146px - var(--juyu-bottom-ad-space,0px) - env(safe-area-inset-top,0px)))}
+}
