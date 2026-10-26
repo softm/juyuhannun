@@ -15,6 +15,15 @@ const VERIFICATION_CONCURRENCY=3;
 const VERIFICATION_LIMIT=8;
 const TRANSIENT_RETRY_MAX_DELAY_MS=1_500;
 
+export function selectRouteDisplayRows(rows,scope='recommended'){
+  const source=Array.isArray(rows)?rows:[];
+  if(scope==='all')return source;
+  return source.filter(row=>{
+    const rank=Number(row?.routeRank);
+    return Number.isInteger(rank)&&rank>=1&&rank<=3;
+  });
+}
+
 function routeError(message,code='DIRECTIONS_PROXY_ERROR'){
   return Object.assign(new Error(message),{code});
 }

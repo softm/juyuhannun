@@ -5,7 +5,7 @@ import {createMapLoadingController} from '../shared/map-loading.js';
 import {mountBottomAd,mountStationDetailAd,mountStationListAds} from './adfit.js';
 import {loadStationData,mergeStationData,reselectStationPrices} from './data-loader.js';
 import {FUEL_TYPES,BRANDS,escapeHTML as esc,money,finite,distanceMeters,getFuelPrice,freshness,formatTime,filterStations,summarizeVisiblePrices,hasMapCoordinates,stationNavigationURL} from './core.js';
-import {createRouteModeController} from './route-mode.js';
+import {createRouteModeController,selectRouteDisplayRows} from './route-mode.js';
 import {createRouteSimulationController} from './route-simulation.js';
 import {addressSearchPresentation} from './address-search.js';
 
@@ -32,7 +32,7 @@ const storedFavorites=readStorage('juyu:favorites:v1',[]);
 const storedFuel=readStorage('juyu:fuel:v1','B027');
 const params=new URLSearchParams(location.search);
 const requestedFuel=params.get('fuel')||storedFuel;
-const state={fuel:FUEL_TYPES.some(f=>f.code===requestedFuel)?requestedFuel:'B027',view:'nearby',bounds:null,listLimit:60,center:{...APP_CONFIG.defaultCenter},envelope:null,all:[],visible:[],selected:null,query:'',brand:'',self:false,freshOnly:false,sort:'price',routeSort:'recommended',favorites:new Set(Array.isArray(storedFavorites)?storedFavorites.filter(v=>typeof v==='string'&&/^[\w-]{1,50}$/.test(v)).slice(0,500):[]),generation:0,controller:null,mapReady:false,mapFailed:false,searchGeneration:0,loading:false,driving:{active:false,point:null,heading:null,speed:0,accuracy:null}};
+const state={fuel:FUEL_TYPES.some(f=>f.code===requestedFuel)?requestedFuel:'B027',view:'nearby',bounds:null,listLimit:60,center:{...APP_CONFIG.defaultCenter},envelope:null,all:[],visible:[],selected:null,query:'',brand:'',self:false,freshOnly:false,sort:'price',routeSort:'recommended',routeResultScope:'recommended',favorites:new Set(Array.isArray(storedFavorites)?storedFavorites.filter(v=>typeof v==='string'&&/^[\w-]{1,50}$/.test(v)).slice(0,500):[]),generation:0,controller:null,mapReady:false,mapFailed:false,searchGeneration:0,loading:false,driving:{active:false,point:null,heading:null,speed:0,accuracy:null}};
 const FUEL_VISUAL={B027:{label:'휘발유',icon:'droplet',tone:'gasoline'},D047:{label:'경유',icon:'pump',tone:'diesel'},B034:{label:'고급휘발유',icon:'star',tone:'premium'},K015:{label:'LPG',icon:'flame',tone:'lpg'}};
 function syncMobileFuelToggle(){const item=FUEL_VISUAL[state.fuel]||FUEL_VISUAL.B027;const button=$('mobile-fuel-toggle'),label=$('mobile-fuel-label');if(!button||!label)return;label.textContent=item.label;const badge=button.querySelector('.fuel-toggle-icon');if(badge){badge.className='fuel-toggle-icon '+item.tone;badge.innerHTML='<span class="icon">'+icon(item.icon)+'</span>';}}
 const localHost=['localhost','127.0.0.1','[::1]'].includes(location.hostname);
@@ -64,7 +64,7 @@ function closeDialog(id){$(id).close();}
 function setMapNotice(message){$('map-notice').textContent=message;$('map-notice').hidden=!message;}
 function updateViewport({center,bounds}){state.center=state.driving.active&&state.driving.point?{...state.driving.point}:center;state.bounds=bounds;state.listLimit=60;render();}
 function handleMapState({provider,status,message}){const typeButton=$('map-type-toggle');typeButton.hidden=provider!=='naver';if(provider!=='naver'){typeButton.setAttribute('aria-pressed','false');typeButton.setAttribute('aria-label','지도 유형 전환 미지원');typeButton.title='지도 유형 전환 미지원';}else if(typeButton.getAttribute('aria-label')==='지도 유형 전환 미지원'){typeButton.setAttribute('aria-label','위성 지도 보기');typeButton.title='위성 지도 보기';}if(status==='error'||provider==='leaflet')setMapNotice(message||'대체 지도에서 확인하고 있습니다.');else if(status==='ready')setMapNotice('');}
-const map=new MapController($('map'),{onViewportChange:updateViewport,onSelect:id=>selectStation(id),onPick:point=>handleRouteMapPick(point),onState:handleMapState,markerPresentation:row=>state.view==='route'&&finite(row.progressMeters)?{value:row.currentPrice?.price,unit:'원',label:`${row.name} · 경로 ${(row.progressMeters/1000).toFixed(1)}km 지점`,stale:row.confidence?.eligible!==true,rank:row.routeRank,badgeLabel:'추천 {rank}',tone:'green'}:null});
+const map=new MapController($('map'),{onViewportChange:updateViewport,onSelect:id=>selectStation(id),onPick:point=>handleRouteMapPick(point),onState:handleMapState,markerPresentation:row=>state.view==='route'&&finite(row.progressMeters)?{value:row.currentPrice?.price,unit:'원',label:`${row.name} · 경로 ${(row.progressMeters/1000).toFixed(1)}km 지점`,stale:row.confidence?.eligible!==true,rank:Number(row.routeRank)>=1&&Number(row.routeRank)<=3?Number(row.routeRank):null,badgeLabel:'추천 {rank}',tone:'green'}:null});
 const routeSimulation=createRouteSimulationController({host:$('route-simulation'),onPosition:(point,options)=>map.setRouteSimulationPoint(point,options),onClear:()=>map.clearRouteSimulationPoint()});
 const mapLoading=createMapLoadingController($('map-loading'));
 const mobileMapView=setupMobileMapView({workspace:document.querySelector('.workspace'),sidebar:$('station-sidebar'),mapSection:$('map-section'),results:$('results'),toggleButton:$('mobile-map-toggle'),listButton:$('mobile-list-toggle'),detailDialog:$('detail-dialog'),detailExpandButton:$('detail-expand-toggle'),detailHandle:$('detail-sheet-handle'),listSheetHandle:$('mobile-list-sheet-handle'),listSheetSizeButton:$('mobile-list-sheet-size-toggle'),listSheetClose:$('mobile-list-sheet-close'),focusDock:$('mobile-focus-dock'),focusDockList:$('focus-dock-list'),onListBack:()=>{if(!hasRouteResults())return false;openRoutePlanner();return true;},onResize:()=>map.resize(),onModeChange:next=>{if(!['focus-detail','expanded-tools','map-browse','list-sheet','list-sheet-expanded'].includes(next))return;if(['list-sheet','list-sheet-expanded'].includes(next)){listFocusedStationId=null;scheduleListScrollSelection();return;}listFocusedStationId=null;const station=state.all.find(s=>s.id===state.selected);if(station&&state.mapReady&&hasMapCoordinates(station))requestAnimationFrame(()=>map.focus(station,{preserveZoom:true}));},icon});
@@ -174,21 +174,35 @@ function renderRoutePanelState(rows){
  chips.hidden=!rows.length;status.textContent=response.status==='partial'?'일부 주유소는 우회시간을 확인하지 못해 경로 인근 후보로만 표시합니다.':'추천은 실제 우회가 적은 순, 같은 수준이면 가격이 낮은 순입니다.';
  document.querySelectorAll('[data-route-sort]').forEach(button=>button.classList.toggle('active',button.dataset.routeSort===state.routeSort));
 }
+function syncRouteResultsToggle({total=0,recommended=0,ready=false}={}){
+ const button=$('route-results-toggle');if(!button)return;
+ const recommendationOnly=state.routeResultScope==='recommended',available=ready&&recommended>0&&total>recommended;
+ button.hidden=!available;
+ button.setAttribute('aria-pressed',String(recommendationOnly));
+ button.setAttribute('aria-label',recommendationOnly?'추천 주유소만 표시 중, 전체 주유소 보기':'전체 주유소 표시 중, 추천 주유소만 보기');
+ button.title=recommendationOnly?`추천 ${recommended.toLocaleString('ko-KR')}곳만 표시 중 · 전체 ${total.toLocaleString('ko-KR')}곳 보기`:`전체 ${total.toLocaleString('ko-KR')}곳 표시 중 · 추천 ${recommended.toLocaleString('ko-KR')}곳만 보기`;
+ button.innerHTML=`<span class="icon">${icon(recommendationOnly?'star':'list')}</span>`;
+}
 function renderRouteView(){
- refreshPriceSelection(Date.now());routeMode.syncStations(state.all,state.fuel);routeMode.refreshConfidence(state.fuel);const rows=routeMode.rows(routeViewOptions());state.visible=rows;
+ refreshPriceSelection(Date.now());routeMode.syncStations(state.all,state.fuel);routeMode.refreshConfidence(state.fuel);
+ const allRows=routeMode.rows(routeViewOptions()),recommendedRows=selectRouteDisplayRows(allRows,'recommended'),response=routeMode.state.response;
+ if(state.routeResultScope==='recommended'&&allRows.length&&!recommendedRows.length)state.routeResultScope='all';
+ const rows=selectRouteDisplayRows(allRows,state.routeResultScope);state.visible=rows;
+ syncRouteResultsToggle({total:allRows.length,recommended:recommendedRows.length,ready:Boolean(response?.baseRoute)});
  $('result-count').textContent=rows.length.toLocaleString('ko-KR');$('results-title').textContent='가는 길 주유소';syncFocusDockList(rows.length,{routeResults:Boolean(routeMode.state.response?.baseRoute)});
- const response=routeMode.state.response;
- $('coverage-hint').textContent=response?.baseRoute?`경로 후보 ${Number(response.candidateCount||0).toLocaleString('ko-KR')}곳 · 표시 ${rows.length.toLocaleString('ko-KR')}곳 · 우회 검증 ${Number(response.checkedCount||0).toLocaleString('ko-KR')}곳 · 지도 이동과 무관`:'목적지를 선택하면 실제 자동차 경로 주변 후보를 표시합니다.';
+ const scopeSummary=state.routeResultScope==='recommended'?`추천 ${rows.length.toLocaleString('ko-KR')}곳 · 전체 ${allRows.length.toLocaleString('ko-KR')}곳`:`전체 ${rows.length.toLocaleString('ko-KR')}곳 · 추천 ${recommendedRows.length.toLocaleString('ko-KR')}곳`;
+ $('coverage-hint').textContent=response?.baseRoute?`${scopeSummary} · 우회 검증 ${Number(response.checkedCount||0).toLocaleString('ko-KR')}곳 · 지도 이동과 무관`:'목적지를 선택하면 실제 자동차 경로 주변 후보를 표시합니다.';
  if(routeMode.state.loading)$('results').innerHTML='<div class="loading-state"><div class="spinner"></div><h3>가는 길의 주유소를 확인하고 있어요</h3><p>기본경로 1회와 우선 후보의 실제 경유 경로를 비교합니다.</p></div>';
  else if(!rows.length){const message=routeMode.state.error?.message||(response?.baseRoute?'조건에 맞는 경로상 주유소가 없습니다. 탐색 조건에서 거리나 우회시간을 넓혀 보세요.':'목적지를 선택한 뒤 경로상 주유소 보기를 눌러 주세요.');$('results').innerHTML=`<div class="empty-state"><div class="empty-icon">${icon('route')}</div><h3>목적지 가는 길의 주유소</h3><p>${esc(message)}</p></div>`;}
  else{const comparable=rows.filter(row=>row.confidence?.eligible),lowest=comparable.length?Math.min(...comparable.map(row=>row.currentPrice.price)):null,verified=comparable.filter(row=>row.detour?.verified&&finite(row.detour.durationSeconds)),fastest=verified.sort((a,b)=>a.detour.durationSeconds-b.detour.durationSeconds||a.currentPrice.price-b.currentPrice.price)[0];$('results').innerHTML=rows.map((row,index)=>routeCard(row,index,{lowest,fastestId:fastest?.id})).join('');}
  if(state.mapReady&&!routeMode.state.loading){const mapRows=rows.length?rows:routeFallbackMapStations();map.setStations(mapRows,rows.length?state.selected:null,state.fuel);}
  const comparable=rows.filter(row=>row.confidence?.eligible),lowest=comparable.length?Math.min(...comparable.map(row=>row.currentPrice.price)):null;
- $('lowest-price-label').textContent='경로상 최저가';$('lowest-price').textContent=money(lowest);$('summary-area').textContent='목적지 가는 길 · 선택 유종 기준';$('summary-caption').textContent=lowest?`${FUEL_TYPES.find(f=>f.code===state.fuel)?.name||'유종'} · 우회시간 확인 ${Number(response?.checkedCount||0)}곳 · 참고 가격 제외`:'경로에서 확인 가능한 최신 가격이 없습니다';
+ $('lowest-price-label').textContent=state.routeResultScope==='recommended'?'추천 최저가':'경로상 최저가';$('lowest-price').textContent=money(lowest);$('summary-area').textContent=state.routeResultScope==='recommended'?`목적지 가는 길 · 추천 ${rows.length.toLocaleString('ko-KR')}곳`:'목적지 가는 길 · 전체 주유소';$('summary-caption').textContent=lowest?`${FUEL_TYPES.find(f=>f.code===state.fuel)?.name||'유종'} · 우회시간 확인 ${Number(response?.checkedCount||0)}곳 · 참고 가격 제외`:'경로에서 확인 가능한 최신 가격이 없습니다';
  renderRoutePanelState(rows);renderStatus();scheduleListScrollSelection();
 }
 function render(){
  if(state.view==='route'){renderRouteView();return;}
+ syncRouteResultsToggle();
  const now=Date.now();refreshPriceSelection(now);
  let filtered=filterStations(state.all,{fuel:state.fuel,center:state.center,bounds:state.bounds,query:state.query,brand:state.brand,self:state.self,freshOnly:state.freshOnly,favorites:state.view==='saved'?state.favorites:null,sort:state.sort,now});
  if(state.driving.active)filtered=drivingMapStations(filtered);
@@ -407,7 +421,7 @@ function beginRouteMapPick(type){routePickTarget=type;for(const id of ['route-or
 function searchRoutePoint(type){const input=$(`route-${type}-query`),query=input.value.trim();if(!query){input.focus();search(query,`route-${type}-candidates`,()=>{});return;}search(query,`route-${type}-candidates`,item=>{const label=addressSearchPresentation(item).primary;setRoutePoint(type,item,label);input.value='';if(type==='destination')toast(`목적지를 설정했습니다: ${label}`);});}
 async function planRoute(){
  const button=$('route-submit'),settings=routeViewOptions();
- button.disabled=true;button.textContent='가는 길의 주유소를 찾는 중…';state.selected=null;routeSimulation.set(null);if(state.mapReady)map.clearRoute();render();
+ button.disabled=true;button.textContent='가는 길의 주유소를 찾는 중…';state.selected=null;state.routeResultScope='recommended';routeSimulation.set(null);if(state.mapReady)map.clearRoute();render();
  try{
   const task=routeMode.plan({stations:state.all,fuel:state.fuel,...settings,corridorMeters:Number($('route-corridor').value),option:$('route-option').value,brand:state.brand,selfOnly:state.self});render();
   const response=await task;
@@ -494,6 +508,16 @@ function startDrivingMode(){
  }
 }
 $('drive-mode').addEventListener('click',()=>{if(state.driving.active)stopDrivingMode({message:'주행 추적을 종료했습니다.'});else startDrivingMode();});
+$('route-results-toggle').addEventListener('click',()=>{
+ if(!hasRouteResults())return;
+ const allRows=routeMode.rows(routeViewOptions()),recommendedRows=selectRouteDisplayRows(allRows,'recommended');
+ state.routeResultScope=state.routeResultScope==='recommended'?'all':'recommended';
+ if(state.routeResultScope==='recommended'&&!recommendedRows.length)state.routeResultScope='all';
+ state.selected=null;listFocusedStationId=null;$('results').scrollTop=0;
+ if(state.mapReady)map.clearRoute('via');
+ useBaseRouteSimulation();render();
+ toast(state.routeResultScope==='recommended'?`추천 주유소 ${recommendedRows.length.toLocaleString('ko-KR')}곳만 표시합니다.`:`경로상 주유소 ${allRows.length.toLocaleString('ko-KR')}곳을 모두 표시합니다.`);
+});
 $('reset-map').addEventListener('click',()=>{if(state.driving.active)stopDrivingMode();state.center={...APP_CONFIG.defaultCenter};if(state.mapReady){map.setCenter(state.center);map.setZoom(mobileMapView.isMobile()?(APP_CONFIG.mobileDefaultZoom||14):APP_CONFIG.defaultZoom);}});
 $('zoom-in').addEventListener('click',()=>{if(state.mapReady)map.zoomBy(1);});
 $('zoom-out').addEventListener('click',()=>{if(state.mapReady)map.zoomBy(-1);});
