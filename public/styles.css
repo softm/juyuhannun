@@ -208,7 +208,7 @@ body:not(.energy-page) .app-header{height:66px;padding:0 24px}
 
 /* Stitch b4d1 visual tokens: 주유한눈 - 위성 지도 및 주유소 상세 바텀시트 */
 :root{--stitch-brand:#0a6358;--stitch-brand-light:#e6f4f1;--stitch-blue:#1d68ed;--stitch-green:#10b981;--stitch-amber:#f59e0b;--stitch-red:#ef4444;--stitch-panel:#fff;--stitch-border:#e5e7eb}
-.mobile-search-back,.voice-search,.mobile-fuel-toggle{display:none}
+.mobile-search-back,.voice-search,.mobile-fuel-toggle,.mobile-search-toggle{display:none}
 .voice-search.is-listening{color:#0a6358;background:#e6f4f1}
 
 /* Driving guidance keeps the base map and station overlays upright. */

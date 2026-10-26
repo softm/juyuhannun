@@ -617,6 +617,61 @@ body.route-mode.route-results-ready .map-secondary-actions .route-results-toggle
  body.route-mode.route-planner-open.mobile-map-expanded .workspace>.sidebar>.route-panel{left:18px;right:auto;bottom:auto!important;width:470px;height:min(600px,calc(100dvh - 216px - var(--juyu-bottom-ad-space,0px) - env(safe-area-inset-top,0px)))}
 }
 
+/* Compact mobile map tools: fuel, filter, search and icon-only close. */
+@media(max-width:1000px){
+ body.mobile-map-browse:not(.mobile-map-menu-collapsed) .workspace>.sidebar>.search-block,
+ body.mobile-map-expanded:not(.mobile-map-menu-collapsed) .workspace>.sidebar>.search-block{
+   display:grid!important;grid-template-columns:max-content max-content max-content minmax(40px,1fr);align-items:center;column-gap:6px
+ }
+ body.mobile-map-browse:not(.mobile-map-menu-collapsed) .mobile-fuel-toggle,
+ body.mobile-map-expanded:not(.mobile-map-menu-collapsed) .mobile-fuel-toggle{
+   position:static!important;grid-column:1;grid-row:1;height:40px;padding:4px 10px 4px 5px;gap:5px
+ }
+ body.mobile-map-browse:not(.mobile-map-menu-collapsed) .search-block .filter-line,
+ body.mobile-map-expanded:not(.mobile-map-menu-collapsed) .search-block .filter-line{
+   position:static!important;grid-column:2;grid-row:1
+ }
+ body.mobile-map-browse:not(.mobile-map-menu-collapsed) .search-block .filter-button,
+ body.mobile-map-expanded:not(.mobile-map-menu-collapsed) .search-block .filter-button{padding:4px 10px 4px 5px;gap:5px}
+ body.mobile-map-browse:not(.mobile-map-menu-collapsed) .mobile-search-toggle,
+ body.mobile-map-expanded:not(.mobile-map-menu-collapsed) .mobile-search-toggle{
+   display:flex;position:static;grid-column:3;grid-row:1;align-items:center;gap:5px;height:40px;padding:4px 10px 4px 5px;border:0;border-radius:999px;background:#edf4ff;color:#111827;font-size:12px;font-weight:800;box-shadow:0 5px 14px rgba(17,24,39,.14)
+ }
+ body.mobile-map-browse:not(.mobile-map-menu-collapsed) .mobile-search-toggle .icon,
+ body.mobile-map-expanded:not(.mobile-map-menu-collapsed) .mobile-search-toggle .icon{
+   display:flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:50%;background:#2563eb;color:#fff
+ }
+ body.mobile-map-browse:not(.mobile-map-menu-collapsed) .mobile-search-toggle .icon svg,
+ body.mobile-map-expanded:not(.mobile-map-menu-collapsed) .mobile-search-toggle .icon svg{width:15px;height:15px;stroke-width:2.3}
+ body.mobile-map-browse:not(.mobile-map-menu-collapsed) .mobile-map-menu-toggle,
+ body.mobile-map-expanded:not(.mobile-map-menu-collapsed) .mobile-map-menu-toggle{
+   position:static;grid-column:4;grid-row:1;justify-self:end;width:40px;min-width:40px;height:40px;padding:0;border-color:#dce7e2;border-radius:50%
+ }
+ body.mobile-map-browse:not(.mobile-map-menu-collapsed) .search-block .search-box,
+ body.mobile-map-expanded:not(.mobile-map-menu-collapsed) .search-block .search-box{
+   display:none!important;position:absolute!important;top:48px;left:0;right:0;width:auto
+ }
+ body.mobile-map-search-open.mobile-map-browse:not(.mobile-map-menu-collapsed) .workspace>.sidebar>.search-block,
+ body.mobile-map-search-open.mobile-map-expanded:not(.mobile-map-menu-collapsed) .workspace>.sidebar>.search-block{z-index:188}
+ body.mobile-map-search-open.mobile-map-browse:not(.mobile-map-menu-collapsed) .search-block .search-box,
+ body.mobile-map-search-open.mobile-map-expanded:not(.mobile-map-menu-collapsed) .search-block .search-box{display:flex!important}
+ body.mobile-map-search-open.mobile-map-browse #search-candidates:not([hidden]),
+ body.mobile-map-search-open.mobile-map-expanded #search-candidates:not([hidden]){display:block!important;top:104px}
+ body.mobile-map-browse .search-block .fuel-tabs,
+ body.mobile-map-expanded .search-block .fuel-tabs,
+ body.mobile-map-browse .search-block .extra-filters,
+ body.mobile-map-expanded .search-block .extra-filters{top:48px}
+ body.route-mode .mobile-search-toggle{display:none!important}
+}
+@media(max-width:350px){
+ body.mobile-map-browse:not(.mobile-map-menu-collapsed) .workspace>.sidebar>.search-block,
+ body.mobile-map-expanded:not(.mobile-map-menu-collapsed) .workspace>.sidebar>.search-block{column-gap:4px}
+ body.mobile-map-browse:not(.mobile-map-menu-collapsed) .mobile-fuel-toggle,
+ body.mobile-map-expanded:not(.mobile-map-menu-collapsed) .mobile-fuel-toggle{padding-right:7px}
+ body.mobile-map-browse:not(.mobile-map-menu-collapsed) .mobile-fuel-toggle .fuel-toggle-chevron,
+ body.mobile-map-expanded:not(.mobile-map-menu-collapsed) .mobile-fuel-toggle .fuel-toggle-chevron{display:none}
+}
+
 /* The mobile map menu opens as one control group, then folds into a single button. */
 .mobile-map-menu-toggle{display:none}
 @media(max-width:1000px){
