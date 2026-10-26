@@ -1,7 +1,7 @@
 import { APP_CONFIG } from '../config.js';
 import { escapeHTML, getFuelPrice, freshness, FUEL_TYPES, BRANDS } from './core.js';
 import { markerScale, labelBudget, markerDensityLimit, visibleStations, labelCandidates } from './marker-display.js';
-import { normalizeAddressSearchResults } from './address-search.js';
+import { mergeLocationSearchResults, normalizeAddressSearchResults, normalizePlaceSearchResults } from './address-search.js';
 import '../shared/care-location.js';
 import '../shared/care-popup-geometry.js';
 import '../shared/map-marker-placement.js';
@@ -9,10 +9,12 @@ import '../shared/map-marker-placement.js';
 const AUTH_EVENT = 'juyuhannun:naver-auth-failed';
 const LEAFLET_VERSION = '1.9.4';
 const SDK_TIMEOUT = 12000;
+const VWORLD_SEARCH_URL = 'https://api.vworld.kr/req/search';
 const markerPriceFormat = new Intl.NumberFormat('ko-KR', { maximumFractionDigits: 1 });
 let naverTask;
 let leafletTask;
 let naverAuthFailed = false;
+let vworldSearchSequence = 0;
 
 const validPoint = point => point && [point.lat, point.lng].every(value => typeof value === 'number' && Number.isFinite(value)) &&
   Math.abs(point.lat) <= 90 && Math.abs(point.lng) <= 180;
@@ -124,6 +126,40 @@ function loadLeaflet() {
     document.head.append(css, script);
   }).catch(error => { leafletTask = null; throw error; });
   return leafletTask;
+}
+
+function searchVWorldPlaces(query, timeout = 10000) {
+  if (!APP_CONFIG.vworldSearchKey) return Promise.resolve([]);
+  return new Promise((resolve, reject) => {
+    const callbackName = `juyuhannunVWorld${Date.now()}${++vworldSearchSequence}`;
+    const script = document.createElement('script');
+    const url = new URL(VWORLD_SEARCH_URL);
+    let settled = false;
+    const finish = (error, results = []) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      script.remove();
+      try { delete globalThis[callbackName]; } catch { globalThis[callbackName] = undefined; }
+      if (error) reject(error); else resolve(results);
+    };
+    globalThis[callbackName] = data => {
+      const response = data?.response;
+      if (response?.status === 'NOT_FOUND') return finish(null, []);
+      if (response?.status !== 'OK') return finish(new Error(String(response?.error?.text || '장소 검색을 이용할 수 없습니다.').slice(0, 160)));
+      finish(null, normalizePlaceSearchResults(response?.result?.items || []));
+    };
+    const timer = setTimeout(() => finish(new Error('장소 검색 시간이 초과되었습니다. 다시 검색해 주세요.')), timeout);
+    for (const [key, value] of Object.entries({
+      service: 'search', request: 'search', version: '2.0', crs: 'EPSG:4326', size: '10', page: '1',
+      query, type: 'place', format: 'json', errorformat: 'json', key: APP_CONFIG.vworldSearchKey,
+      domain: location.hostname, callback: callbackName,
+    })) url.searchParams.set(key, value);
+    script.async = true;
+    script.src = url.href;
+    script.onerror = () => finish(new Error('장소 검색 연결에 실패했습니다. 잠시 후 다시 시도해 주세요.'));
+    document.head.appendChild(script);
+  });
 }
 
 function markerPriceBands(stations, fuel, now = Date.now()) {
@@ -1157,36 +1193,45 @@ export class MapController {
     if(!keepEndpoints&&(kind==='all'||kind==='base')){this._clearRouteEndpoints();this._routeEndpoints=null;}
   }
 
-  async searchAddress(query) {
+  async searchLocation(query) {
     const text = String(query || '').trim();
     if (!text) return [];
-    if (text.length > 200) throw new Error('주소는 200자 이내로 입력해 주세요.');
-    if (naverAuthFailed || this.provider === 'leaflet') {
-      throw new Error('현재 지도에서는 주소 검색을 사용할 수 없습니다. 지도를 이동하거나 내 위치를 선택해 주세요.');
-    }
-    await loadNaverSDK();
-    const service = globalThis.naver?.maps?.Service;
-    if (!service?.geocode) throw new Error('주소 검색을 연결하지 못했습니다. 지도를 이동해 위치를 선택해 주세요.');
+    if (text.length > 200) throw new Error('검색어는 200자 이내로 입력해 주세요.');
     const revision = ++this._geocodeRevision;
-    return new Promise((resolve, reject) => {
-      let settled = false;
-      const finish = (error, results) => {
-        if (settled) return;
-        settled = true;
-        clearTimeout(timer);
-        if (error) reject(error); else resolve(results);
-      };
-      const timer = setTimeout(() => finish(new Error('주소 검색 시간이 초과되었습니다. 다시 검색해 주세요.')), 10000);
-      try {
-        service.geocode({ query: text }, (status, response) => {
-          if (revision !== this._geocodeRevision || this._destroyed) return finish(abortError());
-          if (status !== service.Status.OK) return finish(new Error('주소를 확인하지 못했습니다. 도로명 또는 지번 주소로 다시 검색해 주세요.'));
-          const results = normalizeAddressSearchResults(response?.v2?.addresses || []);
-          finish(null, results);
+    const searches = [searchVWorldPlaces(text)];
+    if (!naverAuthFailed && this.provider !== 'leaflet') {
+      searches.push((async () => {
+        await loadNaverSDK();
+        const service = globalThis.naver?.maps?.Service;
+        if (!service?.geocode) throw new Error('주소 검색을 연결하지 못했습니다.');
+        return new Promise((resolve, reject) => {
+          let settled = false;
+          const finish = (error, results = []) => {
+            if (settled) return;
+            settled = true;
+            clearTimeout(timer);
+            if (error) reject(error); else resolve(results);
+          };
+          const timer = setTimeout(() => finish(new Error('주소 검색 시간이 초과되었습니다.')), 10000);
+          try {
+            service.geocode({ query: text }, (status, response) => {
+              if (revision !== this._geocodeRevision || this._destroyed) return finish(abortError());
+              if (status !== service.Status.OK) return finish(new Error('주소를 확인하지 못했습니다.'));
+              finish(null, normalizeAddressSearchResults(response?.v2?.addresses || []));
+            });
+          } catch { finish(new Error('주소 검색에 실패했습니다.')); }
         });
-      } catch { finish(new Error('주소 검색에 실패했습니다. 잠시 후 다시 시도해 주세요.')); }
-    });
+      })());
+    }
+    const settled = await Promise.allSettled(searches);
+    if (revision !== this._geocodeRevision || this._destroyed) throw abortError();
+    const fulfilled = settled.filter(result => result.status === 'fulfilled');
+    if (fulfilled.length) return mergeLocationSearchResults(fulfilled.map(result => result.value), text);
+    const failure = settled.find(result => result.status === 'rejected');
+    throw failure?.reason || new Error('장소 또는 주소 검색을 이용할 수 없습니다.');
   }
+
+  searchAddress(query) { return this.searchLocation(query); }
 
   _removeMarker(marker) {
     if (this.provider === 'naver') marker.setMap(null);
