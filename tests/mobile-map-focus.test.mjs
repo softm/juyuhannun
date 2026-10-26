@@ -43,17 +43,20 @@ test('mobile location search results stay above filters and view tabs', () => {
   assert.match(css, /max-height:min\(52dvh,420px\);overflow-y:auto;overscroll-behavior:contain/);
 });
 
-test('mobile view tabs are the top control and the regional search field stays hidden', () => {
+test('mobile view tabs stay on top and regional search opens below its toolbar button', () => {
   assert.match(css, /Mobile hierarchy: view switching first/);
   assert.match(css, /nav\.view-tabs\{\s*top:calc\(10px \+ env\(safe-area-inset-top,0px\)\);z-index:187/);
   assert.match(css, /sidebar>\.search-block\{\s*position:fixed!important;top:calc\(66px \+ env\(safe-area-inset-top,0px\)\);z-index:186/);
-  assert.match(css, /\.search-block \.search-box,[\s\S]*#search-candidates\{display:none!important\}/);
+  assert.match(html, /id="mobile-search-toggle"[^>]+aria-controls="search-form"[^>]+aria-label="검색 열기"/);
+  assert.match(css, /mobile-map-search-open[\s\S]*\.search-block \.search-box\{display:flex!important\}/);
+  assert.match(css, /#search-candidates:not\(\[hidden\]\)\{display:block!important;top:104px\}/);
   assert.match(css, /sidebar>\.route-panel\{top:calc\(114px \+ env\(safe-area-inset-top,0px\)\)\}/);
   assert.match(html, /id="route-destination-query"/);
 });
 
 test('mobile view, fuel and filter controls fold into a menu after ten seconds', () => {
   assert.match(html, /id="mobile-map-menu-toggle"[^>]+aria-expanded="true"/);
+  assert.match(html, /id="mobile-map-menu-toggle"[^>]+aria-label="지도 메뉴 닫기"[\s\S]{0,160}data-icon="close"/);
   assert.match(css, /view-tab\.active\{background:#0f6b57;color:#fff/);
   assert.match(css, /mobile-map-menu-collapsed[\s\S]*nav\.view-tabs\{display:none!important\}/);
   assert.match(css, /search-block>:not\(\.mobile-map-menu-toggle\)\{display:none!important\}/);
@@ -63,6 +66,18 @@ test('mobile view, fuel and filter controls fold into a menu after ten seconds',
   assert.match(app, /mobileMapMenuPopoverOpen\(\)/);
   assert.match(app, /mobileMapMenuToggle\?\.addEventListener\('click'/);
   assert.match(app, /visibilitychange'[\s\S]*showMobileMapMenu\(\)/);
+});
+
+test('mobile search closes on focus exit and keeps fuel and filter popovers mutually exclusive', () => {
+  assert.match(app, /function setMobileSearchOpen\(open/);
+  assert.match(app, /mobileSearchToggle\?\.addEventListener\('click'/);
+  assert.match(app, /addEventListener\('focusout'[\s\S]*document\.activeElement/);
+  assert.match(app, /event\.target\.closest\?\.\('#mobile-search-toggle,#search-form,#search-candidates'\)/);
+  assert.match(app, /setMobileSearchOpen\(false,\{focus:false\}\);\$\('extra-filters'\)\.hidden=true/);
+  assert.match(css, /grid-template-columns:max-content max-content max-content minmax\(40px,1fr\)/);
+  assert.match(css, /mobile-fuel-toggle[\s\S]*grid-column:1;grid-row:1/);
+  assert.match(css, /mobile-map-menu-toggle[\s\S]*grid-column:4;grid-row:1/);
+  assert.match(css, /@media\(max-width:350px\)[\s\S]*fuel-toggle-chevron\{display:none\}/);
 });
 
 test('map controller uses actual SDK zoom and Naver map type APIs', () => {
