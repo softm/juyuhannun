@@ -149,8 +149,13 @@ function routeCard(row,index,{lowest,fastestId}={}){
 }
 function renderRoutePanelState(rows){
  const response=routeMode.state.response,summary=$('route-summary'),chips=$('route-sort-chips'),status=$('route-api-state'),submit=$('route-submit');
+ const originReady=Boolean(routeMode.state.origin),destinationReady=Boolean(routeMode.state.destination),routeReady=Boolean(response?.baseRoute),panel=$('route-panel');
+ panel.classList.toggle('has-origin',originReady);panel.classList.toggle('has-destination',destinationReady);panel.classList.toggle('has-route',routeReady);
+ $('route-origin-card')?.classList.toggle('is-ready',originReady);$('route-destination-card')?.classList.toggle('is-ready',destinationReady);
+ const activeStep=routeReady?'results':destinationReady?'options':'destination',stepOrder=['destination','options','results'],activeIndex=stepOrder.indexOf(activeStep);
+ document.querySelectorAll('[data-route-step]').forEach(step=>{const index=stepOrder.indexOf(step.dataset.routeStep),current=index===activeIndex;step.classList.toggle('is-current',current);step.classList.toggle('is-done',index<activeIndex);if(current)step.setAttribute('aria-current','step');else step.removeAttribute('aria-current');});
  $('route-origin-label').textContent=routeMode.state.originLabel||'현재 위치를 허용하거나 출발지를 변경해 주세요';
- $('route-destination-label').textContent=routeMode.state.destinationLabel||'주소를 검색하거나 지도에서 선택해 주세요';
+ $('route-destination-label').textContent=routeMode.state.destinationLabel||'목적지를 검색하거나 지도에서 선택해 주세요';
  $('route-options-summary').textContent=`경로 ${Number($('route-corridor').value)/1000}km 이내 · 최대 ${$('route-max-detour').value}분 우회`;
  submit.disabled=routeMode.state.loading||!routeMode.state.origin||!routeMode.state.destination;
  if(routeMode.state.loading){status.textContent='기본 경로와 실제 경유 경로를 확인하고 있습니다…';summary.hidden=true;chips.hidden=true;return;}
@@ -402,7 +407,7 @@ async function planRoute(){
   if(['ready','partial'].includes(response?.status)){routePlannerOpen=false;rememberDestination();render();if(mobileMapView.isMobile())mobileMapView.openListSheet();else requestAnimationFrame(()=>$('results-header')?.scrollIntoView({block:'start'}));}
   if(response?.status==='partial'&&response.warnings?.length)toast('일부 후보의 우회 경로는 확인하지 못했습니다.');
  }catch(error){if(error.name!=='AbortError')toast(error.message||'경로를 확인하지 못했습니다.');}
- finally{button.disabled=false;button.innerHTML='경로상 주유소 보기 <span aria-hidden="true">→</span>';render();}
+ finally{button.disabled=false;button.innerHTML='가는 길 주유소 보기 <span aria-hidden="true">→</span>';render();}
 }
 function openRouteNavigation(id){const urls=routeMode.navigationForStation(id);if(!urls){toast('출발지·주유소·목적지 좌표를 확인해 주세요.');return;}if(/JuyuhannunAndroid\//.test(navigator.userAgent)){location.href=urls.app;return;}const opened=window.open(urls.web,'_blank','noopener,noreferrer');if(!opened)location.href=urls.web;}
 
