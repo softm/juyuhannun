@@ -30,6 +30,12 @@ SDK는 공식 문서의 ncpKeyId 파라미터와 geocoder 서브모듈을 사용
 
 도로 경로 서버에는 별도로 NAVER_MAPS_API_KEY_ID, NAVER_MAPS_API_SECRET 환경변수가 필요합니다. public/config.js에는 이 비밀키를 넣지 않습니다. 지도 타일을 그리는 기능이 도로 경로 계산을 대신하지 않습니다.
 
+## 토지한눈 방식의 장소 통합검색
+
+사용자의 요청에 따라 [토지한눈](https://github.com/softm/softm.tojihannun)의 VWorld 장소검색 방식을 참고해 목적지 검색에 적용했습니다. 기준 구현은 커밋 `a4afb8bf`의 `searchVWorld`, 장소 후보 정규화·순위·중복 제거 흐름입니다. 주유한눈은 기존 네이버 도로명·지번 지오코딩과 VWorld `type=place` 조회를 병렬 실행하고, 장소명 일치도와 이동 목적에 유용한 철도·지하철·공항 등의 분류를 반영해 하나의 후보 목록으로 합칩니다.
+
+public/config.js의 `vworldSearchKey`는 서버 비밀키가 아니라 등록 도메인에서 사용하는 공개 브라우저 키입니다. 요청에는 현재 호스트를 `domain`으로 전달하며, 사용자가 검색 버튼을 누른 때에만 장소 검색어를 전송합니다. 실제 `softm.github.io` 도메인으로 `서울역` 장소 응답이 반환되는 것을 확인했습니다.
+
 ## 실제 지도 대체 경로
 
 네이버 연결 실패 시 **Leaflet 1.9.4 + OpenStreetMap Standard 타일**로 실제 지도를 표시합니다. 마커·내 위치·지도 이동·실제 응답의 도로 경로 선은 사용할 수 있습니다. 네이버 주소 검색이 불가능한 경우에는 오류를 명시하며 추정 좌표를 만들지 않습니다.
@@ -59,7 +65,8 @@ public/js/map.js는 MapController를 export하며 public/config.js는 APP_CONFIG
 | setCenter({lat,lng}) | 지도 중심을 직접 지정하고 현재 배율 유지 |
 | await locate() | 공통 위치 모듈로 요청하고 내 위치 표시·중심 이동. 좌표를 반환 |
 | showRoute([[lng,lat],...]), clearRoute() | 서버에서 받은 실제 도로 좌표 표시·해제. 경로 표시 시 범위에 맞춤 |
-| await searchAddress(query) | 네이버 지오코더의 실제 후보 [{name,address,lat,lng}] 반환. 지도·인증 실패 시 명확한 오류 |
+| await searchLocation(query) | VWorld 장소와 네이버 도로명·지번 후보를 병합해 [{name,address,lat,lng}] 반환. 한 제공자가 실패해도 다른 실제 결과를 유지 |
+| await searchAddress(query) | 기존 호출부 호환을 위해 searchLocation을 호출하는 별칭 |
 | destroy() | 리스너·지도 인스턴스·관찰자 해제 |
 
 onCenterChange({lat,lng})는 사용자 이동이 끝난 뒤 450ms 동안 추가 이동이 없을 때만 호출합니다. focus, setCenter, locate, showRoute가 일으킨 프로그램 이동은 이 콜백을 발생시키지 않습니다. 내 위치 조회 버튼에서는 locate가 반환한 좌표로 앱이 주유소를 재조회해야 합니다.
