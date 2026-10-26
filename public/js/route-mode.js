@@ -13,6 +13,7 @@ export const DIRECTIONS_PROXY='https://asia-northeast3-softm-hannun-api.cloudfun
 const ROUTE_TIMEOUT_MS=25_000;
 const VERIFICATION_CONCURRENCY=3;
 const VERIFICATION_LIMIT=8;
+const TRANSIENT_RETRY_MAX_DELAY_MS=1_500;
 
 function routeError(message,code='DIRECTIONS_PROXY_ERROR'){
   return Object.assign(new Error(message),{code});
@@ -43,7 +44,24 @@ function publicWarning(error){
   return error?.message||'실제 경유 경로를 확인하지 못했습니다.';
 }
 
-export function createRouteModeController({directionsProxy=DIRECTIONS_PROXY,requestJSON,clock=Date.now}={}){
+function transientRetryDelay(error){
+  if(error?.name==='AbortError')return null;
+  if(error?.name==='TypeError')return 500;
+  const delay=Number(error?.retryAfterMs);
+  return error?.retryable===true&&Number.isFinite(delay)&&delay>0&&delay<=TRANSIENT_RETRY_MAX_DELAY_MS?delay:null;
+}
+
+function abortableDelay(milliseconds,signal){
+  return new Promise((resolve,reject)=>{
+    if(signal?.aborted){reject(Object.assign(new Error('경로 조회가 취소되었습니다.'),{name:'AbortError'}));return;}
+    const done=()=>{signal?.removeEventListener('abort',abort);resolve();};
+    const timer=setTimeout(done,milliseconds);
+    const abort=()=>{clearTimeout(timer);signal?.removeEventListener('abort',abort);reject(Object.assign(new Error('경로 조회가 취소되었습니다.'),{name:'AbortError'}));};
+    signal?.addEventListener('abort',abort,{once:true});
+  });
+}
+
+export function createRouteModeController({directionsProxy=DIRECTIONS_PROXY,requestJSON,clock=Date.now,waitForRetry=abortableDelay}={}){
   if(typeof requestJSON!=='function')throw new Error('경로 요청 함수를 연결해 주세요.');
   let generation=0,controller=null,timer=null;
   const state={origin:null,destination:null,originLabel:'',destinationLabel:'',response:null,rows:[],loading:false,error:null,lastRequest:null};
@@ -83,9 +101,12 @@ export function createRouteModeController({directionsProxy=DIRECTIONS_PROXY,requ
     return rows;
   }
 
-  async function directions({origin,destination,via=null,option='traoptimal'},signal){
+  async function directions({origin,destination,via=null,option='traoptimal'},signal,{retryTransient=false}={}){
     const body={start:origin,goal:destination,waypoints:via?[via]:[],option};
-    return normalizeDirectionsResponse(await requestJSON(directionsProxy,signal,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}));
+    for(let attempt=0;;attempt+=1){
+      try{return normalizeDirectionsResponse(await requestJSON(directionsProxy,signal,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}));}
+      catch(error){const delay=retryTransient&&attempt===0?transientRetryDelay(error):null;if(delay===null)throw error;await waitForRetry(delay,signal);}
+    }
   }
 
   async function plan({stations,fuel,liters,kmPerLiter,referenceFuelWonPerL,hourlyValueWonPerHour,maxDetourMinutes,corridorMeters,option='traoptimal',brand='',selfOnly=false}={}){
@@ -94,7 +115,7 @@ export function createRouteModeController({directionsProxy=DIRECTIONS_PROXY,requ
     const request={origin:state.origin,destination:state.destination,fuel,maxDetourMinutes,corridorMeters,option,brand,selfOnly};
     state.lastRequest=request;
     try{
-      const baseRoute=await directions({origin:state.origin,destination:state.destination,option},controller.signal);
+      const baseRoute=await directions({origin:state.origin,destination:state.destination,option},controller.signal,{retryTransient:true});
       if(ticket!==generation)return null;
       const found=findRouteCandidates(stations,baseRoute.path,{fuel,corridorMeters,maxCandidates:50,brand,self:selfOnly,now:clock()});
       const shortlist=selectVerificationCandidates(found.candidates,{limit:VERIFICATION_LIMIT,totalMeters:found.index.totalMeters});

@@ -69,7 +69,15 @@ const routeSimulation=createRouteSimulationController({host:$('route-simulation'
 const mapLoading=createMapLoadingController($('map-loading'));
 const mobileMapView=setupMobileMapView({workspace:document.querySelector('.workspace'),sidebar:$('station-sidebar'),mapSection:$('map-section'),results:$('results'),toggleButton:$('mobile-map-toggle'),listButton:$('mobile-list-toggle'),detailDialog:$('detail-dialog'),detailExpandButton:$('detail-expand-toggle'),detailHandle:$('detail-sheet-handle'),listSheetHandle:$('mobile-list-sheet-handle'),listSheetClose:$('mobile-list-sheet-close'),focusDock:$('mobile-focus-dock'),focusDockList:$('focus-dock-list'),onListBack:()=>{if(!hasRouteResults())return false;openRoutePlanner();return true;},onResize:()=>map.resize(),onModeChange:next=>{if(!['focus-detail','expanded-tools','map-browse','list-sheet','list-sheet-expanded'].includes(next))return;if(['list-sheet','list-sheet-expanded'].includes(next)){listFocusedStationId=null;scheduleListScrollSelection();return;}listFocusedStationId=null;const station=state.all.find(s=>s.id===state.selected);if(station&&state.mapReady&&hasMapCoordinates(station))requestAnimationFrame(()=>map.focus(station,{preserveZoom:true}));},icon});
 
-async function requestJSON(url,signal,options={}){const response=await fetch(url,{...options,signal,cache:'no-store',credentials:'omit',headers:{Accept:'application/json',...(options.headers||{})}});let data;try{data=await response.json();}catch{throw new Error('서버에서 올바른 자료를 받지 못했습니다.');}if(!response.ok){const error=new Error((typeof data?.error==='string'?data.error:data?.error?.message)||'자료를 가져오지 못했습니다. 잠시 후 다시 시도해 주세요.');error.code=data?.error?.code;throw error;}return data;}
+async function requestJSON(url,signal,options={}){
+ const response=await fetch(url,{...options,signal,cache:'no-store',credentials:'omit',headers:{Accept:'application/json',...(options.headers||{})}});let data;
+ try{data=await response.json();}catch{throw new Error('서버에서 올바른 자료를 받지 못했습니다.');}
+ if(!response.ok){
+  const error=new Error((typeof data?.error==='string'?data.error:data?.error?.message)||'자료를 가져오지 못했습니다. 잠시 후 다시 시도해 주세요.');
+  error.code=data?.error?.code??data?.code;error.retryable=data?.retryable===true;error.retryAfterMs=Number.isFinite(Number(data?.retryAfterMs))?Number(data.retryAfterMs):null;error.httpStatus=response.status;throw error;
+ }
+ return data;
+}
 routeMode=createRouteModeController({requestJSON});
 function loadData(){
  if(dataRequest)return dataRequest;
