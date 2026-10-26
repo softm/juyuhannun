@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
-import { pickListScrollStation, resolveListDragSnap, toggleListSizeSnap } from '../public/js/mobile-map-view.js';
+import { pickListScrollStation, resolveListDragSnap } from '../public/js/mobile-map-view.js';
 
 const [html, app, routeMode, map, view, css, styles] = await Promise.all([
   readFile(new URL('../public/index.html', import.meta.url), 'utf8'),
@@ -141,22 +141,21 @@ test('five-state mobile focus flow includes map browse and draggable list sheet 
   assert.match(view, /resolveListDragSnap/);
   assert.match(html, /id="mobile-focus-dock"/);
   assert.match(html, /id="mobile-list-sheet-handle"/);
-  assert.match(html, /id="mobile-list-sheet-size-toggle"[\s\S]{0,240}data-icon="expand"/);
+  assert.match(html, /id="mobile-list-sheet-collapse"[\s\S]{0,240}>접기<\/span>/);
   assert.match(html, /id="mobile-list-sheet-close"[\s\S]{0,180}data-icon="back"/);
-  assert.match(app, /listSheetSizeButton:\$\('mobile-list-sheet-size-toggle'\)/);
-  assert.match(view, /listSheetSizeButton\?\.addEventListener\('click',toggleListSheetSize\)/);
+  assert.match(app, /listSheetCollapseButton:\$\('mobile-list-sheet-collapse'\)/);
+  assert.match(view, /listSheetCollapseButton\?\.addEventListener\('click',closeListSheet\)/);
   assert.match(view, /sidebar\.toggleAttribute\('data-map-overlay',listOpen\)/);
   assert.match(css, /body\.mobile-map-browse \.mobile-focus-dock/);
   assert.match(css, /body\.mobile-list-sheet\.mobile-list-expanded/);
-  assert.match(css, /body\.route-mode\.mobile-list-sheet \.workspace>\.sidebar>\.mobile-list-sheet-size-toggle\{display:flex/);
+  assert.match(css, /body\.route-mode\.mobile-list-sheet \.workspace>\.sidebar>\.mobile-list-sheet-collapse\{display:flex/);
 });
 
-test('list size button toggles between one-row and expanded heights', () => {
-  assert.equal(toggleListSizeSnap('medium'),'expanded');
-  assert.equal(toggleListSizeSnap('expanded'),'compact');
-  assert.equal(toggleListSizeSnap('compact'),'expanded');
-  assert.match(view, /목록 한 행 높이로 축소/);
-  assert.match(view, /icon\(expanded\?'collapse':'expand'\)/);
+test('list collapse button hides the sheet instead of resizing it', () => {
+  assert.match(html, /id="mobile-list-sheet-collapse"[^>]+aria-label="목록 접기"/);
+  assert.doesNotMatch(html, /id="mobile-list-sheet-collapse"[\s\S]{0,240}data-icon=/);
+  assert.doesNotMatch(view, /toggleListSizeSnap|toggleListSheetSize/);
+  assert.match(view, /listSheetCollapseButton\?\.removeEventListener\('click',closeListSheet\)/);
 });
 
 test('list handle follows the pointer outside its small hit area and closes when pulled fully down', () => {
@@ -328,6 +327,8 @@ test('Stitch search bar and fuel selector stay functional', () => {
 test('driving mode keeps map overlays upright and shows actual plus predicted travel guides', () => {
   assert.match(html,/id="drive-mode"[^>]+type="button"|type="button"[^>]+id="drive-mode"/);
   assert.match(html,/class="map-secondary-actions"[^>]+aria-label="주행 및 지도 도구"/);
+  assert.match(html,/id="driving-station-status"[^>]+aria-live="polite"/);
+  assert.match(html,/id="driving-station-name">진행 방향 주유소 확인 중/);
   assert.match(styles,/\.map-secondary-actions\{[^}]*display:flex/);
   assert.match(styles,/@media\(min-width:761px\) and \(max-width:1366px\)\{\.map-secondary-action\{[^}]*width:48px/);
   assert.match(app,/\$\('drive-mode'\)\.addEventListener\('click'/);
@@ -337,6 +338,10 @@ test('driving mode keeps map overlays upright and shows actual plus predicted tr
   assert.match(map,/dashArray:\s*'12 10'/);
   assert.match(map,/_driveTrailCoords/);
   assert.match(app,/drivingStationScore/);
+  assert.match(app,/syncDrivingStationStatus\(drivingStation\)/);
+  assert.match(app,/탐색 \$\{drivingStation\?\.name\|\|'주유소 확인 중'\}/);
+  assert.match(styles,/\.driving-station-status\{/);
+  assert.match(css,/body\.driving-mode \.driving-station-status/);
   assert.match(map,/_setDrivingHeadingUp/);
   assert.match(map,/driving-guidance-active/);
   assert.doesNotMatch(styles,/\.map-surface\.heading-up/);
