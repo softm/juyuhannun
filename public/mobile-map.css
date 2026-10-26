@@ -218,7 +218,7 @@
 
 
 /* 2026-10-23 five-state focus toggle: detail -> map browse -> expanded detail -> list sheet -> expanded list. */
-.mobile-list-sheet-handle,.mobile-list-sheet-caption,.mobile-focus-dock,.focus-rescan{display:none}
+.mobile-list-sheet-handle,.mobile-list-sheet-size-toggle,.mobile-list-sheet-caption,.mobile-focus-dock,.focus-rescan{display:none}
 @media(max-width:1000px){
   body.mobile-map-browse .workspace>.sidebar{display:block;position:fixed;inset:0;z-index:118;border:0;background:transparent;pointer-events:none;box-shadow:none}
   body.mobile-map-browse .workspace>.sidebar>:not(.search-block){display:none!important}
@@ -246,6 +246,9 @@
   body.mobile-list-sheet .workspace>.sidebar.is-dragging{min-height:64px!important;transition:none!important;will-change:height}
   body.mobile-list-sheet .workspace>.sidebar>.mobile-list-sheet-handle{display:block;position:absolute;left:50%;top:0;z-index:9;width:150px;height:38px;transform:translateX(-50%);touch-action:none;cursor:ns-resize}
   body.mobile-list-sheet .workspace>.sidebar>.mobile-list-sheet-handle:before{content:"";position:absolute;left:50%;top:8px;width:58px;height:6px;transform:translateX(-50%);border-radius:4px;background:#82968d;box-shadow:0 1px 3px #17362e28}
+  body.route-mode.mobile-list-sheet .workspace>.sidebar>.mobile-list-sheet-size-toggle{display:flex;position:absolute;left:calc(50% + 82px);top:3px;z-index:11;align-items:center;justify-content:center;gap:4px;min-width:62px;height:32px;padding:0 8px;border:1px solid #cfe1da;border-radius:16px;background:#edf6f3;color:#0f6b57;font-size:10px;font-weight:800;box-shadow:0 2px 7px #17362e16}
+  body.route-mode.mobile-list-sheet .mobile-list-sheet-size-toggle .icon,body.route-mode.mobile-list-sheet .mobile-list-sheet-size-toggle svg{display:block;width:14px;height:14px}
+  body.route-mode.mobile-list-sheet .mobile-list-sheet-size-toggle:focus-visible{outline:3px solid #90bc58;outline-offset:2px}
   body.mobile-list-sheet .workspace>.sidebar>.mobile-list-sheet-caption{display:grid;grid-template-columns:40px minmax(0,1fr) 40px;align-items:center;flex:none;height:58px;padding:19px 14px 5px;margin-top:7px;border-bottom:1px solid #edf1ef}
   body.mobile-list-sheet .mobile-list-sheet-caption strong{text-align:center;font-size:14px;color:#254c42}
   body.mobile-list-sheet .mobile-list-sheet-caption .mobile-list-sheet-back{display:flex;align-items:center;justify-content:center;width:40px;height:40px;padding:0;border-radius:50%;background:#f2f6f4;color:#174f43}
