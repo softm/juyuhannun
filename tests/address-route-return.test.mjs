@@ -78,3 +78,17 @@ test('route detail closes to the map and exposes a dedicated route-results dock 
   assert.match(mobileCss, /juyu-bottom-ad-active\.mobile-map-browse \.mobile-focus-dock\{bottom:calc\(18px \+ var\(--juyu-bottom-ad-space/);
   assert.match(mobileCss, /juyu-bottom-ad-active\.mobile-list-sheet \.workspace>\.sidebar\{bottom:var\(--juyu-bottom-ad-space/);
 });
+
+test('route results transition between planner, list and map without covering the result map', () => {
+  for (const id of ['mobile-list-sheet-title', 'focus-dock-more-icon', 'focus-dock-more-label']) {
+    assert.match(html, new RegExp(`id="${id}"`));
+  }
+  assert.match(app, /routePlannerOpen=false;rememberDestination\(\);render\(\);if\(mobileMapView\.isMobile\(\)\)mobileMapView\.openListSheet\(\)/);
+  assert.match(app, /onListBack:\(\)=>\{if\(!hasRouteResults\(\)\)return false;openRoutePlanner\(\);return true;\}/);
+  assert.match(app, /목적지·경로 설정으로 돌아가기/);
+  assert.match(app, /plannerVisible\?'지도 결과 보기':'경로 변경'/);
+  assert.match(app, /if\(hasRouteResults\(\)\)\{if\(isRoutePlannerVisible\(\)\)closeRoutePlanner\(\);else openRoutePlanner\(\)/);
+  assert.match(mobileView, /function handleListBack\(\)\{if\(onListBack\(\{mode\}\)===true\)return;closeListSheet\(\);\}/);
+  assert.match(mobileCss, /body\.route-mode\.route-planner-open\.mobile-map-browse \.workspace>\.sidebar>\.route-panel/);
+  assert.doesNotMatch(mobileCss, /body\.route-mode\.mobile-map-browse \.workspace>\.sidebar>\.route-panel/);
+});
