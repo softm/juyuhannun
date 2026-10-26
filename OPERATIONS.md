@@ -5,7 +5,7 @@
 | 설정 | 위치 | 용도 |
 |---|---|---|
 | `OPINET_API_KEY` | [Actions secrets](https://github.com/softm/juyuhannun/settings/secrets/actions) | 지역·상세·평균유가 수집과 누락 좌표의 ID별 보완용 공식 인증키 |
-| `EX_API_KEY` | [Actions secrets](https://github.com/softm/juyuhannun/settings/secrets/actions), 조회 서버 `.env` | 도로공사 연동 준비용. 현재는 키만 등록해도 실가격을 요청하지 않음 |
+| `EX_API_KEY` | [Actions secrets](https://github.com/softm/juyuhannun/settings/secrets/actions), 조회 서버 `.env` | 도로공사 API 0312 고속도로 주유소 가격 수집 |
 | `PUBLIC_API_BASE` | [Actions variables](https://github.com/softm/juyuhannun/settings/variables/actions) | 선택 설정: 상세·시군구 평균 등 자체 HTTPS 조회 API의 `/api` 주소. Pages의 가는 길 주유에는 불필요 |
 | `OPINET_API_KEY` | 조회 서버 `.env` | 선택 설정: 주유소 상세 조회 등 서버 API |
 | `NAVER_MAPS_API_KEY_ID` / `NAVER_MAPS_API_KEY` | 조회 서버 `.env` | 선택 설정: 자체 Node 경로 API를 운영할 때 NAVER Directions 조회 |
@@ -35,7 +35,7 @@
 
 평균 유가는 같은 `OPINET_API_KEY`로 수집됩니다. 전국·시도는 한 번에 모든 유종을 받아 유종 변경 때 호출량을 늘리지 않습니다. 시군구의 추가 조회는 `PUBLIC_API_BASE`를 연결한 서버에서 선택한 시도에 한해 수행합니다.
 
-고속도로는 [도로공사 API 0312](https://data.ex.co.kr/openapi/basicinfo/openApiInfoM?apiId=0312)의 가격 응답 필드와 정상·오류 응답 계약 확인이 남아 있어 **실제 HTTP 연동은 미완료**입니다. 현재 키가 없으면 `awaiting_credentials`, 키가 있으면 `EX_SCHEMA_UNVERIFIED` 오류를 기록하며, 두 경우 모두 `implementationReady: false`, 가격 0건, 외부 요청 0회입니다. `EX_API_KEY` 등록만으로 수집이 시작되지 않습니다. 원본에 없는 가격 보고시각·좌표를 추정하지 않으며, 확인 범위와 남은 작업은 [HIGHWAY_DATA.md](./server/HIGHWAY_DATA.md)에 기록했습니다.
+고속도로는 [도로공사 API 0312](https://data.ex.co.kr/openapi/basicinfo/openApiInfoM?apiId=0312)의 HTTPS 끝점을 사용합니다. `EX_API_KEY`가 없으면 외부 요청 없이 `awaiting_credentials`, 키가 있으면 최대 99건씩 전체 페이지를 수집합니다. 2026-10-26 검증 시 226건을 3회 호출로 받았습니다. 원본의 `X`는 0원이 아니라 미제공으로 처리하고, 원본에 없는 가격 변경시각은 `null`로 유지합니다. 좌표는 기존 공식 주유소 자료의 유일한 전화번호 또는 정확한 방향 포함 명칭·주소 일치만 사용하며 유사 이름으로 추정하지 않습니다. 응답 계약과 대조 결과는 [HIGHWAY_DATA.md](./server/HIGHWAY_DATA.md)에 기록했습니다.
 
 수소는 [15145097 공식 등록정보](https://www.data.go.kr/data/15145097/openapi.do)의 직전월 평균가격 안내 화면입니다. 자동 가격 수집·현재 판매가격 제공으로 표시하지 않습니다.
 
