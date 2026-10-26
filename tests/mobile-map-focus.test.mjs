@@ -52,13 +52,17 @@ test('mobile view tabs are the top control and the regional search field stays h
   assert.match(html, /id="route-destination-query"/);
 });
 
-test('mobile view menu is prominent first and softens after ten seconds of inactivity', () => {
+test('mobile view, fuel and filter controls fold into a menu after ten seconds', () => {
+  assert.match(html, /id="mobile-map-menu-toggle"[^>]+aria-expanded="true"/);
   assert.match(css, /view-tab\.active\{background:#0f6b57;color:#fff/);
-  assert.match(css, /nav\.view-tabs\.is-softened\{[^}]*opacity:\.58/);
-  assert.match(app, /const VIEW_TABS_FADE_MS=10_000/);
-  assert.match(app, /viewTabsFadeTimer=setTimeout\(\(\)=>viewTabs\.classList\.add\('is-softened'\),VIEW_TABS_FADE_MS\)/);
-  assert.match(app, /\['pointerenter','pointerdown','focusin','keydown'\]/);
-  assert.match(app, /visibilitychange'[\s\S]*showViewTabsProminently\(\)/);
+  assert.match(css, /mobile-map-menu-collapsed[\s\S]*nav\.view-tabs\{display:none!important\}/);
+  assert.match(css, /search-block>:not\(\.mobile-map-menu-toggle\)\{display:none!important\}/);
+  assert.doesNotMatch(css, /is-softened/);
+  assert.match(app, /const MOBILE_MAP_MENU_AUTO_COLLAPSE_MS=10_000/);
+  assert.match(app, /setMobileMapMenuExpanded\(false,\{restartTimer:false\}\)/);
+  assert.match(app, /mobileMapMenuPopoverOpen\(\)/);
+  assert.match(app, /mobileMapMenuToggle\?\.addEventListener\('click'/);
+  assert.match(app, /visibilitychange'[\s\S]*showMobileMapMenu\(\)/);
 });
 
 test('map controller uses actual SDK zoom and Naver map type APIs', () => {
