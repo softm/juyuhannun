@@ -40,6 +40,7 @@ export function setupMobileMapView({
   listSheetClose = null,
   focusDock = null,
   focusDockList = null,
+  onListBack = () => false,
   onResize = () => {},
   onModeChange = () => {},
   icon,
@@ -166,6 +167,7 @@ export function setupMobileMapView({
   }
   function openListSheet({expanded=false}={}){if(destroyed||!media.matches)return;snapshot();armHistory();hideDetail();listSnap=expanded?'expanded':'medium';sidebar.style.removeProperty('--list-drag-y');sidebar.style.setProperty('--list-live-height',listSnapHeight(listSnap)+'px');setMode(expanded?'list-sheet-expanded':'list-sheet');}
   function closeListSheet(){if(destroyed||!media.matches)return;sidebar.classList.remove('is-dragging');sidebar.style.removeProperty('--list-drag-y');sidebar.style.removeProperty('--list-live-height');disarmHistoryInPlace();setMode('map-browse');}
+  function handleListBack(){if(onListBack({mode})===true)return;closeListSheet();}
 
   function toggleMapChrome(){
     if(destroyed||!media.matches)return;
@@ -288,11 +290,11 @@ export function setupMobileMapView({
   window.addEventListener('pointermove',onListWindowPointerMove,{passive:false});
   window.addEventListener('pointerup',onListWindowPointerUp);
   window.addEventListener('pointercancel',onListWindowPointerCancel);
-  listSheetClose?.addEventListener('click',closeListSheet);
+  listSheetClose?.addEventListener('click',handleListBack);
   document.addEventListener('keydown',onKeyDown);
   window.addEventListener('popstate',onPopState);
   media.addEventListener('change',onMediaChange);
   if(media.matches)startMobileExpanded();else syncButtons();
 
-  return {startMobileExpanded,enterDetail,closeDetail,toggleDetailExpanded,openListSheet,closeListSheet,toggleMapChrome,exit,afterLayout,isActive:()=>focusModes.has(mode),isDetailOpen:()=>detailModes.has(mode),isMobile:()=>media.matches,getMode:()=>mode,destroy(){if(destroyed)return;disarmHistoryInPlace();hideDetail();body.classList.remove('mobile-map-mode','mobile-map-focus','mobile-map-expanded','mobile-map-browse','mobile-map-collapsed','mobile-list-sheet','mobile-list-expanded');sidebar.removeAttribute('data-map-overlay');destroyed=true;toggleButton.removeEventListener('click',toggleMapChrome);listButton.removeEventListener('click',toggleList);detailExpandButton?.removeEventListener('click',toggleDetailExpanded);detailHandle?.removeEventListener('click',onHandleClick);detailHandle?.removeEventListener('pointerdown',onHandlePointerDown);window.removeEventListener('pointermove',onHandlePointerMove);window.removeEventListener('pointerup',onWindowPointerUp);window.removeEventListener('pointercancel',onWindowPointerCancel);listSheetHandle?.removeEventListener('click',onListHandleClick);listSheetHandle?.removeEventListener('pointerdown',onListPointerDown);window.removeEventListener('pointermove',onListWindowPointerMove);window.removeEventListener('pointerup',onListWindowPointerUp);window.removeEventListener('pointercancel',onListWindowPointerCancel);listSheetClose?.removeEventListener('click',closeListSheet);document.removeEventListener('keydown',onKeyDown);window.removeEventListener('popstate',onPopState);media.removeEventListener('change',onMediaChange);}};
+  return {startMobileExpanded,enterDetail,closeDetail,toggleDetailExpanded,openListSheet,closeListSheet,toggleMapChrome,exit,afterLayout,isActive:()=>focusModes.has(mode),isDetailOpen:()=>detailModes.has(mode),isMobile:()=>media.matches,getMode:()=>mode,destroy(){if(destroyed)return;disarmHistoryInPlace();hideDetail();body.classList.remove('mobile-map-mode','mobile-map-focus','mobile-map-expanded','mobile-map-browse','mobile-map-collapsed','mobile-list-sheet','mobile-list-expanded');sidebar.removeAttribute('data-map-overlay');destroyed=true;toggleButton.removeEventListener('click',toggleMapChrome);listButton.removeEventListener('click',toggleList);detailExpandButton?.removeEventListener('click',toggleDetailExpanded);detailHandle?.removeEventListener('click',onHandleClick);detailHandle?.removeEventListener('pointerdown',onHandlePointerDown);window.removeEventListener('pointermove',onHandlePointerMove);window.removeEventListener('pointerup',onWindowPointerUp);window.removeEventListener('pointercancel',onWindowPointerCancel);listSheetHandle?.removeEventListener('click',onListHandleClick);listSheetHandle?.removeEventListener('pointerdown',onListPointerDown);window.removeEventListener('pointermove',onListWindowPointerMove);window.removeEventListener('pointerup',onListWindowPointerUp);window.removeEventListener('pointercancel',onListWindowPointerCancel);listSheetClose?.removeEventListener('click',handleListBack);document.removeEventListener('keydown',onKeyDown);window.removeEventListener('popstate',onPopState);media.removeEventListener('change',onMediaChange);}};
 }

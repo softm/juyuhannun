@@ -54,6 +54,7 @@ let nearbyMapSnapshot=null;
 let lastLocatedPoint=null;
 let listSelectionFrame=0;
 let listFocusedStationId=null;
+let routePlannerOpen=false;
 const DATA_REFRESH_MS=5*60*1000;
 function collectionStats(){const now=Date.now(),minute=Math.floor(now/60000);if(recordStats?.source===state.all&&recordStats.fuel===state.fuel&&recordStats.minute===minute)return recordStats;let mapped=0,fresh=0;for(const station of state.all){if(!hasMapCoordinates(station))continue;mapped++;const p=getFuelPrice(station,state.fuel);if(p&&freshness(p.priceUpdatedAt,p.fetchedAt,now,p.priceTimeStatus,p.sourceDate).eligible)fresh++;}return recordStats={source:state.all,fuel:state.fuel,minute,mapped,fresh};}
 function refreshPriceSelection(now){const sources=state.envelope?.sourceSnapshots,minute=Math.floor(now/60000);if(!sources||(priceSelection?.sources===sources&&priceSelection.minute===minute))return;state.all=reselectStationPrices(state.all,sources,{now});priceSelection={sources,minute};}
@@ -66,7 +67,7 @@ function handleMapState({provider,status,message}){const typeButton=$('map-type-
 const map=new MapController($('map'),{onViewportChange:updateViewport,onSelect:id=>selectStation(id),onPick:point=>handleRouteMapPick(point),onState:handleMapState,markerPresentation:row=>state.view==='route'&&finite(row.progressMeters)?{value:row.currentPrice?.price,unit:'원',label:`${row.name} · 경로 ${(row.progressMeters/1000).toFixed(1)}km 지점`,stale:row.confidence?.eligible!==true,rank:row.routeRank,badgeLabel:'추천 {rank}',tone:'green'}:null});
 const routeSimulation=createRouteSimulationController({host:$('route-simulation'),onPosition:(point,options)=>map.setRouteSimulationPoint(point,options),onClear:()=>map.clearRouteSimulationPoint()});
 const mapLoading=createMapLoadingController($('map-loading'));
-const mobileMapView=setupMobileMapView({workspace:document.querySelector('.workspace'),sidebar:$('station-sidebar'),mapSection:$('map-section'),results:$('results'),toggleButton:$('mobile-map-toggle'),listButton:$('mobile-list-toggle'),detailDialog:$('detail-dialog'),detailExpandButton:$('detail-expand-toggle'),detailHandle:$('detail-sheet-handle'),listSheetHandle:$('mobile-list-sheet-handle'),listSheetClose:$('mobile-list-sheet-close'),focusDock:$('mobile-focus-dock'),focusDockList:$('focus-dock-list'),onResize:()=>map.resize(),onModeChange:next=>{if(!['focus-detail','expanded-tools','map-browse','list-sheet','list-sheet-expanded'].includes(next))return;if(['list-sheet','list-sheet-expanded'].includes(next)){listFocusedStationId=null;scheduleListScrollSelection();return;}listFocusedStationId=null;const station=state.all.find(s=>s.id===state.selected);if(station&&state.mapReady&&hasMapCoordinates(station))requestAnimationFrame(()=>map.focus(station,{preserveZoom:true}));},icon});
+const mobileMapView=setupMobileMapView({workspace:document.querySelector('.workspace'),sidebar:$('station-sidebar'),mapSection:$('map-section'),results:$('results'),toggleButton:$('mobile-map-toggle'),listButton:$('mobile-list-toggle'),detailDialog:$('detail-dialog'),detailExpandButton:$('detail-expand-toggle'),detailHandle:$('detail-sheet-handle'),listSheetHandle:$('mobile-list-sheet-handle'),listSheetClose:$('mobile-list-sheet-close'),focusDock:$('mobile-focus-dock'),focusDockList:$('focus-dock-list'),onListBack:()=>{if(!hasRouteResults())return false;openRoutePlanner();return true;},onResize:()=>map.resize(),onModeChange:next=>{if(!['focus-detail','expanded-tools','map-browse','list-sheet','list-sheet-expanded'].includes(next))return;if(['list-sheet','list-sheet-expanded'].includes(next)){listFocusedStationId=null;scheduleListScrollSelection();return;}listFocusedStationId=null;const station=state.all.find(s=>s.id===state.selected);if(station&&state.mapReady&&hasMapCoordinates(station))requestAnimationFrame(()=>map.focus(station,{preserveZoom:true}));},icon});
 
 async function requestJSON(url,signal,options={}){const response=await fetch(url,{...options,signal,cache:'no-store',credentials:'omit',headers:{Accept:'application/json',...(options.headers||{})}});let data;try{data=await response.json();}catch{throw new Error('서버에서 올바른 자료를 받지 못했습니다.');}if(!response.ok){const error=new Error((typeof data?.error==='string'?data.error:data?.error?.message)||'자료를 가져오지 못했습니다. 잠시 후 다시 시도해 주세요.');error.code=data?.error?.code;throw error;}return data;}
 routeMode=createRouteModeController({requestJSON});
@@ -237,6 +238,46 @@ function useStationRouteSimulation(row,station){
  if(!row?.viaPath?.length||!base||row.detour?.verified!==true){useBaseRouteSimulation();return;}
  routeSimulation.set({path:row.viaPath,durationSeconds:base.durationSeconds+row.detour.durationSeconds,label:`${station.name} 경유 모의주행`,stops:[{id:station.id,name:station.name,point:{lat:station.lat,lng:station.lng}}]});
 }
+function hasRouteResults(){return state.view==='route'&&Boolean(routeMode?.state.response?.baseRoute);}
+function isRoutePlannerVisible(){return state.view==='route'&&(!hasRouteResults()||routePlannerOpen);}
+function syncRouteTransitionUI(){
+ const routeResults=hasRouteResults(),plannerVisible=isRoutePlannerVisible();
+ document.body.classList.toggle('route-results-ready',routeResults);
+ document.body.classList.toggle('route-planner-open',plannerVisible);
+ $('route-panel').hidden=!plannerVisible;
+ const sheetTitle=$('mobile-list-sheet-title'),sheetBack=$('mobile-list-sheet-close');
+ if(sheetTitle)sheetTitle.textContent=routeResults?'가는 길 주유소':'주유소 목록';
+ if(sheetBack){const label=routeResults?'목적지·경로 설정으로 돌아가기':'지도로 돌아가기';sheetBack.setAttribute('aria-label',label);sheetBack.title=label;}
+ const more=$('focus-dock-more'),moreIcon=$('focus-dock-more-icon'),moreLabel=$('focus-dock-more-label');
+ if(!more||!moreIcon||!moreLabel)return;
+ if(routeResults){
+  const label=plannerVisible?'지도 결과 보기':'경로 변경';
+  moreIcon.innerHTML=icon(plannerVisible?'map':'route');moreLabel.textContent=label;more.classList.add('route-transition-control');
+  more.setAttribute('aria-label',label);more.title=label;
+ }else{
+  moreIcon.textContent='•••';moreLabel.textContent='더보기';more.classList.remove('route-transition-control');
+  more.setAttribute('aria-label','이용 안내 더보기');more.title='이용 안내 더보기';
+ }
+}
+function openRoutePlanner(){
+ routePlannerOpen=true;
+ if(state.view!=='route')selectView('route');
+ else{
+  if(mobileMapView.isMobile()){
+   const mode=mobileMapView.getMode();
+   if(['list-sheet','list-sheet-expanded'].includes(mode))mobileMapView.closeListSheet();
+   else mobileMapView.startMobileExpanded();
+  }
+  render();
+ }
+ requestAnimationFrame(()=>$('route-destination-query')?.focus({preventScroll:true}));
+}
+function closeRoutePlanner(){
+ if(!hasRouteResults())return;
+ routePlannerOpen=false;
+ if(mobileMapView.isMobile())mobileMapView.startMobileExpanded();
+ render();
+}
 function selectView(view){
  mobileMapView.exit({restoreFocus:false});const next=['nearby','route','saved'].includes(view)?view:'nearby';
  if(next==='route'&&state.view!=='route'){
@@ -247,7 +288,7 @@ function selectView(view){
   state.selected=null;
   if(!routeMode.state.origin&&lastLocatedPoint)routeMode.setPoint('origin',lastLocatedPoint,'현재 위치');
  }
- const leavingRoute=state.view==='route'&&next!=='route';state.view=next;document.body.classList.toggle('route-mode',next==='route');$('route-panel').hidden=next!=='route';
+ const leavingRoute=state.view==='route'&&next!=='route';state.view=next;if(leavingRoute)routePlannerOpen=false;if(next==='route'&&!routeMode.state.response?.baseRoute)routePlannerOpen=true;document.body.classList.toggle('route-mode',next==='route');
  document.querySelectorAll('[data-view]').forEach(b=>{b.classList.toggle('active',b.dataset.view===state.view);if(b.dataset.view===state.view)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current');});
  if(leavingRoute){routeSimulation.set(null);if(state.mapReady){map.clearRoute();if(nearbyMapSnapshot?.center){state.center={...nearbyMapSnapshot.center};map.setCenter(nearbyMapSnapshot.center);if(Number.isFinite(nearbyMapSnapshot.zoom))map.setZoom(nearbyMapSnapshot.zoom);}state.selected=nearbyMapSnapshot?.selected||null;}}
  if(next==='route'&&routeMode.state.response?.baseRoute?.path){if(state.mapReady)map.showRoute(routeMode.state.response.baseRoute.path,{kind:'base',fitBounds:true,origin:routeMode.state.origin,destination:routeMode.state.destination});useBaseRouteSimulation();}
@@ -264,12 +305,14 @@ function detailPrice(station,code,label,tone){
 }
 function syncFocusDockList(count,{routeResults=false}={}){
  const button=$('focus-dock-list'),label=$('focus-dock-list-label'),glyph=$('focus-dock-list-icon'),counter=$('focus-list-count');
- if(!button||!label||!glyph||!counter)return;
- const value=Number(count)||0,text=value.toLocaleString('ko-KR'),route=routeResults&&state.view==='route';
- label.textContent=route?'가는 길 목록':'목록';counter.textContent=text;glyph.innerHTML=icon(route?'route':'list');
- button.classList.toggle('route-result-return',route);
- button.setAttribute('aria-label',route?`가는 길 주유소 목록 ${text}곳 열기`:`주유소 목록 ${text}곳 열기`);
- button.title=route?'가는 길 주유소 목록으로 돌아가기':'주유소 목록 열기';
+ if(button&&label&&glyph&&counter){
+  const value=Number(count)||0,text=value.toLocaleString('ko-KR'),route=routeResults&&state.view==='route';
+  label.textContent=route?'가는 길 목록':'목록';counter.textContent=text;glyph.innerHTML=icon(route?'route':'list');
+  button.classList.toggle('route-result-return',route);
+  button.setAttribute('aria-label',route?`가는 길 주유소 목록 ${text}곳 열기`:`주유소 목록 ${text}곳 열기`);
+  button.title=route?'가는 길 주유소 목록으로 돌아가기':'주유소 목록 열기';
+ }
+ syncRouteTransitionUI();
 }
 function openFocusList(){state.listLimit=60;render();mobileMapView.openListSheet();}
 function stationRegion(station){
@@ -356,14 +399,14 @@ async function planRoute(){
   const task=routeMode.plan({stations:state.all,fuel:state.fuel,...settings,corridorMeters:Number($('route-corridor').value),option:$('route-option').value,brand:state.brand,selfOnly:state.self});render();
   const response=await task;
   if(response?.baseRoute?.path?.length>1){if(state.mapReady)map.showRoute(response.baseRoute.path,{kind:'base',fitBounds:true,origin:routeMode.state.origin,destination:routeMode.state.destination});useBaseRouteSimulation(response);}
-  if(['ready','partial'].includes(response?.status)){rememberDestination();render();if(mobileMapView.isMobile())mobileMapView.openListSheet();else requestAnimationFrame(()=>$('results-header')?.scrollIntoView({block:'start'}));}
+  if(['ready','partial'].includes(response?.status)){routePlannerOpen=false;rememberDestination();render();if(mobileMapView.isMobile())mobileMapView.openListSheet();else requestAnimationFrame(()=>$('results-header')?.scrollIntoView({block:'start'}));}
   if(response?.status==='partial'&&response.warnings?.length)toast('일부 후보의 우회 경로는 확인하지 못했습니다.');
  }catch(error){if(error.name!=='AbortError')toast(error.message||'경로를 확인하지 못했습니다.');}
  finally{button.disabled=false;button.innerHTML='경로상 주유소 보기 <span aria-hidden="true">→</span>';render();}
 }
 function openRouteNavigation(id){const urls=routeMode.navigationForStation(id);if(!urls){toast('출발지·주유소·목적지 좌표를 확인해 주세요.');return;}if(/JuyuhannunAndroid\//.test(navigator.userAgent)){location.href=urls.app;return;}const opened=window.open(urls.web,'_blank','noopener,noreferrer');if(!opened)location.href=urls.web;}
 
-document.querySelectorAll('[data-view]').forEach(b=>b.addEventListener('click',()=>selectView(b.dataset.view)));
+document.querySelectorAll('[data-view]').forEach(b=>b.addEventListener('click',()=>{if(b.dataset.view==='route'){openRoutePlanner();return;}selectView(b.dataset.view);}));
 document.querySelectorAll('[data-fuel]').forEach(b=>{b.classList.toggle('active',b.dataset.fuel===state.fuel);b.setAttribute('aria-pressed',String(b.dataset.fuel===state.fuel));b.addEventListener('click',()=>{const changed=state.fuel!==b.dataset.fuel;state.fuel=b.dataset.fuel;saveStorage('juyu:fuel:v1',state.fuel);document.querySelectorAll('[data-fuel]').forEach(x=>{const active=x.dataset.fuel===state.fuel;x.classList.toggle('active',active);x.setAttribute('aria-pressed',String(active));});$('fuel-tabs').classList.remove('mobile-open');$('mobile-fuel-toggle').setAttribute('aria-expanded','false');syncMobileFuelToggle();if(changed){if(state.view==='route'){routeMode.invalidate();routeSimulation.set(null);if(state.mapReady)map.clearRoute();}render();if($('detail-dialog').open)renderDetail();}});});
 syncMobileFuelToggle();
 $('query').addEventListener('input',()=>{state.listLimit=60;++state.searchGeneration;$('search-candidates').hidden=true;state.query=$('query').value;render();});
@@ -444,7 +487,7 @@ $('zoom-out').addEventListener('click',()=>{if(state.mapReady)map.zoomBy(-1);});
 $('map-type-toggle').addEventListener('click',()=>{const b=$('map-type-toggle');if(!state.mapReady)return;const result=map.toggleMapType();if(!result.supported){b.hidden=true;return;}const satellite=result.type==='satellite';b.setAttribute('aria-pressed',String(satellite));b.setAttribute('aria-label',satellite?'일반 지도 보기':'위성 지도 보기');b.title=satellite?'일반 지도 보기':'위성 지도 보기';});
 $('focus-rescan').addEventListener('click',()=>{if(!state.mapReady)return;updateViewport({center:map.getCenter(),bounds:map.getBounds()});toast('현재 지도 영역의 주유소를 다시 확인했습니다.');});
 $('focus-dock-list').addEventListener('click',()=>openFocusList());
-$('focus-dock-more').addEventListener('click',()=>showDialog('info-dialog'));
+$('focus-dock-more').addEventListener('click',()=>{if(hasRouteResults()){if(isRoutePlannerVisible())closeRoutePlanner();else openRoutePlanner();return;}showDialog('info-dialog');});
 $('locate').addEventListener('click',async()=>{const b=$('locate');b.disabled=true;try{if(!state.mapReady)throw new Error('지도가 준비되는 중입니다.');const position=await map.locate();lastLocatedPoint={lat:position.lat,lng:position.lng};state.center={lat:position.lat,lng:position.lng};toast('현재 위치 주변으로 이동했습니다.');}catch(error){toast(error.message||'현재 위치를 확인하지 못했습니다. 위치 권한을 확인해 주세요.');}finally{b.disabled=false;}});
 for(const id of ['open-info','footer-info'])$(id).addEventListener('click',()=>showDialog('info-dialog'));
 document.querySelectorAll('[data-close]').forEach(b=>b.addEventListener('click',()=>{if(b.dataset.close==='detail-dialog'&&mobileMapView.isMobile())mobileMapView.closeDetail();else closeDialog(b.dataset.close);}));
