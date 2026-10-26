@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {createRouteModeController,DIRECTIONS_PROXY,normalizeDirectionsResponse} from '../public/js/route-mode.js';
+import {createRouteModeController,DIRECTIONS_PROXY,normalizeDirectionsResponse,selectRouteDisplayRows} from '../public/js/route-mode.js';
 
 const appSource=readFileSync(new URL('../public/js/app.js',import.meta.url),'utf8');
 
@@ -78,4 +78,17 @@ test('app forwards structured proxy retry metadata to route mode',()=>{
   assert.match(appSource,/error\.code=data\?\.error\?\.code\?\?data\?\.code/);
   assert.match(appSource,/error\.retryable=data\?\.retryable===true/);
   assert.match(appSource,/error\.retryAfterMs=Number\.isFinite/);
+});
+
+test('route result scope keeps the top three recommendations or every route station',()=>{
+  const rows=[
+    {id:'first',routeRank:1},
+    {id:'fourth',routeRank:4},
+    {id:'unranked',routeRank:null},
+    {id:'second',routeRank:2},
+    {id:'third',routeRank:3},
+  ];
+  assert.deepEqual(selectRouteDisplayRows(rows,'recommended').map(row=>row.id),['first','second','third']);
+  assert.equal(selectRouteDisplayRows(rows,'all'),rows);
+  assert.deepEqual(selectRouteDisplayRows(null,'recommended'),[]);
 });

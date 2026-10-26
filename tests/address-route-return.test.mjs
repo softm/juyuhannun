@@ -104,3 +104,13 @@ test('route results transition between planner, list and map without covering th
   assert.match(mobileCss, /body\.route-mode\.route-planner-open\.mobile-map-browse \.workspace>\.sidebar>\.route-panel/);
   assert.doesNotMatch(mobileCss, /body\.route-mode\.mobile-map-browse \.workspace>\.sidebar>\.route-panel/);
 });
+
+test('route results switch between the top recommendations and all stations from a map icon', () => {
+  assert.match(html, /id="route-results-toggle"[\s\S]{0,300}data-icon="star"/);
+  assert.match(app, /routeResultScope:'recommended'/);
+  assert.match(app, /selectRouteDisplayRows\(allRows,state\.routeResultScope\)/);
+  assert.match(app, /\$\('route-results-toggle'\)\.addEventListener\('click'/);
+  assert.match(app, /map\.setStations\(mapRows,rows\.length\?state\.selected:null,state\.fuel\)/);
+  assert.match(styles, /\.route-results-toggle\[aria-pressed="true"\]/);
+  assert.match(mobileCss, /body\.route-mode\.route-results-ready \.map-secondary-actions \.route-results-toggle\[aria-pressed="false"\]/);
+});
