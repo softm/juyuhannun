@@ -546,6 +546,16 @@
  body.route-mode.mobile-map-browse .workspace>.sidebar>.route-panel,
  body.route-mode.mobile-map-expanded .workspace>.sidebar>.route-panel{left:6px;right:6px;padding-left:13px;padding-right:13px}
 }
+
+/* Keep interactive map chrome above the fixed bottom ad instead of letting its iframe intercept taps. */
+@media(max-width:1000px){
+ body.juyu-bottom-ad-active.mobile-map-browse .mobile-focus-dock{bottom:calc(18px + var(--juyu-bottom-ad-space,0px) + env(safe-area-inset-bottom,0px))}
+ body.juyu-bottom-ad-active.mobile-map-browse .focus-rescan{bottom:calc(104px + var(--juyu-bottom-ad-space,0px) + env(safe-area-inset-bottom,0px))}
+ body.juyu-bottom-ad-active.route-mode .route-simulation{bottom:calc(82px + var(--juyu-bottom-ad-space,0px) + env(safe-area-inset-bottom,0px))}
+ body.juyu-bottom-ad-active.route-mode.mobile-map-browse .workspace>.sidebar>.route-panel,
+ body.juyu-bottom-ad-active.route-mode.mobile-map-expanded .workspace>.sidebar>.route-panel{bottom:calc(92px + var(--juyu-bottom-ad-space,0px) + env(safe-area-inset-bottom,0px))}
+ body.juyu-bottom-ad-active.mobile-list-sheet .workspace>.sidebar{bottom:var(--juyu-bottom-ad-space,0px)!important;inset:auto 10px var(--juyu-bottom-ad-space,0px)!important;max-height:calc(90dvh - var(--juyu-bottom-ad-space,0px))!important}
+}
 @media(max-height:680px) and (max-width:1000px){
  body.route-mode.mobile-map-browse .workspace>.sidebar>.route-panel,
  body.route-mode.mobile-map-expanded .workspace>.sidebar>.route-panel{top:calc(176px + env(safe-area-inset-top,0px));bottom:calc(78px + env(safe-area-inset-bottom,0px))}
