@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
-import { pickListScrollStation, resolveListDragSnap } from '../public/js/mobile-map-view.js';
+import { pickListScrollStation, resolveListDragSnap, toggleListSizeSnap } from '../public/js/mobile-map-view.js';
 
 const [html, app, routeMode, map, view, css, styles] = await Promise.all([
   readFile(new URL('../public/index.html', import.meta.url), 'utf8'),
@@ -128,10 +128,22 @@ test('five-state mobile focus flow includes map browse and draggable list sheet 
   assert.match(view, /resolveListDragSnap/);
   assert.match(html, /id="mobile-focus-dock"/);
   assert.match(html, /id="mobile-list-sheet-handle"/);
+  assert.match(html, /id="mobile-list-sheet-size-toggle"[\s\S]{0,240}data-icon="expand"/);
   assert.match(html, /id="mobile-list-sheet-close"[\s\S]{0,180}data-icon="back"/);
+  assert.match(app, /listSheetSizeButton:\$\('mobile-list-sheet-size-toggle'\)/);
+  assert.match(view, /listSheetSizeButton\?\.addEventListener\('click',toggleListSheetSize\)/);
   assert.match(view, /sidebar\.toggleAttribute\('data-map-overlay',listOpen\)/);
   assert.match(css, /body\.mobile-map-browse \.mobile-focus-dock/);
   assert.match(css, /body\.mobile-list-sheet\.mobile-list-expanded/);
+  assert.match(css, /body\.route-mode\.mobile-list-sheet \.workspace>\.sidebar>\.mobile-list-sheet-size-toggle\{display:flex/);
+});
+
+test('list size button toggles between one-row and expanded heights', () => {
+  assert.equal(toggleListSizeSnap('medium'),'expanded');
+  assert.equal(toggleListSizeSnap('expanded'),'compact');
+  assert.equal(toggleListSizeSnap('compact'),'expanded');
+  assert.match(view, /목록 한 행 높이로 축소/);
+  assert.match(view, /icon\(expanded\?'collapse':'expand'\)/);
 });
 
 test('list handle follows the pointer outside its small hit area and closes when pulled fully down', () => {
