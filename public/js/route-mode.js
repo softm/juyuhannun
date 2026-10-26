@@ -9,7 +9,7 @@ import {
   sortRouteCandidates,
 } from './route-candidates.js';
 
-export const DIRECTIONS_PROXY='https://daycare-directions-proxy.vercel.app/api/directions';
+export const DIRECTIONS_PROXY='https://asia-northeast3-softm-hannun-api.cloudfunctions.net/directions'; // SOFTM-FIREBASE-DIRECTIONS 날짜:20261026 : 돌봄한눈과 같은 공용 서울 리전 함수 사용
 const ROUTE_TIMEOUT_MS=25_000;
 const VERIFICATION_CONCURRENCY=3;
 const VERIFICATION_LIMIT=8;
