@@ -203,6 +203,11 @@ function markerTone(info, stale, bands) {
   return 'orange';
 }
 
+const ROUTE_LINE_STYLE = Object.freeze({
+  base: Object.freeze({ color:'#1d4ed8', weight:6, casingWeight:11, zIndex:60 }),
+  via: Object.freeze({ color:'#7c3aed', weight:7, casingWeight:12, zIndex:80 }),
+});
+
 function installMarkerStyles() {
   if (document.getElementById('juyuhannun-map-style')) return;
   const style = document.createElement('style');
@@ -244,6 +249,7 @@ function installMarkerStyles() {
     '.selected-station-callout strong{max-width:168px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.selected-station-callout b{font-size:18px;font-weight:500;color:#42675d}',
     '.price-pin-name{display:none!important}',
     '.map-surface[data-marker-scale="dot"] .price-pin:not(.selected),.map-surface.dense-markers .price-pin:not(.selected){width:15px;height:15px;min-width:15px;min-height:15px;border-width:2px;bottom:1px;box-shadow:0 1px 4px #1236}',
+    'body.route-mode .map-surface[data-marker-scale="dot"] .price-pin:not(.selected),body.route-mode .map-surface.dense-markers .price-pin:not(.selected){width:18px;height:18px;min-width:18px;min-height:18px;border-width:3px;box-shadow:0 0 0 1px #0f172a4d,0 2px 7px #0f172a66}',
     '.map-surface[data-marker-scale="dot"] .price-pin:not(.selected):after,.map-surface.dense-markers .price-pin:not(.selected):after{display:none}',
     '.map-surface[data-marker-scale="dot"] .price-pin:not(.selected) .price-pin-glyph,.map-surface.dense-markers .price-pin:not(.selected) .price-pin-glyph{display:none}',
     '.map-surface[data-marker-size="small"] .price-pin:not(.selected){width:11px;height:11px;min-width:11px;min-height:11px;border-width:2px}',
@@ -255,7 +261,7 @@ function installMarkerStyles() {
     '.map-you.is-driving{width:30px;height:30px;border-width:4px;background:#1769d7;box-shadow:0 0 0 9px #2674db26,0 4px 14px #193a6050}',
     '.map-you.is-driving:before{content:"";position:absolute;left:50%;top:-15px;width:0;height:0;border-left:7px solid transparent;border-right:7px solid transparent;border-bottom:15px solid #1769d7;transform:translateX(-50%) rotate(var(--drive-heading,0deg));transform-origin:50% 30px;filter:drop-shadow(0 1px 1px #fff)}',
     '.route-endpoint{display:flex;align-items:center;justify-content:center;width:36px;height:36px;border:3px solid #fff;border-radius:50%;color:#fff;box-shadow:0 4px 13px #183a3445;font:900 12px/1 system-ui,sans-serif}',
-    '.route-endpoint-start{background:#119da4}.route-endpoint-destination{background:#174f45}',
+    '.route-endpoint-start{background:#1d4ed8}.route-endpoint-destination{background:#111827}',
     '.route-simulation-car{display:flex;align-items:center;justify-content:center;width:42px;height:42px;border:3px solid #fff;border-radius:50%;background:#0f6b57;color:#fff;box-shadow:0 0 0 7px #0f6b5726,0 6px 18px #173a3150;font:24px/1 system-ui,sans-serif}',
     '.juyuhannun-map .leaflet-control-attribution{font-size:10px;background:rgba(255,255,255,.92)}',
     '@media(max-width:1000px){.station-marker .price-pin.selected{width:70px;height:70px;min-width:70px;min-height:70px}.selected-station-callout{font-size:14px;min-height:46px}.lowest-price-badge{height:40px;min-width:98px;font-size:14px}}',
@@ -298,6 +304,8 @@ export class MapController {
     this._routeEndpoints = null;
     this._baseRoute = null;
     this._viaRoute = null;
+    this._baseRouteCasing = null;
+    this._viaRouteCasing = null;
     this._routeStart = null;
     this._routeDestination = null;
     this._routeSimulationMarker = null;
@@ -1148,15 +1156,19 @@ export class MapController {
     else this._viaRouteCoords=routeCoords;
     if (!this.map) return;
     this._internal(() => {
+      const appearance=ROUTE_LINE_STYLE[kind];
       if (this.provider === 'naver') {
         const maps = globalThis.naver.maps;
         const path = routeCoords.map(pair => new maps.LatLng(pair[1], pair[0]));
-        const polyline = new maps.Polyline({ map: this.map, path, strokeColor: kind==='base'?'#119da4':'#146d45', strokeWeight: kind==='base'?5:7, strokeOpacity: kind==='base'?.78:.94, strokeStyle:kind==='base'?'shortdash':'solid',zIndex:kind==='base'?130:150 });
-        if(kind==='base')this._baseRoute=polyline;else this._viaRoute=polyline;
+        const casing = new maps.Polyline({ map:this.map, path, strokeColor:'#fff', strokeWeight:appearance.casingWeight, strokeOpacity:.96, strokeStyle:'solid', zIndex:appearance.zIndex, clickable:false });
+        const polyline = new maps.Polyline({ map:this.map, path, strokeColor:appearance.color, strokeWeight:appearance.weight, strokeOpacity:.98, strokeStyle:'solid', zIndex:appearance.zIndex+1, clickable:false });
+        if(kind==='base'){this._baseRouteCasing=casing;this._baseRoute=polyline;}else{this._viaRouteCasing=casing;this._viaRoute=polyline;}
         if(fitBounds){const bounds=new maps.LatLngBounds();path.forEach(point=>bounds.extend(point));const mobile=globalThis.matchMedia?.('(max-width:1000px)')?.matches===true;this.map.fitBounds(bounds,{top:mobile?110:80,right:55,bottom:mobile?150:90,left:mobile?55:470});}
       } else {
-        const polyline=globalThis.L.polyline(routeCoords.map(pair=>[pair[1],pair[0]]),{color:kind==='base'?'#119da4':'#146d45',weight:kind==='base'?5:7,opacity:kind==='base'?.78:.94,dashArray:kind==='base'?'10 8':null}).addTo(this.map);
-        if(kind==='base')this._baseRoute=polyline;else this._viaRoute=polyline;
+        const path=routeCoords.map(pair=>[pair[1],pair[0]]),common={opacity:.98,lineCap:'round',lineJoin:'round',interactive:false};
+        const casing=globalThis.L.polyline(path,{...common,color:'#fff',weight:appearance.casingWeight}).addTo(this.map);
+        const polyline=globalThis.L.polyline(path,{...common,color:appearance.color,weight:appearance.weight}).addTo(this.map);
+        if(kind==='base'){this._baseRouteCasing=casing;this._baseRoute=polyline;}else{this._viaRouteCasing=casing;this._viaRoute=polyline;}
         if(fitBounds){const mobile=globalThis.matchMedia?.('(max-width:1000px)')?.matches===true;this.map.fitBounds(polyline.getBounds(),{paddingTopLeft:[mobile?55:470,mobile?110:80],paddingBottomRight:[55,mobile?150:90],animate:false});}
       }
     });
@@ -1183,10 +1195,12 @@ export class MapController {
   clearRoute(kind='all',{keepCoordinates=false,keepEndpoints=false}={}) {
     if(kind==='all')this.clearRouteSimulationPoint();
     if(kind==='all'||kind==='base'){
+      if(this._baseRouteCasing)this._removeMarker(this._baseRouteCasing);this._baseRouteCasing=null;
       if(this._baseRoute)this._removeMarker(this._baseRoute);this._baseRoute=null;
       if(!keepCoordinates){this._baseRouteCoords=[];this._routeCoords=[];}
     }
     if(kind==='all'||kind==='via'){
+      if(this._viaRouteCasing)this._removeMarker(this._viaRouteCasing);this._viaRouteCasing=null;
       if(this._viaRoute)this._removeMarker(this._viaRoute);this._viaRoute=null;
       if(!keepCoordinates)this._viaRouteCoords=[];
     }
@@ -1259,6 +1273,8 @@ export class MapController {
     this._retainedLabels.clear();
     this._baseRoute = null;
     this._viaRoute = null;
+    this._baseRouteCasing = null;
+    this._viaRouteCasing = null;
     this._routeStart = null;
     this._routeDestination = null;
     this._routeSimulationMarker = null;
