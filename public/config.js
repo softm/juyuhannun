@@ -2,6 +2,9 @@
 // Server credentials belong only in environment variables. See shared/SOURCE.md.
 export const APP_CONFIG = Object.freeze({
   naverClientId: "etfcybk8vf",
+  // Public, domain-restricted browser key shared with the user's Tojihannun place search.
+  // This is not a server credential; VWorld validates the requesting web domain.
+  vworldSearchKey: "BC222DE5-514C-4E8A-A143-73DD322834D1",
   apiBase: '',
   dataUrl: './data/stations.json',
   nationwideDataUrl: './data/nationwide/latest.json',
