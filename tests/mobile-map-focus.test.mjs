@@ -133,7 +133,7 @@ test('compare basket stays retired while route-aware station discovery is availa
   assert.doesNotMatch(app, /storedCompare|state\.compare|toggleCompare|data-action="compare"/);
   assert.match(html, /data-view="route"/);
   assert.match(html, /id="route-panel"/);
-  assert.match(routeMode, /route\/recommendations/);
+  assert.match(routeMode, /daycare-directions-proxy\.vercel\.app\/api\/directions/);
   assert.doesNotMatch(html, /id="open-calculator"/);
   assert.doesNotMatch(app, /compareSelectedRoute/);
 });
@@ -165,6 +165,15 @@ test('route mode is destination-first and keeps cost comparison out of the prima
   assert.match(app, /mobileMapView\.toggleMapChrome\(\)/);
   assert.doesNotMatch(app, /routeInputNumber/);
   assert.doesNotMatch(app, /invalidateRoutes|routeGeneration|state\.routes/);
+});
+
+test('route results expose compact road-path simulation controls', () => {
+  for (const control of ['route-simulation','data-simulation-play','data-simulation-restart','data-simulation-speed','data-simulation-stop']) assert.match(html,new RegExp(control));
+  assert.match(app,/createRouteSimulationController/);
+  assert.match(app,/useBaseRouteSimulation/);
+  assert.match(app,/useStationRouteSimulation/);
+  assert.match(map,/setRouteSimulationPoint/);
+  assert.match(styles,/\.route-simulation\{/);
 });
 
 
