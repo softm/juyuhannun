@@ -1,6 +1,6 @@
 import { APP_CONFIG } from '../config.js';
 import { MapController } from './map.js';
-import { escapeHTML as esc, money, finite, getFuelPrice, formatTime, freshness } from './core.js';
+import { escapeHTML as esc, money, finite, getFuelPrice, formatTime, freshness, stationNavigationURL } from './core.js';
 import { isKoreanPoint, safeSourceUrl, visibleBenchmarks, energyCacheKey, retainEnergySnapshot } from './energy-core.js';
 import { mountBottomAd } from './adfit.js';
 
@@ -205,7 +205,7 @@ function selectView(view) {
 }
 
 function queryMatches(row) {
-  return !state.query || [row.name, row.address, row.routeName, row.direction, row.operator].filter(Boolean).join(' ').toLocaleLowerCase('ko').includes(state.query.toLocaleLowerCase('ko'));
+  return !state.query || [row.name, row.address, row.roadAddress, row.routeName, row.direction, row.oilCompanyName, row.oilCompanyCode, row.operator, row.phone, row.serviceAreaCode, row.serviceAreaCode2].filter(Boolean).join(' ').toLocaleLowerCase('ko').includes(state.query.toLocaleLowerCase('ko'));
 }
 function render() {
   if (state.view === 'hydrogen') { state.visible = []; renderHydrogen(); }
@@ -221,7 +221,10 @@ function render() {
   if ($('energy-detail').open) renderDetail();
   $('energy-count').textContent = state.view === 'hydrogen' ? '공식 안내' : String(state.visible.length);
   const restricted = state.envelope?.coverage?.complete === false;
-  $('energy-coverage').textContent = state.view === 'hydrogen' ? '' : state.view === 'highway' && state.visible.length > 200 ? '가격순 200곳 표시' : restricted && state.records.length ? '수집된 범위 자료' : '';
+  const sourceStationCount = Number(state.envelope?.coverage?.sourceStationCount);
+  $('energy-coverage').textContent = state.view === 'hydrogen' ? ''
+    : state.view === 'highway' && Number.isInteger(sourceStationCount) ? `전체 ${sourceStationCount}곳 · 선택 유종 가격 ${state.visible.length}곳${state.visible.length > 200 ? ' · 가격순 200곳 표시' : ''}`
+      : restricted && state.records.length ? '수집된 범위 자료' : '';
   const mapped = state.view === 'highway' ? state.visible.slice(0, 200).filter(isKoreanPoint) : [];
   if (state.ready) map.setStations(mapped, state.selected, state.fuel);
   $('energy-map-message').hidden = state.view === 'highway' && mapped.length > 0;
@@ -300,7 +303,8 @@ function renderEmpty() {
 }
 function highwayCard(row) {
   const price = getFuelPrice(row, state.fuel), retained = isRetained(row);
-  return `<article class="energy-card${state.selected === row.id ? ' selected' : ''}"><h3>${esc(row.name)}</h3><p class="energy-card-sub">${esc([row.routeName, row.direction, row.operator].filter(Boolean).join(' · ') || '노선·운영 방향 정보 미제공')}</p><div class="energy-card-price">${money(price?.price)}<small>원/L · ${fuelName(state.fuel)}</small></div><span class="confidence unknown">${retained ? '이전 수집자료 · ' : ''}가격 기준 ${esc(displayTime(price?.priceUpdatedAt))}</span><p class="energy-card-note">수집 ${esc(displayTime(price?.fetchedAt || row.fetchedAt))}</p><div class="energy-card-actions"><button type="button" class="small-button secondary" data-energy-detail="${esc(row.id)}">업체·유종별 가격</button>${isKoreanPoint(row) ? '<span class="tag">지도 위치 있음</span>' : '<span class="energy-card-note">좌표 미제공</span>'}</div></article>`;
+  const company = row.oilCompanyName || row.operator || row.oilCompanyCode;
+  return `<article class="energy-card${state.selected === row.id ? ' selected' : ''}"><h3>${esc(row.name)}</h3><p class="energy-card-sub">${esc([row.routeName, row.direction, company].filter(Boolean).join(' · ') || '노선·운행 방향 정보 미제공')}</p><div class="energy-card-price">${money(price?.price)}<small>원/L · ${fuelName(state.fuel)}</small></div><span class="confidence unknown">${retained ? '이전 수집자료 · ' : ''}가격 기준 ${esc(displayTime(price?.priceUpdatedAt))}</span><p class="energy-card-note">수집 ${esc(displayTime(price?.fetchedAt || row.fetchedAt))}</p><div class="energy-card-actions"><button type="button" class="small-button secondary" data-energy-detail="${esc(row.id)}">시설·유종별 가격</button>${isKoreanPoint(row) ? '<span class="tag">지도 위치 있음</span>' : '<span class="energy-card-note">좌표 미제공</span>'}</div></article>`;
 }
 function renderAverages() {
   $('energy-results').innerHTML = warningHTML() + '<p class="aggregate-note">전국·지역의 평균 판매가격입니다. 같은 유종·기준일끼리 비교하세요. 수집시각은 가격 기준일과 다릅니다.</p>' + state.visible.map(row => {
@@ -328,12 +332,14 @@ function renderDetail() {
   const row = state.view === 'highway' && state.visible.find(item => item.id === state.selected);
   if (!row) { closeDetail(); return; }
   const source = sources.highway;
-  const nav = isKoreanPoint(row) ? `https://map.kakao.com/link/to/${encodeURIComponent(row.name)},${row.lat},${row.lng}` : null;
+  const nav = stationNavigationURL(row);
   const prices = highwayFuels.map(([fuel, name]) => {
     const price = getFuelPrice(row, fuel);
     return `<tr><th scope="row">${name}</th><td>${price ? `${money(price.price)}원/L` : '미제공'}</td><td>${esc(displayTime(price?.priceUpdatedAt))}</td><td>${esc(displayTime(price?.fetchedAt))}</td></tr>`;
   }).join('');
-  $('energy-detail-content').innerHTML = `<span class="eyebrow">${source.eyebrow}</span><h2 id="energy-detail-title">${esc(row.name)}</h2><p>${esc(row.address || '주소 정보 미제공')}</p>${warningHTML()}<dl><dt>노선·방향</dt><dd>${esc([row.routeName, row.direction].filter(Boolean).join(' · ') || '미제공')}</dd><dt>운영업체</dt><dd>${esc(row.operator || '미제공')}</dd><dt>시설 ID</dt><dd>${esc(row.id)}</dd></dl><div class="energy-price-table-wrap"><table class="energy-price-table"><caption>유종별 판매가격과 자료 시각</caption><thead><tr><th scope="col">유종</th><th scope="col">판매가격</th><th scope="col">가격 기준시각</th><th scope="col">수집시각</th></tr></thead><tbody>${prices}</tbody></table></div><p class="aggregate-note">수집시각은 가격이 변경된 시각과 다릅니다. 실제 이용 전 가격·노선·운행 방향과 진입 가능 여부를 확인하세요.</p><div class="energy-card-actions">${nav ? `<a class="small-button" href="${esc(nav)}" target="_blank" rel="noopener noreferrer">지도 길찾기 ↗</a>` : ''}<a class="small-button secondary" href="${esc(safeSourceUrl(row.source?.url, source.url))}" target="_blank" rel="noopener noreferrer">${source.sourceName} 원문 ↗</a></div>`;
+  const company = row.oilCompanyName || row.operator || row.oilCompanyCode || '미제공';
+  const facilityCodes = [row.serviceAreaCode, row.serviceAreaCode2].filter(Boolean).join(' · ') || row.id;
+  $('energy-detail-content').innerHTML = `<span class="eyebrow">${source.eyebrow}</span><h2 id="energy-detail-title">${esc(row.name)}</h2><p>${esc(row.roadAddress || row.address || '주소 정보 미제공')}</p>${warningHTML()}<dl><dt>노선·방향</dt><dd>${esc([row.routeName, row.direction].filter(Boolean).join(' · ') || '미제공')}</dd><dt>정유사</dt><dd>${esc(company)}${row.oilCompanyCode && row.oilCompanyName ? ` · 코드 ${esc(row.oilCompanyCode)}` : ''}</dd><dt>전화번호</dt><dd>${esc(row.phone || '미제공')}</dd><dt>도로공사 시설 ID</dt><dd>${esc(facilityCodes)}</dd>${row.opinetStationId ? `<dt>연결된 오피넷 ID</dt><dd>${esc(row.opinetStationId)}</dd>` : ''}</dl><div class="energy-price-table-wrap"><table class="energy-price-table"><caption>유종별 판매가격과 자료 시각</caption><thead><tr><th scope="col">유종</th><th scope="col">판매가격</th><th scope="col">가격 기준시각</th><th scope="col">수집시각</th></tr></thead><tbody>${prices}</tbody></table></div><p class="aggregate-note">도로공사 원본에는 개별 가격 변경시각이 없습니다. 수집시각을 가격 변경시각으로 사용하지 않으며, 실제 이용 전 가격·노선·운행 방향과 진입 가능 여부를 확인하세요.</p><div class="energy-card-actions"><a class="small-button" href="${esc(nav)}" target="_blank" rel="noopener noreferrer">지도 길찾기 ↗</a><a class="small-button secondary" href="${esc(safeSourceUrl(row.source?.url, source.url))}" target="_blank" rel="noopener noreferrer">${source.sourceName} 원문 ↗</a></div>`;
 }
 function changeScope() {
   state.selected = null;
