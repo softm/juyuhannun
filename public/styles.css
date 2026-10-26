@@ -125,6 +125,10 @@ body:not(.energy-page) .app-header{height:66px;padding:0 24px}
 .map-secondary-actions{position:absolute;z-index:11;right:75px;top:143px;display:flex;flex-direction:column;gap:8px}
 .map-secondary-action{display:flex;align-items:center;justify-content:center;width:41px;height:41px;border:1px solid #e3e9dd;border-radius:10px;background:#fff;color:#54734c;box-shadow:0 4px 14px #34482615;touch-action:manipulation}
 .map-secondary-action svg{width:19px;height:19px}
+.route-results-toggle[hidden]{display:none!important}
+.route-results-toggle[aria-pressed="true"]{border-color:#0f6b57;background:#0f6b57;color:#fff;box-shadow:0 0 0 4px #0f6b5724,0 7px 20px #17362e28}
+.route-results-toggle[aria-pressed="false"]{border-color:#ddd4f7;background:#fff;color:#765ac6}
+.route-results-toggle .icon{display:flex;align-items:center;justify-content:center}
 @media(hover:hover){.map-secondary-action:hover{background:#edf2ed}}
 @media(min-width:1001px) and (max-width:1100px){.map-secondary-actions{right:70px;top:181px}}
 @media(min-width:761px) and (max-width:1366px){.map-secondary-action{width:48px;height:48px;border-radius:12px}.map-secondary-action svg{width:22px;height:22px}}

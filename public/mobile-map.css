@@ -508,6 +508,9 @@
 /* Real-time driving mode: persistent control + clear active state. */
 .drive-mode-toggle[aria-pressed="true"]{background:#1769d7!important;color:#fff!important;border-color:#1769d7!important;box-shadow:0 0 0 4px #1769d726,0 7px 20px #17362e28!important}
 .drive-mode-toggle[aria-pressed="true"] .icon{transform:translateY(-1px)}
+.route-results-toggle[hidden]{display:none!important}
+body.route-mode.route-results-ready .map-secondary-actions .route-results-toggle[aria-pressed="true"]{background:#0f6b57;color:#fff;border-color:#0f6b57;box-shadow:0 0 0 4px #0f6b5724,0 7px 20px #17362e28}
+body.route-mode.route-results-ready .map-secondary-actions .route-results-toggle[aria-pressed="false"]{background:#fff;color:#765ac6;border-color:#ddd4f7;box-shadow:0 6px 20px #17362e24}
 @media(max-width:1000px){
  body.driving-mode .drive-mode-toggle{display:flex!important}
  body.mobile-map-collapsed.driving-mode .map-secondary-actions{
