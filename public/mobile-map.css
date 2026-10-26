@@ -568,3 +568,46 @@
  body.route-mode.route-planner-open.mobile-map-browse .workspace>.sidebar>.route-panel,
  body.route-mode.route-planner-open.mobile-map-expanded .workspace>.sidebar>.route-panel{top:calc(176px + env(safe-area-inset-top,0px));bottom:calc(78px + env(safe-area-inset-bottom,0px))}
 }
+
+/* Route planner keeps the destination flow compact and the primary action reachable. */
+@media(max-width:1000px){
+ body.route-mode.route-planner-open.mobile-map-browse .workspace>.sidebar>.route-panel,
+ body.route-mode.route-planner-open.mobile-map-expanded .workspace>.sidebar>.route-panel{
+   display:flex!important;flex-direction:column;padding:0!important;overflow:hidden!important;background:#fffffff9
+ }
+ body.route-mode .route-planner-scroll{padding:13px 14px 9px;scrollbar-gutter:auto}
+ body.route-mode .route-panel-head h2{margin-top:2px;font-size:17px;line-height:1.25}
+ body.route-mode .route-mode-chip{min-height:26px;padding:0 8px}
+ body.route-mode .route-intro{margin-top:5px;font-size:10px;line-height:1.45}
+ body.route-mode .route-progress-steps{margin-top:9px}
+ body.route-mode .route-progress-steps li{height:28px}
+ body.route-mode .route-destination-card{margin-top:9px;padding:12px;border-radius:14px}
+ body.route-mode .route-destination-card>label{font-size:13px}
+ body.route-mode .route-destination-card form{margin-top:7px}
+ body.route-mode .route-destination-card input{height:40px}
+ body.route-mode .route-address-help{margin-top:5px}
+ body.route-mode .route-selected-point{margin-top:7px;padding:7px 8px}
+ body.route-mode .route-destination-actions{margin-top:7px}
+ body.route-mode .route-origin-compact{margin-top:8px;padding:9px 10px}
+ body.route-mode .route-origin-compact>button{padding:7px 8px}
+ body.route-mode .route-options{margin-top:8px}
+ body.route-mode .route-options>summary{min-height:39px}
+ body.route-mode .route-summary{margin-top:8px}
+ body.route-mode .route-trust-note{margin-top:7px}
+ body.route-mode .route-action-zone{padding:9px 14px 10px}
+ body.route-mode .route-action-zone .route-submit{min-height:45px;font-size:12px}
+ body.route-mode .route-action-copy{margin-top:6px}
+ body.route-mode .route-action-zone .route-simple-note{display:none}
+ body.route-mode .route-action-zone .route-api-state{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:8px}
+}
+@media(min-width:640px) and (max-width:1000px){
+ body.mobile-map-browse .workspace>.sidebar>nav.view-tabs,
+ body.mobile-map-expanded .workspace>.sidebar>nav.view-tabs{left:18px;right:auto;width:470px}
+ body.route-mode.route-planner-open.mobile-map-browse .workspace>.sidebar>.route-panel,
+ body.route-mode.route-planner-open.mobile-map-expanded .workspace>.sidebar>.route-panel{left:18px;right:auto;bottom:auto!important;width:470px;height:min(600px,calc(100dvh - 216px - var(--juyu-bottom-ad-space,0px) - env(safe-area-inset-top,0px)))}
+}
+@media(max-width:370px){
+ body.route-mode .route-progress-steps li{gap:4px;font-size:8px}
+ body.route-mode .route-mode-chip{display:none}
+ body.route-mode .route-destination-card>label small{font-size:8px}
+}

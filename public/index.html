@@ -46,27 +46,37 @@
         </div>
       </div>
       <section id="route-panel" class="route-panel" aria-labelledby="route-heading" hidden>
-        <div class="route-panel-head"><div><span class="eyebrow">ON YOUR WAY</span><h2 id="route-heading">목적지 가는 길에 주유하기</h2></div></div>
-        <p class="route-intro">목적지만 선택하면 현재 위치에서 가는 길의 주유소를 실제 우회시간과 함께 보여드립니다.</p>
-        <div class="route-destination-card">
-          <label for="route-destination-query">어디로 가세요? · 목적지 통합검색</label>
-          <form id="route-destination-form"><input id="route-destination-query" type="search" placeholder="장소명, 도로명 또는 지번 입력" maxlength="100" autocomplete="off" aria-describedby="route-destination-help"><button type="submit">검색</button></form>
-          <p id="route-destination-help" class="route-address-help">장소·건물명·도로명·지번을 한 번에 검색할 수 있습니다.</p>
-          <div id="route-destination-candidates" class="search-candidates" role="listbox" aria-label="목적지 장소 및 주소 검색 결과" aria-live="polite" hidden></div>
-          <strong id="route-destination-label">장소나 주소를 검색하거나 지도에서 선택해 주세요</strong>
-          <div class="route-destination-actions"><button type="button" id="route-destination-map">지도에서 선택</button><label id="route-recent-wrap" class="route-recent-wrap" hidden>최근 목적지<select id="route-recent"><option value="">선택해 주세요</option></select></label></div>
+        <div class="route-planner-scroll">
+          <div class="route-panel-head"><div><span class="eyebrow">ON YOUR WAY</span><h2 id="route-heading">가는 길 주유소 찾기</h2></div><span class="route-mode-chip"><span class="icon" data-icon="route"></span>목적지 기준</span></div>
+          <p class="route-intro">목적지만 정하면 현재 위치에서 들르기 좋은 주유소를 추천합니다.</p>
+          <ol id="route-progress-steps" class="route-progress-steps" aria-label="가는 길 주유 진행 단계">
+            <li data-route-step="destination"><span>1</span><strong>목적지</strong></li>
+            <li data-route-step="options"><span>2</span><strong>경로 확인</strong></li>
+            <li data-route-step="results"><span>3</span><strong>추천 목록</strong></li>
+          </ol>
+          <div id="route-destination-card" class="route-destination-card">
+            <label for="route-destination-query"><span>어디로 가세요?</span><small>목적지 통합검색</small></label>
+            <div class="route-destination-search">
+              <form id="route-destination-form"><input id="route-destination-query" type="search" placeholder="장소명, 도로명 또는 지번 입력" maxlength="100" autocomplete="off" aria-describedby="route-destination-help"><button type="submit">찾기</button></form>
+              <div id="route-destination-candidates" class="search-candidates" role="listbox" aria-label="목적지 장소 및 주소 검색 결과" aria-live="polite" hidden></div>
+            </div>
+            <p id="route-destination-help" class="route-address-help">장소·건물명·도로명·지번을 한 번에 검색할 수 있습니다.</p>
+            <div class="route-selected-point"><span class="route-point-dot destination"></span><strong id="route-destination-label">목적지를 검색하거나 지도에서 선택해 주세요</strong></div>
+            <div class="route-destination-actions"><button type="button" id="route-destination-map"><span class="icon" data-icon="pin"></span>지도에서 선택</button><label id="route-recent-wrap" class="route-recent-wrap" hidden>최근 목적지<select id="route-recent"><option value="">선택해 주세요</option></select></label></div>
+          </div>
+          <div id="route-origin-card" class="route-origin-compact">
+            <span class="route-point-dot origin"></span><div><small>출발지</small><strong id="route-origin-label">현재 위치를 확인하고 있습니다</strong></div><button type="button" id="route-origin-current">현재 위치 사용</button>
+            <details class="route-origin-change"><summary>다른 출발지로 변경</summary><form id="route-origin-form"><input id="route-origin-query" type="search" placeholder="출발지 장소·주소 검색" maxlength="100" autocomplete="off"><button type="submit">찾기</button></form><button type="button" id="route-origin-map">지도에서 선택</button><div id="route-origin-candidates" class="search-candidates" hidden></div></details>
+          </div>
+          <div id="route-summary" class="route-summary" hidden></div>
+          <details class="route-options"><summary><span>추천 범위 조정</span><small id="route-options-summary">경로 2km 이내 · 최대 10분 우회</small></summary><div class="route-settings-grid"><label>경로에서 거리<select id="route-corridor"><option value="500">0.5 km 이내</option><option value="1000">1 km 이내</option><option value="2000" selected>2 km 이내</option><option value="3000">3 km 이내</option></select></label><label>허용할 우회<select id="route-max-detour"><option value="3">최대 3분</option><option value="5">최대 5분</option><option value="10" selected>최대 10분</option><option value="15">최대 15분</option></select></label><label>도로 선택<select id="route-option"><option value="traoptimal">실시간 빠른 길</option><option value="traavoidtoll">무료도로 우선</option></select></label></div><label class="route-recent-option"><input id="route-save-recent" type="checkbox"> 선택한 목적지를 이 기기에 저장</label></details>
+          <div id="route-sort-chips" class="route-sort-chips" aria-label="가는 길 주유소 정렬" hidden><button type="button" data-route-sort="recommended" class="active">추천</button><button type="button" data-route-sort="price">가격 낮은순</button><button type="button" data-route-sort="detour">우회 적은순</button><button type="button" data-route-sort="progress">가는 순서</button></div>
+          <details class="route-trust-note"><summary>위치·경로 정보 안내</summary><p class="route-coordinate-note">일부 주유소는 위치 정보가 없어 검색되지 않을 수 있습니다. 위치·경로 기록은 서버에 영구 저장하지 않습니다.</p></details>
         </div>
-        <div class="route-origin-compact">
-          <span class="route-point-dot origin"></span><div><small>출발지</small><strong id="route-origin-label">현재 위치를 확인하고 있습니다</strong></div><button type="button" id="route-origin-current">현재 위치</button>
-          <details class="route-origin-change"><summary>다른 출발지</summary><form id="route-origin-form"><input id="route-origin-query" type="search" placeholder="출발지 장소·주소 검색" maxlength="100" autocomplete="off"><button type="submit">찾기</button></form><button type="button" id="route-origin-map">지도에서 선택</button><div id="route-origin-candidates" class="search-candidates" hidden></div></details>
+        <div class="route-action-zone">
+          <button type="button" id="route-submit" class="route-submit" aria-label="경로상 주유소 보기">가는 길 주유소 보기 <span aria-hidden="true">→</span></button>
+          <div class="route-action-copy"><p id="route-api-state" class="route-api-state" role="status">목적지를 선택하면 실제 경로의 주유소를 확인합니다.</p><p class="route-simple-note">현재 가격과 실제 우회시간만 간단히 보여드립니다.</p></div>
         </div>
-        <details class="route-options"><summary><span>탐색 조건</span><small id="route-options-summary">경로 2km 이내 · 최대 10분 우회</small></summary><div class="route-settings-grid"><label>경로에서 거리<select id="route-corridor"><option value="500">0.5 km 이내</option><option value="1000">1 km 이내</option><option value="2000" selected>2 km 이내</option><option value="3000">3 km 이내</option></select></label><label>허용할 우회<select id="route-max-detour"><option value="3">최대 3분</option><option value="5">최대 5분</option><option value="10" selected>최대 10분</option><option value="15">최대 15분</option></select></label><label>도로 선택<select id="route-option"><option value="traoptimal">실시간 빠른 길</option><option value="traavoidtoll">무료도로 우선</option></select></label></div><label class="route-recent-option"><input id="route-save-recent" type="checkbox"> 선택한 목적지를 이 기기에 저장</label></details>
-        <button type="button" id="route-submit" class="route-submit">경로상 주유소 보기 <span aria-hidden="true">→</span></button>
-        <p class="route-simple-note">현재 가격과 실제 우회시간만 간단히 보여드립니다.</p>
-        <p id="route-api-state" class="route-api-state" role="status">실제 자동차 경로와 주유소 경유 우회시간을 확인합니다.</p>
-        <div id="route-summary" class="route-summary" hidden></div>
-        <div id="route-sort-chips" class="route-sort-chips" aria-label="가는 길 주유소 정렬" hidden><button type="button" data-route-sort="recommended" class="active">추천</button><button type="button" data-route-sort="price">가격 낮은순</button><button type="button" data-route-sort="detour">우회 적은순</button><button type="button" data-route-sort="progress">가는 순서</button></div>
-        <p class="route-coordinate-note">일부 주유소는 위치 정보가 없어 검색되지 않을 수 있습니다. 위치·경로 기록은 서버에 영구 저장하지 않습니다.</p>
       </section>
       <p id="coverage-hint" class="coverage-hint" aria-live="polite">지도 이동·확대·축소에 따라 결과가 바뀝니다.</p>
       <div class="results-header"><div><h2 id="results-title">지도 안 주유소</h2><span id="result-count" class="count">0</span></div><label><span class="sr-only">정렬 기준</span><select id="sort"><option value="price">가격 낮은순</option><option value="distance">가까운순 · 직선</option></select></label></div>
