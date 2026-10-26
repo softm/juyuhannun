@@ -49,10 +49,11 @@
         <div class="route-panel-head"><div><span class="eyebrow">ON YOUR WAY</span><h2 id="route-heading">목적지 가는 길에 주유하기</h2></div></div>
         <p class="route-intro">목적지만 선택하면 현재 위치에서 가는 길의 주유소를 실제 우회시간과 함께 보여드립니다.</p>
         <div class="route-destination-card">
-          <label for="route-destination-query">어디로 가세요?</label>
-          <form id="route-destination-form"><input id="route-destination-query" type="search" placeholder="목적지 주소 검색" maxlength="100" autocomplete="off"><button type="submit">찾기</button></form>
-          <div id="route-destination-candidates" class="search-candidates" hidden></div>
-          <strong id="route-destination-label">목적지를 검색하거나 지도에서 선택해 주세요</strong>
+          <label for="route-destination-query">어디로 가세요? · 목적지 주소로 찾기</label>
+          <form id="route-destination-form"><input id="route-destination-query" type="search" placeholder="도로명 또는 지번 주소 입력" maxlength="100" autocomplete="street-address" aria-describedby="route-destination-help"><button type="submit">주소 검색</button></form>
+          <p id="route-destination-help" class="route-address-help">도로명·지번 주소를 모두 검색할 수 있습니다.</p>
+          <div id="route-destination-candidates" class="search-candidates" role="listbox" aria-label="목적지 주소 검색 결과" aria-live="polite" hidden></div>
+          <strong id="route-destination-label">주소를 검색하거나 지도에서 선택해 주세요</strong>
           <div class="route-destination-actions"><button type="button" id="route-destination-map">지도에서 선택</button><label id="route-recent-wrap" class="route-recent-wrap" hidden>최근 목적지<select id="route-recent"><option value="">선택해 주세요</option></select></label></div>
         </div>
         <div class="route-origin-compact">
@@ -86,7 +87,7 @@
       <button type="button" id="mobile-list-toggle" class="mobile-list-toggle" aria-expanded="false" aria-controls="station-sidebar"><span class="icon" data-icon="list"></span><span>목록 보기</span></button>
       <button type="button" id="focus-rescan" class="focus-rescan" aria-label="현재 지도 영역 다시 검색"><span aria-hidden="true">↻</span> 이 지역 재검색</button>
       <nav id="mobile-focus-dock" class="mobile-focus-dock" aria-label="지도 집중모드 메뉴">
-        <button type="button" id="focus-dock-list"><span class="dock-icon">☷</span><span>목록 <strong id="focus-list-count">0</strong></span></button>
+        <button type="button" id="focus-dock-list" aria-label="주유소 목록 0곳 열기"><span id="focus-dock-list-icon" class="dock-icon" aria-hidden="true"><span data-icon="list"></span></span><span><span id="focus-dock-list-label">목록</span> <strong id="focus-list-count">0</strong></span></button>
         <button type="button" id="focus-dock-more"><span class="dock-icon">•••</span><span>더보기</span></button>
       </nav>
     </section>
