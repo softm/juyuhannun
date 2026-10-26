@@ -520,18 +520,19 @@
  body.mobile-map-expanded .workspace>.sidebar>nav.view-tabs .view-tab{padding:0 4px;border-bottom:0;border-radius:18px;font-size:10px}
  body.mobile-map-browse .workspace>.sidebar>nav.view-tabs .view-tab.active,
  body.mobile-map-expanded .workspace>.sidebar>nav.view-tabs .view-tab.active{background:#e6f4f1;color:#0a6358}
- body.route-mode.mobile-map-browse .workspace>.sidebar>.route-panel,
- body.route-mode.mobile-map-expanded .workspace>.sidebar>.route-panel{
+ body.route-mode.route-planner-open.mobile-map-browse .workspace>.sidebar>.route-panel,
+ body.route-mode.route-planner-open.mobile-map-expanded .workspace>.sidebar>.route-panel{
    display:block!important;position:fixed;left:10px;right:10px;top:calc(184px + env(safe-area-inset-top,0px));bottom:calc(92px + env(safe-area-inset-bottom,0px));z-index:184;max-height:none;padding:17px 16px 24px;border:1px solid #dce7e2;border-radius:24px;background:#fffffff5;box-shadow:0 10px 34px #17362e2c;overflow:auto;pointer-events:auto;backdrop-filter:blur(13px)
  }
- body.route-mode.mobile-map-browse #map-section .map-actions,
- body.route-mode.mobile-map-browse .map-secondary-actions,
- body.route-mode.mobile-map-browse .mobile-map-toggle,
- body.route-mode.mobile-map-browse .focus-rescan,
- body.route-mode.mobile-map-expanded #map-section .map-actions,
- body.route-mode.mobile-map-expanded .map-secondary-actions,
- body.route-mode.mobile-map-expanded .mobile-map-toggle{display:none!important}
+ body.route-mode.route-planner-open.mobile-map-browse #map-section .map-actions,
+ body.route-mode.route-planner-open.mobile-map-browse .map-secondary-actions,
+ body.route-mode.route-planner-open.mobile-map-browse .mobile-map-toggle,
+ body.route-mode.route-planner-open.mobile-map-expanded #map-section .map-actions,
+ body.route-mode.route-planner-open.mobile-map-expanded .map-secondary-actions,
+ body.route-mode.route-planner-open.mobile-map-expanded .mobile-map-toggle,
+ body.route-mode.mobile-map-browse .focus-rescan{display:none!important}
  body.route-mode.mobile-map-browse .mobile-focus-dock{z-index:186}
+ body.route-mode.mobile-map-browse #focus-dock-more.route-transition-control .dock-icon{color:#0f6b57;letter-spacing:0}
  body.route-mode.mobile-list-sheet .workspace>.sidebar>.route-panel{display:none!important}
  body.route-mode.mobile-list-sheet .workspace>.sidebar>.results-header{display:flex!important}
  body.route-mode.mobile-list-sheet .workspace>.sidebar>.results{display:block!important}
@@ -543,8 +544,8 @@
 @media(max-width:430px){
  body.mobile-map-browse .workspace>.sidebar>nav.view-tabs,
  body.mobile-map-expanded .workspace>.sidebar>nav.view-tabs{left:10px;right:10px}
- body.route-mode.mobile-map-browse .workspace>.sidebar>.route-panel,
- body.route-mode.mobile-map-expanded .workspace>.sidebar>.route-panel{left:6px;right:6px;padding-left:13px;padding-right:13px}
+ body.route-mode.route-planner-open.mobile-map-browse .workspace>.sidebar>.route-panel,
+ body.route-mode.route-planner-open.mobile-map-expanded .workspace>.sidebar>.route-panel{left:6px;right:6px;padding-left:13px;padding-right:13px}
 }
 
 /* Keep interactive map chrome above the fixed bottom ad instead of letting its iframe intercept taps. */
@@ -552,11 +553,11 @@
  body.juyu-bottom-ad-active.mobile-map-browse .mobile-focus-dock{bottom:calc(18px + var(--juyu-bottom-ad-space,0px) + env(safe-area-inset-bottom,0px))}
  body.juyu-bottom-ad-active.mobile-map-browse .focus-rescan{bottom:calc(104px + var(--juyu-bottom-ad-space,0px) + env(safe-area-inset-bottom,0px))}
  body.juyu-bottom-ad-active.route-mode .route-simulation{bottom:calc(82px + var(--juyu-bottom-ad-space,0px) + env(safe-area-inset-bottom,0px))}
- body.juyu-bottom-ad-active.route-mode.mobile-map-browse .workspace>.sidebar>.route-panel,
- body.juyu-bottom-ad-active.route-mode.mobile-map-expanded .workspace>.sidebar>.route-panel{bottom:calc(92px + var(--juyu-bottom-ad-space,0px) + env(safe-area-inset-bottom,0px))}
+ body.juyu-bottom-ad-active.route-mode.route-planner-open.mobile-map-browse .workspace>.sidebar>.route-panel,
+ body.juyu-bottom-ad-active.route-mode.route-planner-open.mobile-map-expanded .workspace>.sidebar>.route-panel{bottom:calc(92px + var(--juyu-bottom-ad-space,0px) + env(safe-area-inset-bottom,0px))}
  body.juyu-bottom-ad-active.mobile-list-sheet .workspace>.sidebar{bottom:var(--juyu-bottom-ad-space,0px)!important;inset:auto 10px var(--juyu-bottom-ad-space,0px)!important;max-height:calc(90dvh - var(--juyu-bottom-ad-space,0px))!important}
 }
 @media(max-height:680px) and (max-width:1000px){
- body.route-mode.mobile-map-browse .workspace>.sidebar>.route-panel,
- body.route-mode.mobile-map-expanded .workspace>.sidebar>.route-panel{top:calc(176px + env(safe-area-inset-top,0px));bottom:calc(78px + env(safe-area-inset-bottom,0px))}
+ body.route-mode.route-planner-open.mobile-map-browse .workspace>.sidebar>.route-panel,
+ body.route-mode.route-planner-open.mobile-map-expanded .workspace>.sidebar>.route-panel{top:calc(176px + env(safe-area-inset-top,0px));bottom:calc(78px + env(safe-area-inset-bottom,0px))}
 }
