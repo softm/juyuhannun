@@ -156,6 +156,17 @@ test('selected marker visibly uses price only and has bounce selection animation
 });
 
 
+test('selected station callout is a clickable detail selector',()=>{
+  const h=harness(),c=h.controller;
+  const fresh=new Date().toISOString();
+  c.setStations([row('selected',{prices:{B027:{price:1589,priceUpdatedAt:fresh,fetchedAt:fresh}}})],'selected');h.flush();
+  const content=c._markerState.get('selected').content;
+  assert.match(content,/<button type="button" class="selected-station-callout"[^>]+data-station-id="selected"/);
+  assert.match(content,/aria-label="테스트 selected 상세 보기"/);
+  assert.match(content,/<\/button>/);
+});
+
+
 test('lowest price badge is a clickable station selector',()=>{
   const h=harness(),c=h.controller;
   const fresh=new Date().toISOString();
