@@ -57,26 +57,42 @@ test('mobile view tabs stay on top and regional search opens below its toolbar b
 test('mobile view, fuel and filter controls fold into a menu after ten seconds', () => {
   assert.match(html, /id="mobile-map-menu-toggle"[^>]+aria-expanded="true"/);
   assert.match(html, /id="mobile-map-menu-toggle"[^>]+aria-label="지도 메뉴 닫기"[\s\S]{0,160}data-icon="close"/);
+  assert.match(html, /id="mobile-menu-search-indicator"[^>]+hidden/);
   assert.match(css, /view-tab\.active\{background:#0f6b57;color:#fff/);
   assert.match(css, /mobile-map-menu-collapsed[\s\S]*nav\.view-tabs\{display:none!important\}/);
   assert.match(css, /search-block>:not\(\.mobile-map-menu-toggle\)\{display:none!important\}/);
+  assert.match(css, /folds into one persistent menu icon/);
+  assert.match(css, /width:44px!important;height:44px/);
   assert.doesNotMatch(css, /is-softened/);
   assert.match(app, /const MOBILE_MAP_MENU_AUTO_COLLAPSE_MS=10_000/);
   assert.match(app, /setMobileMapMenuExpanded\(false,\{restartTimer:false\}\)/);
   assert.match(app, /mobileMapMenuPopoverOpen\(\)/);
   assert.match(app, /mobileMapMenuToggle\?\.addEventListener\('click'/);
+  assert.match(app, /icon\(expanded\?'close':'menu'\)/);
   assert.match(app, /visibilitychange'[\s\S]*showMobileMapMenu\(\)/);
 });
 
 test('mobile search closes on focus exit and keeps fuel and filter popovers mutually exclusive', () => {
+  assert.match(html, /id="mobile-search-back"[^>]+aria-label="검색 닫기"/);
+  assert.match(html, /id="mobile-search-label">검색<\/span>/);
+  assert.match(html, /id="mobile-search-indicator"[^>]+hidden/);
   assert.match(app, /function setMobileSearchOpen\(open/);
+  assert.match(app, /function syncMobileSearchIndicator\(\)/);
+  assert.match(app, /searchLabel\.textContent=active\?'검색됨':'검색'/);
+  assert.match(app, /menuIndicator\.hidden=!active/);
+  assert.match(app, /검색어 “\$\{term\}” 입력됨/);
   assert.match(app, /mobileSearchToggle\?\.addEventListener\('click'/);
   assert.match(app, /addEventListener\('focusout'[\s\S]*document\.activeElement/);
   assert.match(app, /event\.target\.closest\?\.\('#mobile-search-toggle,#search-form,#search-candidates'\)/);
+  assert.match(app, /\$\('mobile-search-back'\)\.addEventListener\('click',\(\)=>\{setMobileSearchOpen\(false/);
+  assert.doesNotMatch(app, /\$\('mobile-search-back'\)\.addEventListener\('click',\(\)=>mobileMapView\.toggleMapChrome/);
+  assert.match(view, /function onKeyDown\(event\)\{if\(event\.defaultPrevented\|\|/);
   assert.match(app, /setMobileSearchOpen\(false,\{focus:false\}\);\$\('extra-filters'\)\.hidden=true/);
   assert.match(css, /grid-template-columns:max-content max-content max-content minmax\(40px,1fr\)/);
   assert.match(css, /mobile-fuel-toggle[\s\S]*grid-column:1;grid-row:1/);
   assert.match(css, /mobile-map-menu-toggle[\s\S]*grid-column:4;grid-row:1/);
+  assert.match(css, /mobile-search-toggle\.has-search-query[\s\S]*box-shadow:0 0 0 2px #7aa7ee/);
+  assert.match(css, /mobile-search-indicator,\.mobile-menu-search-indicator/);
   assert.match(css, /@media\(max-width:350px\)[\s\S]*fuel-toggle-chevron\{display:none\}/);
 });
 
