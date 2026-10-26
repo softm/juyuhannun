@@ -448,7 +448,7 @@ export class MapController {
     this.map = new maps.Map(this.canvas, {
       center: this._naverPoint(this._center), zoom: this._defaultZoom(),
       minZoom: 7, maxZoom: 19, mapTypeId: maps.MapTypeId.NORMAL,
-      zoomControl: true, zoomControlOptions: { position: maps.Position.RIGHT_CENTER },
+      zoomControl: false,
       scrollWheel: true, pinchZoom: true, draggable: true
     });
     const listen = (name, callback) => this._listeners.push(maps.Event.addListener(this.map, name, callback));
