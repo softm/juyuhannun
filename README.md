@@ -16,7 +16,7 @@
 
 전국 일일 파일은 오피넷의 공개 내려받기 경로로 수집합니다. `OPINET_API_KEY`는 지역 가격·상세정보·평균 유가와 누락 좌표의 공식 ID 조회에 사용합니다. **일반 API 키가 없다는 이유만으로 전국 공개 파일까지 0건으로 간주하지 않습니다.** 임의의 주유소·가격을 실자료로 넣지 않습니다. 좌표가 없는 가격 자료는 현재 지도 영역과 연결할 수 없어 지도·목록에 나오지 않으며, 전체 지도 확보가 완료된 상태는 아닙니다.
 
-현재 건수·원본 가격 기준일·마지막 수집시각·실패 여부는 [수집 현황](https://softm.github.io/juyuhannun/data-status.html)과 배포 워크플로 Summary에서 확인합니다. `EX_API_KEY`만 등록해도 고속도로 실가격이 연결되지는 않으며 `implementationReady: false`로 표시합니다. **가는 길 주유**는 돌봄한눈에서 운영 중인 Directions 프록시를 직접 사용하므로 이 저장소에 `PUBLIC_API_BASE`를 등록하거나 별도 Vercel 서버를 배포하지 않아도 됩니다.
+현재 건수·원본 가격 기준일·마지막 수집시각·실패 여부는 [수집 현황](https://softm.github.io/juyuhannun/data-status.html)과 배포 워크플로 Summary에서 확인합니다. `EX_API_KEY`만 등록해도 고속도로 실가격이 연결되지는 않으며 `implementationReady: false`로 표시합니다. **가는 길 주유**는 돌봄한눈과 공용으로 운영하는 Firebase Directions 함수를 직접 사용하므로 이 저장소에 `PUBLIC_API_BASE`를 등록하거나 별도 프록시 서버를 배포하지 않아도 됩니다. <!-- SOFTM-FIREBASE-DIRECTIONS 날짜:20261026 : 공용 Google 런타임과 PUBLIC_API_BASE의 역할을 구분 -->
 
 가격의 정확성을 확인하는 운영 검증은 실제 키 연동 후 수행해야 합니다. 코드 검증과 배포 성공을 실가격 연동 성공으로 간주하지 않습니다.
 
@@ -91,7 +91,7 @@ GitHub Actions가 전국 일일 파일을 `public/data/nationwide/`에, 지역 A
 
 선택한 주유소의 실시간 상세 관측, 시군구 평균 등 자체 조회 API가 필요할 때만 `server/index.mjs`를 HTTPS 서버에서 실행하고 GitHub Actions 변수 `PUBLIC_API_BASE`를 `https://서버주소/api`로 설정합니다. 현재 지도 목록은 배포된 전국·지역 JSON을 사용하며, 서버 URL을 설정하는 것만으로 지도 이동마다 전국 실시간 수집을 하지는 않습니다. Pages에는 서버 비밀키가 포함되지 않습니다.
 
-Pages의 가는 길 주유는 `https://daycare-directions-proxy.vercel.app/api/directions`에 기본·경유 경로만 요청합니다. 브라우저가 이미 내려받은 전국 `search.json`(대체 `latest.json`)과 지역 `stations.json`에서 경로 주변 후보를 찾고, 경로 구간에 분산된 최대 8곳을 동시 3건 이하로 실제 경유 검증합니다. 선택 결과는 지도에서 모의주행할 수 있습니다. 기존 Node 서버의 `POST /api/route/recommendations`는 자체 서버 운영용으로 남아 있지만 Pages 기능은 이 주소나 `PUBLIC_API_BASE`에 의존하지 않습니다.
+Pages의 가는 길 주유는 `https://asia-northeast3-softm-hannun-api.cloudfunctions.net/directions`에 기본·경유 경로만 요청합니다. 브라우저가 이미 내려받은 전국 `search.json`(대체 `latest.json`)과 지역 `stations.json`에서 경로 주변 후보를 찾고, 경로 구간에 분산된 최대 8곳을 동시 3건 이하로 실제 경유 검증합니다. 선택 결과는 지도에서 모의주행할 수 있습니다. 기존 Node 서버의 `POST /api/route/recommendations`는 자체 서버 운영용으로 남아 있지만 Pages 기능은 이 주소나 `PUBLIC_API_BASE`에 의존하지 않습니다. <!-- SOFTM-FIREBASE-DIRECTIONS 날짜:20261026 : Pages 경로 요청의 실제 운영 주소를 기록 -->
 
 ### 추가 정보 수집
 
