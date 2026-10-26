@@ -37,6 +37,12 @@ test('expanded mobile mode exposes search/filter layout and safe-area sheet', ()
   assert.match(css, /env\(safe-area-inset-bottom/);
 });
 
+test('mobile location search results stay above filters and view tabs', () => {
+  assert.match(css, /search-block:has\(#search-candidates:not\(\[hidden\]\)\)\{z-index:188\}/);
+  assert.match(css, /#search-candidates:not\(\[hidden\]\)\{\s*display:block;position:absolute;top:56px;left:0;right:0;z-index:20/);
+  assert.match(css, /max-height:min\(52dvh,420px\);overflow-y:auto;overscroll-behavior:contain/);
+});
+
 test('map controller uses actual SDK zoom and Naver map type APIs', () => {
   assert.match(map, /zoomBy\(delta = 1\)/);
   assert.match(map, /zoomControl: false/);
