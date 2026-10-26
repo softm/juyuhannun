@@ -180,7 +180,7 @@ test('compare basket stays retired while route-aware station discovery is availa
   assert.doesNotMatch(app, /storedCompare|state\.compare|toggleCompare|data-action="compare"/);
   assert.match(html, /data-view="route"/);
   assert.match(html, /id="route-panel"/);
-  assert.match(routeMode, /daycare-directions-proxy\.vercel\.app\/api\/directions/);
+  assert.match(routeMode, /asia-northeast3-softm-hannun-api\.cloudfunctions\.net\/directions/);
   assert.doesNotMatch(html, /id="open-calculator"/);
   assert.doesNotMatch(app, /compareSelectedRoute/);
 });
