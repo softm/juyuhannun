@@ -26,6 +26,10 @@ export function resolveListDragSnap({currentHeight,velocity=0,currentSnap='mediu
   return 'medium';
 }
 
+export function toggleListSizeSnap(currentSnap='medium') {
+  return currentSnap==='expanded'?'compact':'expanded';
+}
+
 export function setupMobileMapView({
   workspace,
   sidebar,
@@ -37,6 +41,7 @@ export function setupMobileMapView({
   detailExpandButton = null,
   detailHandle = null,
   listSheetHandle = null,
+  listSheetSizeButton = null,
   listSheetClose = null,
   focusDock = null,
   focusDockList = null,
@@ -94,6 +99,15 @@ export function setupMobileMapView({
       detailExpandButton.setAttribute('aria-expanded',String(expanded));
       detailExpandButton.setAttribute('aria-label',expanded?'상세와 지도 도구 줄이기':'상세와 지도 도구 크게 보기');
       detailExpandButton.title=label;
+    }
+    if(listSheetSizeButton){
+      const expanded=listSnap==='expanded';
+      const label=expanded?'축소':'확대';
+      const description=expanded?'목록 한 행 높이로 축소':'목록 크게 보기';
+      listSheetSizeButton.innerHTML=`<span class="icon">${icon(expanded?'collapse':'expand')}</span><span>${label}</span>`;
+      listSheetSizeButton.setAttribute('aria-expanded',String(expanded));
+      listSheetSizeButton.setAttribute('aria-label',description);
+      listSheetSizeButton.title=description;
     }
   }
 
@@ -262,6 +276,8 @@ export function setupMobileMapView({
     setListSnap(listSnap==='compact'?'medium':listSnap==='medium'?'expanded':'compact');
   }
 
+  function toggleListSheetSize(){if(destroyed||!media.matches||!listModes.has(mode))return;setListSnap(toggleListSizeSnap(listSnap));}
+
   function toggleList(){if(destroyed||!media.matches)return;if(listModes.has(mode))closeListSheet();else if(focusModes.has(mode))openListSheet();}
   function exit({restoreFocus=true,skipHistory=false}={}){if(destroyed)return;if(skipHistory)disarmHistoryInPlace();if(!media.matches)return;hideDetail();sidebar.style.removeProperty('--list-drag-y');sidebar.style.removeProperty('--list-live-height');setMode('map-browse');if(restoreFocus&&focusDockList?.isConnected)focusDockList.focus({preventScroll:true});}
   function afterLayout(callback){if(typeof callback!=='function')return;requestAnimationFrame(()=>requestAnimationFrame(()=>{if(!destroyed)callback();}));}
@@ -287,6 +303,7 @@ export function setupMobileMapView({
   window.addEventListener('pointercancel',onWindowPointerCancel);
   listSheetHandle?.addEventListener('click',onListHandleClick);
   listSheetHandle?.addEventListener('pointerdown',onListPointerDown);
+  listSheetSizeButton?.addEventListener('click',toggleListSheetSize);
   window.addEventListener('pointermove',onListWindowPointerMove,{passive:false});
   window.addEventListener('pointerup',onListWindowPointerUp);
   window.addEventListener('pointercancel',onListWindowPointerCancel);
@@ -296,5 +313,5 @@ export function setupMobileMapView({
   media.addEventListener('change',onMediaChange);
   if(media.matches)startMobileExpanded();else syncButtons();
 
-  return {startMobileExpanded,enterDetail,closeDetail,toggleDetailExpanded,openListSheet,closeListSheet,toggleMapChrome,exit,afterLayout,isActive:()=>focusModes.has(mode),isDetailOpen:()=>detailModes.has(mode),isMobile:()=>media.matches,getMode:()=>mode,destroy(){if(destroyed)return;disarmHistoryInPlace();hideDetail();body.classList.remove('mobile-map-mode','mobile-map-focus','mobile-map-expanded','mobile-map-browse','mobile-map-collapsed','mobile-list-sheet','mobile-list-expanded');sidebar.removeAttribute('data-map-overlay');destroyed=true;toggleButton.removeEventListener('click',toggleMapChrome);listButton.removeEventListener('click',toggleList);detailExpandButton?.removeEventListener('click',toggleDetailExpanded);detailHandle?.removeEventListener('click',onHandleClick);detailHandle?.removeEventListener('pointerdown',onHandlePointerDown);window.removeEventListener('pointermove',onHandlePointerMove);window.removeEventListener('pointerup',onWindowPointerUp);window.removeEventListener('pointercancel',onWindowPointerCancel);listSheetHandle?.removeEventListener('click',onListHandleClick);listSheetHandle?.removeEventListener('pointerdown',onListPointerDown);window.removeEventListener('pointermove',onListWindowPointerMove);window.removeEventListener('pointerup',onListWindowPointerUp);window.removeEventListener('pointercancel',onListWindowPointerCancel);listSheetClose?.removeEventListener('click',handleListBack);document.removeEventListener('keydown',onKeyDown);window.removeEventListener('popstate',onPopState);media.removeEventListener('change',onMediaChange);}};
+  return {startMobileExpanded,enterDetail,closeDetail,toggleDetailExpanded,openListSheet,closeListSheet,toggleMapChrome,exit,afterLayout,isActive:()=>focusModes.has(mode),isDetailOpen:()=>detailModes.has(mode),isMobile:()=>media.matches,getMode:()=>mode,destroy(){if(destroyed)return;disarmHistoryInPlace();hideDetail();body.classList.remove('mobile-map-mode','mobile-map-focus','mobile-map-expanded','mobile-map-browse','mobile-map-collapsed','mobile-list-sheet','mobile-list-expanded');sidebar.removeAttribute('data-map-overlay');destroyed=true;toggleButton.removeEventListener('click',toggleMapChrome);listButton.removeEventListener('click',toggleList);detailExpandButton?.removeEventListener('click',toggleDetailExpanded);detailHandle?.removeEventListener('click',onHandleClick);detailHandle?.removeEventListener('pointerdown',onHandlePointerDown);window.removeEventListener('pointermove',onHandlePointerMove);window.removeEventListener('pointerup',onWindowPointerUp);window.removeEventListener('pointercancel',onWindowPointerCancel);listSheetHandle?.removeEventListener('click',onListHandleClick);listSheetHandle?.removeEventListener('pointerdown',onListPointerDown);listSheetSizeButton?.removeEventListener('click',toggleListSheetSize);window.removeEventListener('pointermove',onListWindowPointerMove);window.removeEventListener('pointerup',onListWindowPointerUp);window.removeEventListener('pointercancel',onListWindowPointerCancel);listSheetClose?.removeEventListener('click',handleListBack);document.removeEventListener('keydown',onKeyDown);window.removeEventListener('popstate',onPopState);media.removeEventListener('change',onMediaChange);}};
 }
