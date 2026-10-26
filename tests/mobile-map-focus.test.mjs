@@ -43,6 +43,15 @@ test('mobile location search results stay above filters and view tabs', () => {
   assert.match(css, /max-height:min\(52dvh,420px\);overflow-y:auto;overscroll-behavior:contain/);
 });
 
+test('mobile view tabs are the top control and the regional search field stays hidden', () => {
+  assert.match(css, /Mobile hierarchy: view switching first/);
+  assert.match(css, /nav\.view-tabs\{\s*top:calc\(10px \+ env\(safe-area-inset-top,0px\)\);z-index:187/);
+  assert.match(css, /sidebar>\.search-block\{\s*position:fixed!important;top:calc\(66px \+ env\(safe-area-inset-top,0px\)\);z-index:186/);
+  assert.match(css, /\.search-block \.search-box,[\s\S]*#search-candidates\{display:none!important\}/);
+  assert.match(css, /sidebar>\.route-panel\{top:calc\(114px \+ env\(safe-area-inset-top,0px\)\)\}/);
+  assert.match(html, /id="route-destination-query"/);
+});
+
 test('map controller uses actual SDK zoom and Naver map type APIs', () => {
   assert.match(map, /zoomBy\(delta = 1\)/);
   assert.match(map, /zoomControl: false/);
