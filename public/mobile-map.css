@@ -390,6 +390,13 @@
  body.mobile-map-expanded .search-submit svg,
  body.mobile-map-browse .search-submit svg{width:17px;height:17px;stroke-width:2.5}
 
+ body.mobile-map-expanded .workspace>.sidebar>.search-block:has(#search-candidates:not([hidden])),
+ body.mobile-map-browse .workspace>.sidebar>.search-block:has(#search-candidates:not([hidden])){z-index:188}
+ body.mobile-map-expanded #search-candidates:not([hidden]),
+ body.mobile-map-browse #search-candidates:not([hidden]){
+   display:block;position:absolute;top:56px;left:0;right:0;z-index:20;margin:0;max-height:min(52dvh,420px);overflow-y:auto;overscroll-behavior:contain;border:1px solid #dfe7e3;border-radius:18px;background:#fff;box-shadow:0 16px 38px rgba(17,24,39,.22)
+ }
+
  body.mobile-map-expanded .mobile-fuel-toggle,
  body.mobile-map-browse .mobile-fuel-toggle{
    display:flex;position:absolute;top:58px;left:0;z-index:5;align-items:center;gap:6px;height:40px;padding:4px 13px 4px 6px;border-radius:999px;background:#0b5c4f;color:#fff;font-size:12px;font-weight:800;box-shadow:0 5px 14px rgba(17,24,39,.16)
