@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
-import { addressSearchPresentation, normalizeAddressSearchResults } from '../public/js/address-search.js';
+import { addressSearchPresentation, mergeLocationSearchResults, normalizeAddressSearchResults, normalizePlaceSearchResults } from '../public/js/address-search.js';
 
 const [html, app, map, mobileView, mobileCss, styles] = await Promise.all([
   readFile(new URL('../public/index.html', import.meta.url), 'utf8'),
@@ -36,13 +36,31 @@ test('address geocoder keeps road and parcel addresses without duplicate labels'
   assert.equal(addressSearchPresentation(results[1]).kind, '지번');
 });
 
-test('destination form is explicitly an address search for road and parcel addresses', () => {
-  assert.match(html, /목적지 주소로 찾기/);
-  assert.match(html, /placeholder="도로명 또는 지번 주소 입력"/);
-  assert.match(html, /도로명·지번 주소를 모두 검색할 수 있습니다/);
+test('place search normalizes, ranks and presents general destination names', () => {
+  const places = normalizePlaceSearchResults([
+    { title: '서울역', category: '중앙행정기관 > 기상청 > 기상관측소', address: { road: '서울특별시 용산구 한강대로 367', parcel: '서울특별시 용산구 동자동 43-19' }, point: { x: '126.9719031', y: '37.5512105' } },
+    { title: '서울역', category: '철도시설 > 철도/지하철 > 승강장', address: { road: '서울특별시 용산구 청파로 378', parcel: '서울특별시 용산구 동자동 43-205' }, point: { x: '126.9708195', y: '37.5518655' } },
+    { title: '서울역', category: '철도시설 > 철도/지하철 > 승강장', address: { road: '서울특별시 용산구 청파로 378', parcel: '서울특별시 용산구 동자동 43-205' }, point: { x: '126.9706126', y: '37.5518645' } },
+  ]);
+  assert.equal(places.length, 2);
+  const merged = mergeLocationSearchResults([places], '서울역');
+  assert.match(merged[0].placeCategory, /철도/);
+  assert.deepEqual(addressSearchPresentation(merged[0]), {
+    primary: '서울역',
+    secondary: '서울특별시 용산구 청파로 378 · 철도시설 > 철도/지하철 > 승강장',
+    kind: '장소',
+  });
+});
+
+test('destination form supports place, building, road and parcel search in one input', () => {
+  assert.match(html, /목적지 통합검색/);
+  assert.match(html, /placeholder="장소명, 도로명 또는 지번 입력"/);
+  assert.match(html, /장소·건물명·도로명·지번을 한 번에 검색할 수 있습니다/);
   assert.match(html, /id="route-destination-candidates"[^>]+role="listbox"/);
   assert.match(app, /addressSearchPresentation/);
-  assert.match(map, /normalizeAddressSearchResults/);
+  assert.match(app, /map\.searchLocation\(text\)/);
+  assert.match(map, /searchVWorldPlaces/);
+  assert.match(map, /mergeLocationSearchResults/);
   assert.match(styles, /\.search-address-kind/);
 });
 
