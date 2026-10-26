@@ -64,6 +64,18 @@ test('destination form supports place, building, road and parcel search in one i
   assert.match(styles, /\.search-address-kind/);
 });
 
+test('route planner keeps the input flow compact and the primary action always reachable', () => {
+  for (const marker of ['route-planner-scroll', 'route-progress-steps', 'route-destination-search', 'route-action-zone', 'route-trust-note']) {
+    assert.match(html, new RegExp(`class="[^"]*${marker}|id="${marker}"`));
+  }
+  assert.match(styles, /\.route-panel\{display:flex;flex-direction:column;min-height:0;[^}]*overflow:hidden\}/);
+  assert.match(styles, /\.route-destination-search \.search-candidates:not\(\[hidden\]\)\{display:block;position:absolute/);
+  assert.match(styles, /\.route-action-zone\{[^}]*flex:none/);
+  assert.match(mobileCss, /display:flex!important;flex-direction:column;padding:0!important;overflow:hidden!important/);
+  assert.match(mobileCss, /@media\(min-width:640px\) and \(max-width:1000px\)[\s\S]*width:470px/);
+  assert.match(app, /activeStep=routeReady\?'results':destinationReady\?'options':'destination'/);
+});
+
 test('route detail closes to the map and exposes a dedicated route-results dock button', () => {
   for (const id of ['focus-dock-list-icon', 'focus-dock-list-label', 'focus-list-count']) {
     assert.match(html, new RegExp(`id="${id}"`));
