@@ -61,10 +61,12 @@ export function createRouteSimulationController({host,onPosition=()=>{},onClear=
   const progress=host.querySelector('progress');
   const label=host.querySelector('[data-simulation-label]');
   const arrival=host.querySelector('[data-simulation-arrival]');
+  const station=host.querySelector('[data-simulation-station]');
   let route=null,pointAt=null,milestones=[],nextStop=0,frame=null,elapsed=0,last=0,holdUntil=0,cameraAt=0,playing=false;
 
   function setOptionsOpen(open){controls.hidden=!open;options.setAttribute('aria-expanded',String(open));options.textContent=open?'접기':'설정';}
-  function resetStops(){nextStop=0;holdUntil=0;arrival.hidden=true;arrival.textContent='';}
+  function setStationName(name=''){const value=String(name||'').trim();station.hidden=!value;station.textContent=value?`탐색 주유소 · ${value}`:'';}
+  function resetStops(){nextStop=0;holdUntil=0;arrival.hidden=true;arrival.textContent='';setStationName();}
   function paint(now=0){
     if(!route||!pointAt)return 0;
     const fraction=Math.min(1,elapsed/Math.max(1000,route.durationSeconds*1000));
@@ -78,7 +80,7 @@ export function createRouteSimulationController({host,onPosition=()=>{},onClear=
   function tick(now){
     if(!playing||!route)return;
     if(now<holdUntil){last=now;frame=requestAnimationFrame(tick);return;}
-    if(holdUntil){holdUntil=0;arrival.hidden=true;}
+    if(holdUntil){holdUntil=0;arrival.hidden=true;setStationName(milestones[nextStop]?.name||milestones.at(-1)?.name);}
     elapsed+=Math.min(250,Math.max(0,now-last))*Number(speed.value||600);last=now;
     const milestone=milestones[nextStop];
     if(milestone&&elapsed/Math.max(1000,route.durationSeconds*1000)>=milestone.fraction){
@@ -99,7 +101,7 @@ export function createRouteSimulationController({host,onPosition=()=>{},onClear=
     route=path.length>=2&&Number.isFinite(durationSeconds)&&durationSeconds>0?{...next,path,durationSeconds}:null;
     host.hidden=!route;
     if(!route){pointAt=null;milestones=[];label.textContent='모의주행';return;}
-    pointAt=routeTrajectory(route.path);milestones=routeMilestones(route.path,route.stops);label.textContent=route.label||'경로 모의주행';
+    pointAt=routeTrajectory(route.path);milestones=routeMilestones(route.path,route.stops);label.textContent=route.label||'경로 모의주행';setStationName(milestones[0]?.name);
   }
 
   play.addEventListener('click',()=>playing?pause():start());
