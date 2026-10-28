@@ -222,6 +222,7 @@ body:not(.energy-page) .app-header{height:66px;padding:0 24px}
 
 /* Going-there fuel planner */
 .search-candidates button strong{display:flex;align-items:flex-start;gap:7px}.search-candidates button small{display:block;margin-top:3px;padding-left:43px}.search-address-kind{display:inline-flex;flex:none;align-items:center;min-height:19px;padding:0 6px;border-radius:999px;background:#e7f4ef;color:#0b705b;font-size:8px;font-weight:900}
+.search-address-kind.station{background:#0f6b57;color:#fff}.search-station-price{margin-left:auto;color:#0f6b57;font-size:11px;white-space:nowrap;font-variant-numeric:tabular-nums}.search-candidates button:has(.search-address-kind.station){border-left:3px solid #0f8068;background:#fbfffd}.search-candidates button:has(.search-address-kind.station):hover{background:#eef8f4}
 .route-address-help{margin-top:7px;color:#72857e;font-size:9px}
 .route-panel{display:block;flex:none;max-height:58vh;overflow:auto;padding:20px 22px;border-bottom:1px solid #dce7e2;background:linear-gradient(180deg,#f5fbf9,#fff)}
 .route-panel[hidden]{display:none!important}
