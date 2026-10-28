@@ -556,6 +556,7 @@ body.route-mode.route-results-ready .map-secondary-actions .route-results-toggle
  body.route-mode.mobile-list-sheet .workspace>.sidebar>.results-header{display:flex!important}
  body.route-mode.mobile-list-sheet .workspace>.sidebar>.results{display:block!important}
  body.route-mode .route-panel-head h2{font-size:18px}
+ body.route-mode .route-panel-head-actions{gap:5px}body.route-mode .route-panel-close{width:42px;height:42px;min-width:42px;background:#f2f8f5;box-shadow:none}
  body.route-mode .route-intro{font-size:10px}
  body.route-mode .route-settings-grid{gap:8px}
  body.route-mode .route-coordinate-note{padding-bottom:4px}

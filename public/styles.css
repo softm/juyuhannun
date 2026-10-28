@@ -236,6 +236,7 @@ body.route-mode .results-header>label{display:none}
 .route-panel{display:flex;flex-direction:column;min-height:0;padding:0;overflow:hidden}
 .route-planner-scroll{min-height:0;flex:1;padding:20px 22px 13px;overflow-y:auto;overscroll-behavior:contain;scrollbar-gutter:stable}
 .route-panel-head{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.route-panel-head-actions{display:flex;align-items:center;gap:7px;flex:none}.route-panel-close{display:inline-flex;width:36px;height:36px;align-items:center;justify-content:center;border:1px solid #cfe0da;border-radius:50%;background:#fff;color:#315f53;box-shadow:0 3px 10px #17362e12}.route-panel-close:hover{border-color:#78b9a7;background:#edf8f4;color:#086b56}.route-panel-close svg{width:17px;height:17px;stroke-width:2.4}
 .route-mode-chip{display:inline-flex;align-items:center;gap:5px;min-height:28px;padding:0 9px;border:1px solid #cfe5dd;border-radius:999px;background:#eef8f4;color:#0b705b;font-size:9px;font-weight:900;white-space:nowrap}
 .route-mode-chip .icon,.route-destination-actions .icon{display:inline-flex}.route-mode-chip svg{width:13px;height:13px}.route-destination-actions svg{width:12px;height:12px}
 .route-progress-steps{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px;margin:13px 0 0;padding:0;list-style:none}
