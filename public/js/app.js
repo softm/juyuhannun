@@ -205,7 +205,7 @@ function routePriceBasis(row){const price=row.currentPrice;if(['daily_current_fi
 function routeCard(row,index,{lowest,fastestId}={}){
  const saved=state.favorites.has(row.id),verified=row.detour?.verified===true,extraKm=verified?(row.detour.distanceMeters/1000).toFixed(1):null,extraMinutes=verified?Math.ceil(row.detour.durationSeconds/60):null;
  const brand=brandVisual(row.brand,row.brandName);
- const brandBadge=brand.image?`<span class="brand-badge has-logo" title="${esc(brand.label)}"><img src="${esc(brand.image)}" alt=""></span>`:`<span class="brand-badge" style="background:${esc(brand.color)};color:${esc(brand.ink)}" title="${esc(brand.label)}">${esc(brand.short)}</span>`;
+ const brandBadge=brand.image?`<span class="brand-badge has-logo" data-brand="${esc(row.brand)}" title="${esc(brand.label)}"><img src="${esc(brand.image)}" alt=""></span>`:`<span class="brand-badge" style="background:${esc(brand.color)};color:${esc(brand.ink)}" title="${esc(brand.label)}">${esc(brand.short)}</span>`;
  const rank=Number(row.routeRank)>=1&&Number(row.routeRank)<=3?`<span class="route-rank rank-${Number(row.routeRank)}">추천 ${Number(row.routeRank)}</span>`:'',lowestBadge=row.confidence?.eligible&&row.currentPrice.price===lowest?'<span class="route-lowest">경로 최저가</span>':'',fastestBadge=verified&&String(row.id)===String(fastestId)?'<span class="route-fastest">우회 최소</span>':'';
  const detour=verified?`<span>우회 +${extraMinutes}분</span><small>거리 +${extraKm}km</small>`:'<span>경로 인근 주유소</span><small>우회시간 미확인</small>';
  const proximity=finite(row.proximityMeters)?` · 경로에서 직선 ${(row.proximityMeters/1000).toFixed(1)}km`:'';
@@ -299,7 +299,7 @@ function renderStatus(){
 }
 function card(s,index){
  const brand=brandVisual(s.brand,BRANDS[s.brand]||s.brand);
- const brandBadge=brand.image?`<span class="brand-badge has-logo" title="${esc(brand.label)}"><img src="${esc(brand.image)}" alt=""></span>`:`<span class="brand-badge" style="background:${esc(brand.color)};color:${esc(brand.ink)}" title="${esc(brand.label)}">${esc(brand.short)}</span>`;
+ const brandBadge=brand.image?`<span class="brand-badge has-logo" data-brand="${esc(s.brand)}" title="${esc(brand.label)}"><img src="${esc(brand.image)}" alt=""></span>`:`<span class="brand-badge" style="background:${esc(brand.color)};color:${esc(brand.ink)}" title="${esc(brand.label)}">${esc(brand.short)}</span>`;
  const saved=state.favorites.has(s.id),mapped=hasMapCoordinates(s),address=s.roadAddress||s.address||'주소 정보 미제공';
  const other=FUEL_TYPES.filter(f=>f.code!==state.fuel).map(f=>{const p=getFuelPrice(s,f.code);if(!p)return null;const eligible=freshness(p.priceUpdatedAt,p.fetchedAt,Date.now(),p.priceTimeStatus,p.sourceDate).eligible;return `${f.name} ${money(p.price)}${eligible?'':' (참고)'}`;}).filter(Boolean).join(' · ');
  const date=['daily_current_file','daily_price_file'].includes(s.currentPrice.priceTimeStatus)?s.currentPrice.sourceDate||'기준일 미확인':formatTime(s.currentPrice.priceUpdatedAt);
@@ -431,7 +431,7 @@ function renderDetail(){
  const station=state.all.find(s=>s.id===state.selected);if(!station){closeDialog('detail-dialog');return;}
  const selectedPrice=getFuelPrice(station,state.fuel),confidence=selectedPrice?freshness(selectedPrice.priceUpdatedAt,selectedPrice.fetchedAt,Date.now(),selectedPrice.priceTimeStatus,selectedPrice.sourceDate):{state:'unknown',label:'선택한 유종 가격 없음',eligible:false};
  const brandVisualInfo=brandVisual(station.brand,BRANDS[station.brand]||station.brand||'상표 미확인'),brand=brandVisualInfo.label;
- const detailBrandLogo=brandVisualInfo.image?`<img class="focus-brand-logo" src="${esc(brandVisualInfo.image)}" alt="${esc(brand)}">`:'<span class="brand-flame">●</span>';
+ const detailBrandLogo=brandVisualInfo.image?`<span class="focus-brand-logo" data-brand="${esc(station.brand)}" title="${esc(brand)}"><img src="${esc(brandVisualInfo.image)}" alt=""></span>`:'<span class="brand-flame">●</span>';
  const f=station.facilities||{},facilityLabels=[f.self===true?'셀프':f.self===false?'일반 주유':null,f.carWash===true?'세차 가능':null,f.maintenance===true?'정비 가능':null,f.convenience===true?'편의점':null].filter(Boolean);
  const routeRow=state.view==='route'?(state.visible.find(row=>String(row.id)===String(station.id))||routeMode.routeForStation(station.id)):null,routeNavigation=routeRow?routeMode.navigationForStation(station.id):null;
  const nav=stationNavigationURL(station),address=station.roadAddress||station.address||'주소 정보 미제공';
