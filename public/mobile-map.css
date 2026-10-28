@@ -233,8 +233,8 @@
   body.mobile-map-browse .focus-rescan{display:flex;position:fixed;left:50%;bottom:calc(104px + env(safe-area-inset-bottom,0px));z-index:180;transform:translateX(-50%);align-items:center;gap:6px;min-height:45px;padding:0 20px;border:1px solid #dce5e1;border-radius:23px;background:#fff;color:#2368c8;font-size:12px;font-weight:800;box-shadow:0 6px 20px #17362e20}
   body.mobile-map-browse .focus-rescan.is-progress{color:#667a73;cursor:wait}.rescan-spinner{width:15px;height:15px;border:2px solid #d4e2dd;border-top-color:#1769d7;border-radius:50%;animation:spin .7s linear infinite}
   body.mobile-map-browse .focus-route-shortcut,body.mobile-map-expanded .focus-route-shortcut{display:flex;position:fixed;left:50%;top:calc(68px + env(safe-area-inset-top,0px));z-index:187;transform:translateX(-50%);align-items:center;gap:7px;min-height:43px;padding:0 17px;border:1px solid #086653;border-radius:22px;background:#0f6b57;color:#fff;font-size:11px;font-weight:900;box-shadow:0 7px 20px #17362e38;pointer-events:auto}.focus-route-shortcut svg{width:17px;height:17px}
-  body.mobile-map-browse .mobile-focus-dock{display:grid;position:fixed;left:50%;bottom:calc(18px + env(safe-area-inset-bottom,0px));z-index:180;transform:translateX(-50%);grid-template-columns:repeat(2,auto);align-items:center;min-width:min(92vw,540px);height:66px;padding:0 14px;border:1px solid #dce5e1;border-radius:33px;background:#f8faf7ee;box-shadow:0 8px 30px #17362e28;backdrop-filter:blur(12px)}
-  body.mobile-map-browse .mobile-focus-dock button{display:flex;align-items:center;justify-content:center;gap:8px;min-height:48px;padding:0 15px;color:#164f43;font-size:13px;font-weight:800;white-space:nowrap}
+  body.mobile-map-browse .mobile-focus-dock{display:grid;position:fixed;left:50%;bottom:calc(12px + env(safe-area-inset-bottom,0px));z-index:180;transform:translateX(-50%);grid-template-columns:repeat(2,auto);align-items:center;min-width:min(92vw,540px);height:56px;padding:0 10px;border:1px solid #dce5e1;border-radius:28px;background:#f8faf7ee;box-shadow:0 8px 30px #17362e28;backdrop-filter:blur(12px)}
+  body.mobile-map-browse .mobile-focus-dock button{display:flex;height:44px;min-height:44px;align-items:center;justify-content:center;gap:8px;padding:0 15px;color:#164f43;font-size:13px;font-weight:800;line-height:1;white-space:nowrap}
   body.mobile-map-browse .mobile-focus-dock button+button{border-left:1px solid #e2e8e4}
   body.mobile-map-browse .dock-icon{font-size:22px;line-height:1;color:#0f6b57}
   body.mobile-map-browse .dock-icon svg{display:block;width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
@@ -577,7 +577,7 @@ body.route-mode.route-results-ready .map-secondary-actions .route-results-toggle
 
 /* Keep interactive map chrome above the fixed bottom ad instead of letting its iframe intercept taps. */
 @media(max-width:1000px){
- body.juyu-bottom-ad-active.mobile-map-browse .mobile-focus-dock{bottom:calc(18px + var(--juyu-bottom-ad-space,0px) + env(safe-area-inset-bottom,0px))}
+ body.juyu-bottom-ad-active.mobile-map-browse .mobile-focus-dock{bottom:calc(12px + var(--juyu-bottom-ad-space,0px) + env(safe-area-inset-bottom,0px))}
  body.juyu-bottom-ad-active.mobile-map-browse .focus-rescan{bottom:calc(104px + var(--juyu-bottom-ad-space,0px) + env(safe-area-inset-bottom,0px))}
  body.juyu-bottom-ad-active.route-mode .route-simulation{bottom:calc(82px + var(--juyu-bottom-ad-space,0px) + env(safe-area-inset-bottom,0px))}
  body.juyu-bottom-ad-active.route-mode.route-planner-open.mobile-map-browse .workspace>.sidebar>.route-panel,
