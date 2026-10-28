@@ -229,7 +229,9 @@ test('route recommendation bubbles keep one green body and color only rank text 
   assert.match(mapSource,/\.lowest-price-badge\{[^']*background:#159b72/);
   assert.match(mapSource,/\.lowest-price-badge:after\{[^']*background:#159b72/);
   assert.match(mapSource,/\.station-marker\.is-lowest:not\(\.is-selected\) \.price-pin\{display:none\}/);
-  for(const rank of [1,2,3])assert.match(mapSource,new RegExp(`\\.lowest-price-badge\\.rank-${rank} \\.lowest-tag\\{background:#`));
+  const rankColors={1:'#ffcf00',2:'#2563eb',3:'#7c3aed',4:'#ea580c',5:'#dc2626'};
+  assert.match(mapSource,/\.lowest-price-badge \.lowest-tag\{[^']*border:2px solid #fff[^']*box-shadow:/);
+  for(const [rank,color] of Object.entries(rankColors))assert.match(mapSource,new RegExp(`\\.lowest-price-badge\\.rank-${rank} \\.lowest-tag\\{background:${color}`));
   assert.doesNotMatch(mapSource,/\.lowest-price-badge\.rank-2,\.lowest-price-badge\.rank-3[^']*background:/);
 });
 
