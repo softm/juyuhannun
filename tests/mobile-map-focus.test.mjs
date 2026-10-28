@@ -116,6 +116,14 @@ test('focus mode keeps marker callout and stages compact versus expanded tools',
   assert.match(css, /mobile-map-expanded[\s\S]*expanded-map-action/);
 });
 
+test('collapsed map menu keeps fuel selection immediately left of the route shortcut',()=>{
+  assert.match(html,/id="focus-fuel-select"[^>]+지도에서 표시할 유종/);
+  assert.match(app,/focus-fuel-select'[\s\S]*data-fuel=/);
+  assert.match(css,/mobile-map-menu-collapsed\.mobile-map-browse \.focus-quick-actions[\s\S]*display:flex;position:fixed/);
+  assert.match(css,/focus-quick-actions[\s\S]*justify-content:flex-end;gap:7px/);
+  assert.match(css,/focus-collapsed-fuel select\{height:46px/);
+});
+
 test('detail sheet handle is interactive and snaps focus modes', () => {
   assert.match(html, /id="detail-sheet-handle"/);
   assert.match(view, /pointerdown/);
