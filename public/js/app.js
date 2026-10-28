@@ -371,6 +371,11 @@ function closeRoutePanel(){
  if(hasRouteResults()){closeRoutePlanner();return;}
  selectView('nearby');
 }
+function exitRouteMode(){
+ if(state.view!=='route')return;
+ selectView('nearby');
+ toast('가는 길 찾기를 종료했습니다.');
+}
 function selectView(view){
  showMobileMapMenu();mobileMapView.exit({restoreFocus:false});const next=['nearby','route','saved'].includes(view)?view:'nearby';
  if(next==='route'&&state.view!=='route'){
@@ -527,7 +532,8 @@ $('route-origin-map').addEventListener('click',()=>beginRouteMapPick('origin'));
 $('route-destination-map').addEventListener('click',()=>beginRouteMapPick('destination'));
 $('route-recent').addEventListener('change',()=>{const value=$('route-recent').value;if(value==='')return;const item=recentDestinations[Number(value)];if(item)setRoutePoint('destination',item,item.label);});
 $('route-submit').addEventListener('click',planRoute);
-for(const id of ['route-panel-close','route-panel-exit'])$(id)?.addEventListener('click',closeRoutePanel);
+$('route-panel-close')?.addEventListener('click',closeRoutePanel);
+for(const id of ['route-panel-exit','route-mode-exit'])$(id)?.addEventListener('click',exitRouteMode);
 document.querySelectorAll('[data-route-sort]').forEach(button=>button.addEventListener('click',()=>{state.routeSort=button.dataset.routeSort;render();}));
 for(const id of ['route-corridor','route-max-detour','route-option'])$(id).addEventListener('change',()=>{if(routeMode.state.response){routeMode.invalidate();routeSimulation.set(null);if(state.mapReady)map.clearRoute();toast('탐색 조건이 바뀌었습니다. 다시 확인해 주세요.');}if(state.view==='route')render();});
 renderRecentDestinations();
