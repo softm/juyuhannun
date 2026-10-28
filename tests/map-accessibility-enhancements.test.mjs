@@ -26,6 +26,10 @@ test('brand visuals expose recognizable color wordmarks',()=>{
  assert.match(styles,/brand-logo-sk\{background-image:url\('\.\/assets\/brands\/sk-energy\.jpg'\)\}/);
  assert.match(app,/brand\.image\?`<span class="brand-badge has-logo"/);
  assert.match(map,/brand\.image\?'<span class="marker-brand-badge has-logo"/);
+ assert.match(map,/--brand-logo-scale:/);
+ assert.match(map,/transform:scale\(var\(--brand-logo-scale,1\)\)/);
+ assert.equal(BRAND_VISUALS.SKE.logoScale,2.05);
+ assert.equal(BRAND_VISUALS.E1G.logoScale,1.65);
 });
 
 test('SDK marker click opens detail and an empty map click clears selection',()=>{
