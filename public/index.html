@@ -102,7 +102,10 @@
       <button type="button" id="mobile-map-toggle" class="mobile-map-toggle" aria-label="지도 도구 축소" title="지도 도구 축소" aria-pressed="true" aria-controls="map-section"><span class="icon" data-icon="collapse"></span><span>축소</span></button>
       <button type="button" id="mobile-list-toggle" class="mobile-list-toggle" aria-expanded="false" aria-controls="station-sidebar"><span class="icon" data-icon="list"></span><span>목록 보기</span></button>
       <button type="button" id="focus-rescan" class="focus-rescan" aria-label="현재 지도 영역 다시 검색"><span aria-hidden="true">↻</span> 이 지역 재검색</button>
-      <button type="button" id="focus-route-shortcut" class="focus-route-shortcut" aria-label="가는 길 주유소 찾기"><span class="icon" data-icon="route"></span><span>가는 길 주유</span></button>
+      <div class="focus-quick-actions">
+        <label class="focus-collapsed-fuel"><span class="sr-only">유종 선택</span><select id="focus-fuel-select" aria-label="지도에서 표시할 유종"><option value="B027">휘발유</option><option value="D047">경유</option><option value="B034">고급휘발유</option><option value="K015">LPG</option></select></label>
+        <button type="button" id="focus-route-shortcut" class="focus-route-shortcut" aria-label="가는 길 주유소 찾기"><span class="icon" data-icon="route"></span><span>가는 길 주유</span></button>
+      </div>
       <nav id="mobile-focus-dock" class="mobile-focus-dock" aria-label="지도 집중모드 메뉴">
         <button type="button" id="focus-dock-list" aria-label="주유소 목록 0곳 열기"><span id="focus-dock-list-icon" class="dock-icon" aria-hidden="true"><span data-icon="list"></span></span><span><span id="focus-dock-list-label">목록</span> <strong id="focus-list-count">0</strong></span></button>
         <button type="button" id="focus-dock-more"><span id="focus-dock-more-icon" class="dock-icon" aria-hidden="true">•••</span><span id="focus-dock-more-label">더보기</span></button>
