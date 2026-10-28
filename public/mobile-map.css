@@ -717,13 +717,17 @@ body.route-mode.route-results-ready .map-secondary-actions .route-results-toggle
  }
  body.mobile-map-menu-collapsed.mobile-map-browse .focus-route-shortcut,
  body.mobile-map-menu-collapsed.mobile-map-expanded .focus-route-shortcut{
-   display:flex;position:static;left:auto;top:auto;z-index:auto;min-height:46px;transform:none;box-shadow:0 8px 24px #17362e45;pointer-events:auto
+   display:flex;position:fixed;left:50%;top:calc(10px + env(safe-area-inset-top,0px));z-index:192;min-height:46px;transform:translateX(-50%);box-shadow:0 8px 24px #17362e45;pointer-events:auto
  }
  body.mobile-map-menu-collapsed.mobile-map-browse .focus-quick-actions,
- body.mobile-map-menu-collapsed.mobile-map-expanded .focus-quick-actions{display:flex;position:fixed;left:64px;right:10px;top:calc(10px + env(safe-area-inset-top,0px));z-index:192;align-items:center;justify-content:flex-end;gap:7px;pointer-events:none}
+ body.mobile-map-menu-collapsed.mobile-map-expanded .focus-quick-actions{display:contents}
  body.mobile-map-menu-collapsed.mobile-map-browse .focus-collapsed-fuel,
- body.mobile-map-menu-collapsed.mobile-map-expanded .focus-collapsed-fuel{display:flex;min-width:0;pointer-events:auto}
- .focus-collapsed-fuel select{height:46px;max-width:112px;padding:0 28px 0 14px;border:1px solid #c9ddd6;border-radius:23px;background:#fffffff5;color:#174b40;font-size:11px;font-weight:900;box-shadow:0 8px 24px #17362e2d}
+ body.mobile-map-menu-collapsed.mobile-map-expanded .focus-collapsed-fuel{display:block;position:fixed;right:calc(50% + 78px);top:calc(10px + env(safe-area-inset-top,0px));z-index:193;pointer-events:auto}
+ .focus-collapsed-fuel>#focus-fuel-toggle{display:flex;width:46px;height:46px;align-items:center;justify-content:center;padding:0;border:1px solid #c9ddd6;border-radius:50%;background:#fffffff5;box-shadow:0 8px 24px #17362e2d}
+ .focus-collapsed-fuel>#focus-fuel-toggle .fuel-toggle-icon{display:flex;width:34px;height:34px;align-items:center;justify-content:center;border-radius:50%;background:#e8f4ef;color:#0b6b58}
+ .focus-collapsed-fuel>#focus-fuel-toggle .fuel-toggle-icon svg{width:18px;height:18px}.focus-collapsed-fuel>#focus-fuel-toggle .fuel-toggle-chevron{display:none}
+ .focus-fuel-tabs{position:absolute;left:0;top:54px;display:grid;width:224px;grid-template-columns:1fr 1fr;gap:7px;padding:8px;border:1px solid #dce7e2;border-radius:17px;background:#fff;box-shadow:0 12px 32px #17362e30}
+ .focus-fuel-tabs[hidden]{display:none!important}.focus-fuel-tabs button{display:flex;min-height:42px;align-items:center;gap:7px;padding:4px 8px 4px 5px;border:1px solid #edf0ef;border-radius:13px;background:#fff;color:#374151;font-size:11px;font-weight:800}.focus-fuel-tabs button.active{border-color:#bfe2da;background:#e6f4f1;color:#0a6358}.focus-fuel-tabs .fuel-tab-icon{width:30px;height:30px}
  body.route-mode .focus-collapsed-fuel{display:none!important}
  .mobile-search-indicator,.mobile-menu-search-indicator{position:absolute;z-index:2;width:9px;height:9px;border:2px solid #fff;border-radius:50%;background:#f59e0b;box-shadow:0 1px 4px #17362e33;pointer-events:none}
  .mobile-search-indicator{top:2px;right:3px}
