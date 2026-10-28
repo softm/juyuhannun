@@ -166,7 +166,7 @@ test('five-state mobile focus flow includes map browse and draggable list sheet 
   assert.match(view, /--list-live-height/);
   assert.match(view, /setListSnap/);
   assert.match(css, /--list-live-height/);
-  assert.match(css, /54dvh/);
+  assert.match(css, /50dvh/);
   assert.match(css, /84dvh/);
   assert.match(css, /clamp\(230px,38dvh,340px\)/);
   assert.match(view, /resolveListDragSnap/);
@@ -199,7 +199,7 @@ test('list handle follows the pointer outside its small hit area and closes when
   assert.match(view, /window\.addEventListener\('pointerup',onListWindowPointerUp/);
   assert.match(view, /const toolsModes = new Set\(\['map-browse','expanded-tools'\]\)/);
   assert.match(view, /Math\.max\(230,viewport\*\.38\)/);
-  assert.match(view, /Math\.min\(expanded-64,Math\.max\(compact\+72,viewport\*\.54\)\)/);
+  assert.match(view, /Math\.min\(expanded-64,Math\.max\(compact\+72,viewport\*\.50\)\)/);
   assert.match(view, /suppressListHandleClick/);
   assert.match(view, /if\(next==='closed'\)\{closeListSheet\(\);return;\}/);
   assert.match(css, /sidebar\.is-dragging\{min-height:64px!important/);
