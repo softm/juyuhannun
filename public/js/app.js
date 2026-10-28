@@ -365,6 +365,10 @@ function closeRoutePlanner(){
  if(mobileMapView.isMobile())mobileMapView.startMobileExpanded();
  render();
 }
+function closeRoutePanel(){
+ if(hasRouteResults()){closeRoutePlanner();return;}
+ selectView('nearby');
+}
 function selectView(view){
  showMobileMapMenu();mobileMapView.exit({restoreFocus:false});const next=['nearby','route','saved'].includes(view)?view:'nearby';
  if(next==='route'&&state.view!=='route'){
@@ -520,6 +524,7 @@ $('route-origin-map').addEventListener('click',()=>beginRouteMapPick('origin'));
 $('route-destination-map').addEventListener('click',()=>beginRouteMapPick('destination'));
 $('route-recent').addEventListener('change',()=>{const value=$('route-recent').value;if(value==='')return;const item=recentDestinations[Number(value)];if(item)setRoutePoint('destination',item,item.label);});
 $('route-submit').addEventListener('click',planRoute);
+$('route-panel-close')?.addEventListener('click',closeRoutePanel);
 document.querySelectorAll('[data-route-sort]').forEach(button=>button.addEventListener('click',()=>{state.routeSort=button.dataset.routeSort;render();}));
 for(const id of ['route-corridor','route-max-detour','route-option'])$(id).addEventListener('change',()=>{if(routeMode.state.response){routeMode.invalidate();routeSimulation.set(null);if(state.mapReady)map.clearRoute();toast('탐색 조건이 바뀌었습니다. 다시 확인해 주세요.');}if(state.view==='route')render();});
 renderRecentDestinations();
