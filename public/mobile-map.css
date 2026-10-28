@@ -599,12 +599,15 @@ body.route-mode.route-results-ready .map-secondary-actions .route-results-toggle
  body.route-mode .route-panel-head h2{margin-top:2px;font-size:17px;line-height:1.25}
  body.route-mode .route-mode-chip{min-height:26px;padding:0 8px}
  body.route-mode .route-intro{margin-top:5px;font-size:10px;line-height:1.45}
+ body.route-mode .route-value-strip{margin-top:7px}
+ body.route-mode .route-value-strip li{min-height:24px;padding:0 7px}
  body.route-mode .route-progress-steps{margin-top:9px}
  body.route-mode .route-progress-steps li{height:28px}
  body.route-mode .route-destination-card{margin-top:9px;padding:12px;border-radius:14px}
  body.route-mode .route-destination-card>label{font-size:13px}
  body.route-mode .route-destination-card form{margin-top:7px}
  body.route-mode .route-destination-card input{height:40px}
+ body.route-mode .route-destination-card form button{min-width:58px}
  body.route-mode .route-address-help{margin-top:5px}
  body.route-mode .route-selected-point{margin-top:7px;padding:7px 8px}
  body.route-mode .route-destination-actions{margin-top:7px}
@@ -619,6 +622,7 @@ body.route-mode.route-results-ready .map-secondary-actions .route-results-toggle
  body.route-mode .route-action-copy{margin-top:6px}
  body.route-mode .route-action-zone .route-simple-note{display:none}
  body.route-mode .route-action-zone .route-api-state{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:8px}
+ body.route-mode .route-panel-exit{min-height:38px;margin-top:6px;border-color:transparent;background:transparent;color:#617a72}
 }
 @media(min-width:640px) and (max-width:1000px){
  body.mobile-map-browse .workspace>.sidebar>nav.view-tabs,
