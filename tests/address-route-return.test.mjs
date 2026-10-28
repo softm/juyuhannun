@@ -53,9 +53,9 @@ test('place search normalizes, ranks and presents general destination names', ()
 });
 
 test('destination form supports place, building, road and parcel search in one input', () => {
-  assert.match(html, /목적지 통합검색/);
-  assert.match(html, /placeholder="장소명, 도로명 또는 지번 입력"/);
-  assert.match(html, /장소·건물명·도로명·지번을 한 번에 검색할 수 있습니다/);
+  assert.match(html, /장소·주소 통합검색/);
+  assert.match(html, /placeholder="목적지 이름이나 주소"/);
+  assert.match(html, /장소명, 건물명, 도로명, 지번 모두 검색할 수 있어요/);
   assert.match(html, /id="route-destination-candidates"[^>]+role="listbox"/);
   assert.match(app, /addressSearchPresentation/);
   assert.match(app, /map\.searchLocation\(text\)/);
@@ -71,6 +71,10 @@ test('route planner keeps the input flow compact and the primary action always r
   assert.match(styles, /\.route-panel\{display:flex;flex-direction:column;min-height:0;[^}]*overflow:hidden\}/);
   assert.match(styles, /\.route-destination-search \.search-candidates:not\(\[hidden\]\)\{display:block;position:absolute/);
   assert.match(styles, /\.route-action-zone\{[^}]*flex:none/);
+  assert.match(html, /class="route-value-strip"[^>]+가는 길 주유소 추천 기준/);
+  assert.match(html, /목적지를 먼저 선택해 주세요/);
+  assert.match(styles, /\.route-submit:disabled\{background:#dce7e3/);
+  assert.match(app, /destinationReady\?'이 경로의 주유소 보기/);
   assert.match(mobileCss, /display:flex!important;flex-direction:column;padding:0!important;overflow:hidden!important/);
   assert.match(mobileCss, /@media\(min-width:640px\) and \(max-width:1000px\)[\s\S]*width:470px/);
   assert.match(app, /activeStep=routeReady\?'results':destinationReady\?'options':'destination'/);
