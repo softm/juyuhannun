@@ -129,6 +129,12 @@ test('collapsed map menu keeps fuel selection immediately left of the route shor
   assert.match(css,/focus-fuel-tabs\{position:absolute[\s\S]*grid-template-columns:1fr 1fr/);
 });
 
+test('bottom list and more dock uses balanced compact vertical spacing',()=>{
+  assert.match(css,/mobile-focus-dock\{[^}]*bottom:calc\(12px[^}]*height:56px[^}]*border-radius:28px/);
+  assert.match(css,/mobile-focus-dock button\{[^}]*height:44px;min-height:44px[^}]*line-height:1/);
+  assert.match(css,/juyu-bottom-ad-active\.mobile-map-browse \.mobile-focus-dock\{bottom:calc\(12px/);
+});
+
 test('detail sheet handle is interactive and snaps focus modes', () => {
   assert.match(html, /id="detail-sheet-handle"/);
   assert.match(view, /pointerdown/);

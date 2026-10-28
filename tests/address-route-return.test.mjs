@@ -100,7 +100,7 @@ test('route detail closes to the map and exposes a dedicated route-results dock 
   assert.match(mobileView, /detailReturnMode=listModes\.has\(mode\)\?'map-browse'/);
   assert.match(mobileView, /setMode\(detailReturnMode\|\|'map-browse'\)/);
   assert.match(mobileCss, /#focus-dock-list\.route-result-return/);
-  assert.match(mobileCss, /juyu-bottom-ad-active\.mobile-map-browse \.mobile-focus-dock\{bottom:calc\(18px \+ var\(--juyu-bottom-ad-space/);
+  assert.match(mobileCss, /juyu-bottom-ad-active\.mobile-map-browse \.mobile-focus-dock\{bottom:calc\(12px \+ var\(--juyu-bottom-ad-space/);
   assert.match(mobileCss, /juyu-bottom-ad-active\.mobile-list-sheet \.workspace>\.sidebar\{bottom:var\(--juyu-bottom-ad-space/);
 });
 
