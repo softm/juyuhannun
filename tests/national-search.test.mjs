@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {filterStations,stationNavigationURL} from '../public/js/core.js';
+import {filterStations,searchStations,stationNavigationURL} from '../public/js/core.js';
 import {useNationwideData} from '../public/js/data-loader.js';
 import {MapController} from '../public/js/map.js';
 const now=Date.parse('2026-10-21T05:00:00Z');
@@ -44,6 +44,13 @@ test('text, fuel, freshness, brand, self-service and favorites remain within the
  const stale={...seosan,prices:{B027:{...price,sourceDate:'2026-10-15'}}};
  assert.equal(filterStations([stale],{...opts,bounds:wide,freshOnly:true}).length,0);
  assert.equal(filterStations([stale],{...opts,bounds:wide}).length,1);
+});
+test('national station search matches region and station name outside the current viewport',()=>{
+ const maesongSeoul={...seosan,id:'EX-B00217',name:'매송(서울)주유소',address:'경기도 화성시 매송면 서해안고속도로 316-1',routeName:'서해안선',direction:'시흥'};
+ const maesongMokpo={...maesongSeoul,id:'EX-B00218',name:'매송(목포)주유소',address:'경기도 화성시 매송면 서해안고속도로 315-1',direction:'목포',prices:{B027:{...price,price:1640}}};
+ assert.deepEqual(searchStations([seoul,maesongSeoul,maesongMokpo],{query:'매송',fuel:'B027',center:opts.center,now}).map(row=>row.id),['EX-B00218','EX-B00217']);
+ assert.deepEqual(searchStations([seoul,maesongSeoul,maesongMokpo],{query:'화성 매송 서울',fuel:'B027',center:opts.center,now}).map(row=>row.id),['EX-B00217']);
+ assert.deepEqual(searchStations([maesongSeoul],{query:'매송',fuel:'K015',center:opts.center,now}),[]);
 });
 test('partial coordinate coverage can populate the viewport without requiring a national search mode',()=>{
  const data={status:'partial',coverage:{serviceReady:false,searchIncludesUnmapped:true},stations:[seoul,unmapped]};

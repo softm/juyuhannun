@@ -64,6 +64,15 @@ test('destination form supports place, building, road and parcel search in one i
   assert.match(styles, /\.search-address-kind/);
 });
 
+test('main search prioritizes nationwide station name and region matches', () => {
+  assert.match(app, /loadStaticJSON\(`\.\/data\/highway\.json/);
+  assert.match(app, /for\(const s of highway\?\.stations\|\|\[\]\)/);
+  assert.match(app, /function stationSearchRows\(query\)/);
+  assert.match(app, /if\(stations\.length\)\{showStationSearchResults\(stations,query\);return;\}/);
+  assert.match(app, /search-address-kind station/);
+  assert.match(styles, /\.search-address-kind\.station\{background:#0f6b57/);
+});
+
 test('route planner keeps the input flow compact and the primary action always reachable', () => {
   for (const marker of ['route-planner-scroll', 'route-progress-steps', 'route-destination-search', 'route-action-zone', 'route-trust-note']) {
     assert.match(html, new RegExp(`class="[^"]*${marker}|id="${marker}"`));
