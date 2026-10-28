@@ -120,8 +120,12 @@ test('collapsed map menu keeps fuel selection immediately left of the route shor
   assert.match(html,/id="focus-fuel-toggle"[^>]+aria-controls="focus-fuel-tabs"/);
   assert.match(html,/data-focus-fuel="B027"[\s\S]*data-focus-fuel="D047"/);
   assert.match(app,/focus-fuel-toggle'[\s\S]*focus-fuel-tabs/);
-  assert.match(css,/focus-route-shortcut[\s\S]*position:fixed;left:50%[\s\S]*translateX\(-50%\)/);
-  assert.match(css,/focus-collapsed-fuel[\s\S]*right:calc\(50% \+ 78px\)/);
+  assert.match(html,/id="focus-fuel-label">휘발유<\/span>/);
+  assert.match(html,/id="focus-fuel-toggle"[\s\S]*fuel-tab-icon gasoline/);
+  assert.match(app,/focusButton\.querySelector\('\.fuel-tab-icon'\)/);
+  assert.match(css,/focus-route-shortcut[\s\S]*left:calc\(50% \+ 36px\)[\s\S]*translateX\(-50%\)/);
+  assert.match(css,/focus-collapsed-fuel[\s\S]*right:calc\(50% \+ 43px\)/);
+  assert.match(css,/focus-fuel-toggle\{display:flex;min-width:92px[\s\S]*gap:5px/);
   assert.match(css,/focus-fuel-tabs\{position:absolute[\s\S]*grid-template-columns:1fr 1fr/);
 });
 
