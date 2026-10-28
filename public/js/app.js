@@ -224,6 +224,7 @@ function renderRoutePanelState(rows){
  $('route-destination-label').textContent=routeMode.state.destinationLabel||'목적지를 검색하거나 지도에서 선택해 주세요';
  $('route-options-summary').textContent=`경로 ${Number($('route-corridor').value)/1000}km 이내 · 최대 ${$('route-max-detour').value}분 우회`;
  submit.disabled=routeMode.state.loading||!routeMode.state.origin||!routeMode.state.destination;
+ if(!routeMode.state.loading)submit.innerHTML=destinationReady?'이 경로의 주유소 보기 <span aria-hidden="true">→</span>':'목적지를 먼저 선택해 주세요 <span aria-hidden="true">→</span>';
  if(routeMode.state.loading){status.textContent='기본 경로와 실제 경유 경로를 확인하고 있습니다…';summary.hidden=true;chips.hidden=true;return;}
  if(routeMode.state.error&&!response?.baseRoute){status.textContent=routeMode.state.error.message;status.classList.add('error');summary.hidden=true;chips.hidden=true;return;}
  status.classList.remove('error');
