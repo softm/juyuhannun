@@ -85,17 +85,22 @@ export function mountBottomAd({win=window,doc=document}={}){
   const viewportWidth=Math.max(doc.documentElement?.clientWidth||0,win.innerWidth||0);
   if(NATIVE_ADS||!ADFIT_CONFIG.enabled||!isProduction()||!slot||viewportWidth<slot.width)return null;
   const shell=doc.createElement('aside');shell.className='juyu-bottom-ad';shell.hidden=true;shell.setAttribute('aria-label','하단 광고');
-  shell.innerHTML='<button type="button" class="juyu-bottom-ad-toggle" aria-controls="juyuBottomAdPanel" aria-expanded="true">광고 접기</button><section id="juyuBottomAdPanel" class="juyu-bottom-ad-panel" aria-label="광고"></section>';
+  shell.innerHTML='<button type="button" class="juyu-bottom-ad-toggle" aria-controls="juyuBottomAdPanel" aria-expanded="true" aria-label="하단 광고 접기"><span class="juyu-bottom-ad-grip" aria-hidden="true"></span><span class="juyu-bottom-ad-chevron" aria-hidden="true"></span></button><section id="juyuBottomAdPanel" class="juyu-bottom-ad-panel" aria-label="광고"></section>';
   const button=shell.querySelector('.juyu-bottom-ad-toggle'),panel=shell.querySelector('.juyu-bottom-ad-panel');
-  let expanded=true,resizeObserver;
+  let expanded=true,resizeObserver,dragStartY=0,dragDistance=0,dragging=false,suppressClick=false;
   try{const stored=win.sessionStorage.getItem(BOTTOM_AD_STORAGE_KEY);if(stored!==null)expanded=stored==='true';}catch{}
   const syncSpace=()=>{const height=shell.hidden?0:Math.ceil(shell.getBoundingClientRect().height);doc.body.style.setProperty('--juyu-bottom-ad-space',`${height}px`);doc.body.classList.toggle('juyu-bottom-ad-active',height>0);};
   const node=createAdNode(slot,{onState:state=>{if(state==='empty'){shell.hidden=true;syncSpace();}else syncSpace();}});
   panel.append(node);doc.body.append(shell);shell.hidden=false;
-  const sync=()=>{panel.hidden=!expanded;button.textContent=expanded?'광고 접기':'광고 펼치기';button.setAttribute('aria-expanded',String(expanded));node.hidden=!expanded||node.dataset.state==='empty';syncSpace();};
+  const resetDrag=()=>{dragging=false;dragDistance=0;shell.classList.remove('is-dragging');shell.style.removeProperty('--juyu-bottom-ad-drag');};
+  const sync=()=>{resetDrag();panel.hidden=!expanded;shell.classList.toggle('is-collapsed',!expanded);button.setAttribute('aria-expanded',String(expanded));button.setAttribute('aria-label',expanded?'하단 광고 접기':'하단 광고 펼치기');node.hidden=!expanded||node.dataset.state==='empty';syncSpace();};
   const setExpanded=value=>{expanded=Boolean(value);try{win.sessionStorage.setItem(BOTTOM_AD_STORAGE_KEY,String(expanded));}catch{}sync();};
-  const toggle=()=>setExpanded(!expanded);button.addEventListener('click',toggle);
+  const toggle=()=>{if(suppressClick){suppressClick=false;return;}setExpanded(!expanded);};
+  const onPointerDown=event=>{if(!expanded||event.button>0)return;dragging=true;suppressClick=false;dragStartY=event.clientY;dragDistance=0;shell.classList.add('is-dragging');button.setPointerCapture?.(event.pointerId);};
+  const onPointerMove=event=>{if(!dragging)return;dragDistance=Math.max(0,event.clientY-dragStartY);if(dragDistance>4)suppressClick=true;shell.style.setProperty('--juyu-bottom-ad-drag',`${dragDistance}px`);event.preventDefault();};
+  const onPointerEnd=event=>{if(!dragging)return;button.releasePointerCapture?.(event.pointerId);const collapse=dragDistance>=36;resetDrag();if(collapse)setExpanded(false);};
+  button.addEventListener('click',toggle);button.addEventListener('pointerdown',onPointerDown);button.addEventListener('pointermove',onPointerMove);button.addEventListener('pointerup',onPointerEnd);button.addEventListener('pointercancel',onPointerEnd);
   resizeObserver=win.ResizeObserver?new win.ResizeObserver(syncSpace):null;resizeObserver?.observe(shell);sync();
-  bottomController={setExpanded,destroy(){resizeObserver?.disconnect();button.removeEventListener('click',toggle);shell.remove();doc.body.style.setProperty('--juyu-bottom-ad-space','0px');doc.body.classList.remove('juyu-bottom-ad-active');bottomController=null;}};
+  bottomController={setExpanded,destroy(){resizeObserver?.disconnect();button.removeEventListener('click',toggle);button.removeEventListener('pointerdown',onPointerDown);button.removeEventListener('pointermove',onPointerMove);button.removeEventListener('pointerup',onPointerEnd);button.removeEventListener('pointercancel',onPointerEnd);shell.remove();doc.body.style.setProperty('--juyu-bottom-ad-space','0px');doc.body.classList.remove('juyu-bottom-ad-active');bottomController=null;}};
   return bottomController;
 }
