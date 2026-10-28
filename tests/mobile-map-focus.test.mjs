@@ -363,6 +363,8 @@ test('driving mode keeps map overlays upright and shows actual plus predicted tr
   assert.match(styles,/\.map-secondary-actions\{[^}]*display:flex/);
   assert.match(styles,/@media\(min-width:761px\) and \(max-width:1366px\)\{\.map-secondary-action\{[^}]*width:48px/);
   assert.match(app,/\$\('drive-mode'\)\.addEventListener\('click'/);
+  assert.match(styles, /\.drive-scale\{position:fixed;left:50%;right:auto;top:auto;bottom:calc\(104px/);
+  assert.match(styles, /body\.route-mode \.drive-scale\{bottom:calc\(238px/);
   assert.match(map,/projectPoint/);
   assert.match(map,/_renderDrivingGuides/);
   assert.match(map,/strokeStyle:\s*'shortdash'/);

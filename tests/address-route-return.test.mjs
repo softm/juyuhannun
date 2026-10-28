@@ -75,11 +75,14 @@ test('route planner keeps the input flow compact and the primary action always r
   assert.match(mobileCss, /@media\(min-width:640px\) and \(max-width:1000px\)[\s\S]*width:470px/);
   assert.match(app, /activeStep=routeReady\?'results':destinationReady\?'options':'destination'/);
   assert.match(html, /id="route-panel-close"[^>]+aria-label="가는 길 주유소 화면 닫기"/);
-  assert.match(html, /id="route-panel-exit"[^>]+aria-label="가는 길 주소 찾기를 닫고 지도로 돌아가기"/);
+  assert.match(html, /id="route-panel-exit"[^>]+aria-label="가는 길 찾기를 종료하고 지도 안 주유소로 돌아가기"/);
+  assert.match(html, /id="route-mode-exit"[^>]+aria-label="가는 길 찾기를 종료하고 지도 안 주유소로 돌아가기"/);
   assert.match(app, /function closeRoutePanel\(\)[\s\S]*hasRouteResults\(\)[\s\S]*closeRoutePlanner\(\)[\s\S]*selectView\('nearby'\)/);
-  assert.match(app, /\['route-panel-close','route-panel-exit'\]/);
+  assert.match(app, /function exitRouteMode\(\)[\s\S]*selectView\('nearby'\)/);
+  assert.match(app, /\['route-panel-exit','route-mode-exit'\]/);
   assert.match(styles, /\.route-panel-close\{[^}]*width:36px[^}]*height:36px/);
   assert.match(styles, /\.route-panel-exit\{[^}]*width:100%[^}]*min-height:42px/);
+  assert.match(mobileCss, /route-results-ready\.mobile-map-browse \.mobile-focus-dock \.route-mode-exit\{display:flex!important/);
 });
 
 test('route detail closes to the map and exposes a dedicated route-results dock button', () => {
@@ -109,6 +112,7 @@ test('route results transition between planner, list and map without covering th
   assert.match(mobileView, /function handleListBack\(\)\{if\(onListBack\(\{mode\}\)===true\)return;closeListSheet\(\);\}/);
   assert.match(mobileCss, /body\.route-mode\.route-planner-open\.mobile-map-browse \.workspace>\.sidebar>\.route-panel/);
   assert.doesNotMatch(mobileCss, /body\.route-mode\.mobile-map-browse \.workspace>\.sidebar>\.route-panel/);
+  assert.match(mobileCss, /grid-template-columns:minmax\(0,1\.35fr\) minmax\(0,1fr\) 62px/);
 });
 
 test('route results switch between the top recommendations and all stations from a map icon', () => {
