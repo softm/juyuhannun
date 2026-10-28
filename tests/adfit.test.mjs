@@ -20,8 +20,12 @@ test('메인과 평균유가 화면은 세션 상태를 유지하는 공통 하�
   assert.match(app,/mountBottomAd\(\)/);
   assert.match(energy,/mountBottomAd\(\)/);
   assert.match(adfit,/juyuhannun:ad-bottom:expanded:v1/);
-  assert.match(adfit,/광고 접기/);
-  assert.match(adfit,/광고 펼치기/);
+  assert.match(adfit,/하단 광고 접기/);
+  assert.match(adfit,/하단 광고 펼치기/);
+  assert.match(adfit,/pointerdown/);
+  assert.match(adfit,/dragDistance>=36/);
+  assert.match(styles,/\.juyu-bottom-ad-grip/);
+  assert.match(styles,/touch-action:none/);
   assert.match(adfit,/sessionStorage\.setItem/);
   assert.match(adfit,/state==='empty'/);
   assert.match(styles,/--juyu-bottom-ad-space/);
