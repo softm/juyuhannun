@@ -218,7 +218,7 @@
 
 
 /* 2026-10-23 five-state focus toggle: detail -> map browse -> expanded detail -> list sheet -> expanded list. */
-.mobile-list-sheet-handle,.mobile-list-sheet-collapse,.mobile-list-sheet-caption,.mobile-focus-dock,.focus-rescan{display:none}
+.mobile-list-sheet-handle,.mobile-list-sheet-collapse,.mobile-list-sheet-caption,.mobile-focus-dock,.focus-rescan,.focus-route-shortcut{display:none}
 @media(max-width:1000px){
   body.mobile-map-browse .workspace>.sidebar{display:block;position:fixed;inset:0;z-index:118;border:0;background:transparent;pointer-events:none;box-shadow:none}
   body.mobile-map-browse .workspace>.sidebar>:not(.search-block){display:none!important}
@@ -231,6 +231,8 @@
   body.mobile-map-browse .mobile-map-toggle>span:last-child{display:none}
 
   body.mobile-map-browse .focus-rescan{display:flex;position:fixed;left:50%;bottom:calc(104px + env(safe-area-inset-bottom,0px));z-index:180;transform:translateX(-50%);align-items:center;gap:6px;min-height:45px;padding:0 20px;border:1px solid #dce5e1;border-radius:23px;background:#fff;color:#2368c8;font-size:12px;font-weight:800;box-shadow:0 6px 20px #17362e20}
+  body.mobile-map-browse .focus-rescan.is-progress{color:#667a73;cursor:wait}.rescan-spinner{width:15px;height:15px;border:2px solid #d4e2dd;border-top-color:#1769d7;border-radius:50%;animation:spin .7s linear infinite}
+  body.mobile-map-browse .focus-route-shortcut,body.mobile-map-expanded .focus-route-shortcut{display:flex;position:fixed;left:50%;top:calc(68px + env(safe-area-inset-top,0px));z-index:187;transform:translateX(-50%);align-items:center;gap:7px;min-height:43px;padding:0 17px;border:1px solid #086653;border-radius:22px;background:#0f6b57;color:#fff;font-size:11px;font-weight:900;box-shadow:0 7px 20px #17362e38;pointer-events:auto}.focus-route-shortcut svg{width:17px;height:17px}
   body.mobile-map-browse .mobile-focus-dock{display:grid;position:fixed;left:50%;bottom:calc(18px + env(safe-area-inset-bottom,0px));z-index:180;transform:translateX(-50%);grid-template-columns:repeat(2,auto);align-items:center;min-width:min(92vw,540px);height:66px;padding:0 14px;border:1px solid #dce5e1;border-radius:33px;background:#f8faf7ee;box-shadow:0 8px 30px #17362e28;backdrop-filter:blur(12px)}
   body.mobile-map-browse .mobile-focus-dock button{display:flex;align-items:center;justify-content:center;gap:8px;min-height:48px;padding:0 15px;color:#164f43;font-size:13px;font-weight:800;white-space:nowrap}
   body.mobile-map-browse .mobile-focus-dock button+button{border-left:1px solid #e2e8e4}
@@ -547,7 +549,7 @@ body.route-mode.route-results-ready .map-secondary-actions .route-results-toggle
  body.route-mode.route-planner-open.mobile-map-expanded #map-section .map-actions,
  body.route-mode.route-planner-open.mobile-map-expanded .map-secondary-actions,
  body.route-mode.route-planner-open.mobile-map-expanded .mobile-map-toggle,
- body.route-mode.mobile-map-browse .focus-rescan{display:none!important}
+ body.route-mode.mobile-map-browse .focus-rescan,body.route-mode .focus-route-shortcut{display:none!important}
  body.route-mode.mobile-map-browse .mobile-focus-dock{z-index:186}
  body.route-mode.mobile-map-browse #focus-dock-more.route-transition-control .dock-icon{color:#0f6b57;letter-spacing:0}
  body.route-mode.mobile-list-sheet .workspace>.sidebar>.route-panel{display:none!important}
