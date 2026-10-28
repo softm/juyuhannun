@@ -144,15 +144,38 @@ test('stale or missing price markers use slate rather than price-level colors',(
 });
 
 
-test('selected marker visibly uses price only and has bounce selection animation',()=>{
+test('selected marker combines brand logo and price with bounce selection animation',()=>{
   const h=harness(),c=h.controller;
   const fresh=new Date().toISOString();
-  c.setStations([row('selected',{roadAddress:'서울특별시 테스트로 1',prices:{B027:{price:1589,priceUpdatedAt:fresh,fetchedAt:fresh}}})],'selected');h.flush();
+  c.setStations([row('selected',{brand:'GSC',roadAddress:'서울특별시 테스트로 1',prices:{B027:{price:1589,priceUpdatedAt:fresh,fetchedAt:fresh}}})],'selected');h.flush();
   const content=c._markerState.get('selected').content;
   assert.match(content,/price-pin-value">1,589/);
   assert.doesNotMatch(content,/price-label-detail[^<]*서울특별시 테스트로 1/);
+  assert.match(content,/station-marker tone-orange is-selected is-lowest rank-1 has-visible-price/);
+  assert.match(content,/price-pin selected[\s\S]*marker-brand-badge has-logo[\s\S]*price-pin-value">1,589/);
+  const callout=content.match(/<button type="button" class="selected-station-callout"[\s\S]*?<\/button>/)?.[0]||'';
+  assert.doesNotMatch(callout,/marker-brand-badge/);
   assert.match(content,/selected-station-callout/);
   assert.match(content,/테스트 selected/);
+});
+
+
+test('brand logo appears inside its rendered price marker and is omitted when price is unavailable',()=>{
+  const h=harness(),c=h.controller;
+  const fresh=new Date().toISOString();
+  c.setStations([
+    row('priced',{brand:'GSC',prices:{B027:{price:1688,priceUpdatedAt:fresh,fetchedAt:fresh}}}),
+    row('missing',{brand:'SKE',prices:{}})
+  ]);h.flush();
+  const priced=c._markerState.get('priced').content;
+  const missing=c._markerState.get('missing').content;
+  assert.match(priced,/has-visible-price/);
+  assert.match(priced,/lowest-price-badge[\s\S]*marker-brand-badge has-logo[\s\S]*<strong>1,688원/);
+  assert.match(priced,/price-pin[\s\S]*marker-brand-badge has-logo[\s\S]*price-pin-value">1,688/);
+  assert.doesNotMatch(missing,/has-visible-price|marker-brand-badge/);
+  assert.match(missing,/price-pin-value">—/);
+  assert.match(mapSource,/\.price-pin>\.marker-brand-badge\{[^']*display:none/);
+  assert.match(mapSource,/data-marker-scale="pin"[^']*price-pin>\.marker-brand-badge[^']*display:flex/);
 });
 
 
@@ -205,6 +228,7 @@ test('top five current-fuel prices get bouncing clickable rank badges',()=>{
 test('route recommendation bubbles keep one green body and color only rank text pills',()=>{
   assert.match(mapSource,/\.lowest-price-badge\{[^']*background:#159b72/);
   assert.match(mapSource,/\.lowest-price-badge:after\{[^']*background:#159b72/);
+  assert.match(mapSource,/\.station-marker\.is-lowest:not\(\.is-selected\) \.price-pin\{display:none\}/);
   for(const rank of [1,2,3])assert.match(mapSource,new RegExp(`\\.lowest-price-badge\\.rank-${rank} \\.lowest-tag\\{background:#`));
   assert.doesNotMatch(mapSource,/\.lowest-price-badge\.rank-2,\.lowest-price-badge\.rank-3[^']*background:/);
 });
