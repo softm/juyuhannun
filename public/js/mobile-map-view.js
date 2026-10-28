@@ -148,12 +148,16 @@ export function setupMobileMapView({
   function setDetailMode(next){if(!detailModes.has(next)||!detailDialog?.open)return;clearLiveDetailHeight();setMode(next);}
   function toggleDetailExpanded(){if(destroyed||!media.matches||!detailDialog?.open)return;setDetailMode(mode==='expanded-tools'?'focus-detail':'expanded-tools');}
 
-  function listViewportHeight(){return Math.max(420,window.innerHeight||document.documentElement.clientHeight||800);}
+  function listViewportHeight(){
+    const viewport=window.visualViewport?.height||window.innerHeight||document.documentElement.clientHeight||800;
+    const adSpace=parseFloat(getComputedStyle(document.body).getPropertyValue('--juyu-bottom-ad-space'))||0;
+    return Math.max(320,viewport-adSpace);
+  }
   function listSnapHeight(snap=listSnap){
     const viewport=listViewportHeight();
     const compact=Math.round(Math.min(340,Math.max(230,viewport*.38)));
     const expanded=Math.round(viewport*.84);
-    const medium=Math.round(Math.min(expanded-64,Math.max(compact+72,viewport*.54)));
+    const medium=Math.round(Math.min(expanded-64,Math.max(compact+72,viewport*.50)));
     return snap==='compact'?compact:snap==='expanded'?expanded:medium;
   }
   function applyListHeight(height,{duringDrag=false}={}){

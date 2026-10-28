@@ -2,6 +2,8 @@ import { APP_CONFIG } from '../config.js';
 import { escapeHTML, getFuelPrice, freshness, FUEL_TYPES, BRANDS } from './core.js';
 import { markerScale, labelBudget, markerDensityLimit, visibleStations, labelCandidates } from './marker-display.js';
 import { mergeLocationSearchResults, normalizeAddressSearchResults, normalizePlaceSearchResults } from './address-search.js';
+import {createDrivingMotionState,drivingZoomForSpeed,updateDrivingMotion} from './driving-controller.js';
+import {brandVisual} from './brand-visuals.js';
 import '../shared/care-location.js';
 import '../shared/care-popup-geometry.js';
 import '../shared/map-marker-placement.js';
@@ -219,6 +221,8 @@ function installMarkerStyles() {
     '.map-provider-notice[hidden]{display:none}',
     '.price-marker-shell{background:none!important;border:0!important}',
     '.station-marker{position:relative;width:72px;height:64px;pointer-events:none}',
+    '.marker-brand-badge{display:flex;align-items:center;justify-content:center;width:24px;height:24px;border:2px solid #fff;border-radius:50%;background:#173e34;color:#fff;font:900 8px/1 system-ui,sans-serif;box-shadow:0 2px 6px #102a2438;flex:none}',
+    '.station-marker>.marker-brand-badge{position:absolute;left:14px;bottom:31px;z-index:8;pointer-events:none}.selected-station-callout>.marker-brand-badge{width:29px;height:29px;font-size:9px}',
     '.station-marker .price-pin{position:absolute;left:36px;bottom:7px;display:flex;align-items:center;justify-content:center;width:34px;height:34px;min-width:34px;min-height:34px;padding:0;border:3px solid #fff;border-radius:50%;background:var(--pin,#2f7df6);color:#fff;box-shadow:0 3px 10px #132b3c4a;cursor:pointer;pointer-events:auto}',
     '.station-marker .price-pin:after{content:"";position:absolute;left:50%;bottom:-7px;width:10px;height:10px;transform:translateX(-50%) rotate(45deg);border-right:3px solid #fff;border-bottom:3px solid #fff;background:var(--pin,#2f7df6);border-radius:0 0 2px 0}',
     '.station-marker.tone-green{--pin:#18a875}.station-marker.tone-orange{--pin:#efa516}.station-marker.tone-red{--pin:#e4545d}.station-marker.tone-slate{--pin:#7d8b98}',
@@ -325,6 +329,10 @@ export class MapController {
     this._driveRoadPredictionCoords = [];
     this._drivePoint = null;
     this._driveSpeed = 0;
+    this._driveMotion = createDrivingMotionState();
+    this._driveForceActive = false;
+    this._driveZoomMode = 'auto';
+    this._driveManualZoom = null;
     this._geocodeRevision = 0;
     this._mapType = 'normal';
     this._destroyed = false;
@@ -462,7 +470,13 @@ export class MapController {
     });
     const listen = (name, callback) => this._listeners.push(maps.Event.addListener(this.map, name, callback));
     listen('dragstart', () => { this._navigationRevision++; this._userIntent = true; this._suppressUntil = 0; clearTimeout(this._centerTimer); });
-    listen('zoom_changed', () => this._updateMarkerScale());
+    listen('zoom_changed', () => {
+      this._updateMarkerScale();
+      if (this._driveWatchId != null && this._userIntent && Date.now() >= this._suppressUntil) {
+        this._driveZoomMode = 'manual';
+        this._driveManualZoom = this.map.getZoom();
+      }
+    });
     listen('idle', () => this._idle());
     listen('click', event => {
       const point = { lat: event.coord?.lat(), lng: event.coord?.lng() };
@@ -501,7 +515,13 @@ export class MapController {
         }
       });
       this.map.on('dragstart', () => { this._navigationRevision++; this._userIntent = true; this._suppressUntil = 0; clearTimeout(this._centerTimer); });
-      this.map.on('zoom', () => this._updateMarkerScale());
+      this.map.on('zoom', () => {
+        this._updateMarkerScale();
+        if (this._driveWatchId != null && this._userIntent && Date.now() >= this._suppressUntil) {
+          this._driveZoomMode = 'manual';
+          this._driveManualZoom = this.map.getZoom();
+        }
+      });
       this.map.on('moveend zoomend', () => this._idle());
       this.map.on('click', event => this.onPick?.({ lat: event.latlng.lat, lng: event.latlng.lng }));
       this.ready = true;
@@ -737,13 +757,15 @@ export class MapController {
     const fuelName = FUEL_TYPES.find(item => item.code === this._fuel)?.name || '유종';
     const label = presentation ? String(presentation.label || row.name) : row.name + ', ' + fuelName + ' ' + (info ? price + '원' : '가격 미확인') + ', ' + confidence.label;
     const unit = presentation ? String(presentation.unit || '') : info ? '원' : '';
-    const facts = [BRANDS[row.brand] || row.brand, row.facilities?.self === true ? '셀프' : row.facilities?.self === false ? '일반' : null, info?.sourceDate ? info.sourceDate + ' 기준' : confidence.label].filter(Boolean).join(' · ');
-    const callout=selected?'<button type="button" class="selected-station-callout" data-station-id="'+escapeHTML(id)+'" aria-label="'+escapeHTML((row.name||'주유소')+' 상세 보기')+'"><span class="callout-pump" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="12" height="17" rx="2"/><path d="M6 7h6v4H6ZM1 21h16m-2-8h2v5a2 2 0 0 0 4 0V8l-4-4m3 3v4h1"/></svg></span><strong>'+escapeHTML(row.name||'주유소')+'</strong><b aria-hidden="true">›</b></button>':'';
+    const brand=brandVisual(row.brand,BRANDS[row.brand]||row.brand);
+    const facts = [brand.label, row.facilities?.self === true ? '셀프' : row.facilities?.self === false ? '일반' : null, info?.sourceDate ? info.sourceDate + ' 기준' : confidence.label].filter(Boolean).join(' · ');
+    const brandBadge='<span class="marker-brand-badge" title="'+escapeHTML(brand.label)+'">'+escapeHTML(brand.short)+'</span>';
+    const callout=selected?'<button type="button" class="selected-station-callout" data-station-id="'+escapeHTML(id)+'" aria-label="'+escapeHTML((row.name||'주유소')+' 상세 보기')+'">'+brandBadge+'<strong>'+escapeHTML(row.name||'주유소')+'</strong><b aria-hidden="true">›</b></button>':'';
     const rankLabel=presentation?.badgeLabel&&priceRank?String(presentation.badgeLabel).replace('{rank}',String(priceRank)):priceRank===1?'최저':priceRank?priceRank+'위':'';
     const rankDelay=priceRank?((priceRank-1)*0.12).toFixed(2)+'s':'0s';
     const lowestBadge=isTopPrice&&!selected?'<button type="button" class="lowest-price-badge rank-'+priceRank+'" style="--rank-delay:'+rankDelay+'" data-station-id="'+escapeHTML(id)+'" aria-label="'+escapeHTML((row.name||'주유소')+' '+rankLabel+' '+visiblePrice+'원 상세 보기')+'" title="'+escapeHTML((row.name||'주유소')+' 상세 보기')+'"><span class="lowest-tag">'+escapeHTML(rankLabel)+'</span><strong>'+escapeHTML(visiblePrice)+'원</strong></button>':'';
     const detailLabel=selected?'':'<span class="price-pin-name"><span class="price-label-title">'+escapeHTML(row.name || '주유소')+'</span><span class="price-label-value">'+escapeHTML(visiblePrice+(visiblePrice!=='—'?unit:''))+'</span><span class="price-label-detail">'+escapeHTML(facts)+'</span></span>';
-    const content = '<div class="station-marker tone-' + tone + (selected ? ' is-selected' : '') + (isTopPrice ? ' is-lowest rank-'+priceRank : '') + '">'+lowestBadge+callout+'<button type="button" class="price-pin' + (selected ? ' selected' : '') +
+    const content = '<div class="station-marker tone-' + tone + (selected ? ' is-selected' : '') + (isTopPrice ? ' is-lowest rank-'+priceRank : '') + '">'+brandBadge+lowestBadge+callout+'<button type="button" class="price-pin' + (selected ? ' selected' : '') +
       (stale ? ' is-stale' : '') + '" data-station-id="' + escapeHTML(id) +
       '" aria-label="' + escapeHTML(label) + '" aria-pressed="' + selected + '" title="' + escapeHTML(label) +
       '"><span class="price-pin-glyph" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="12" height="17" rx="2"/><path d="M6 7h6v4H6ZM1 21h16m-2-8h2v5a2 2 0 0 0 4 0V8l-4-4m3 3v4h1"/></svg></span><span class="price-pin-value">' + escapeHTML(visiblePrice) +
@@ -901,13 +923,13 @@ export class MapController {
         this.map.setOptions?.({
           draggable: !active,
           scrollWheel: !active,
-          pinchZoom: !active
+          pinchZoom: true
         });
       } else {
         const toggle=(control,enable)=>{ if (!control) return; try { enable ? control.enable?.() : control.disable?.(); } catch {} };
         toggle(this.map.dragging,!active);
         toggle(this.map.scrollWheelZoom,!active);
-        toggle(this.map.touchZoom,!active);
+        toggle(this.map.touchZoom,true);
         toggle(this.map.doubleClickZoom,!active);
       }
     } catch {}
@@ -924,7 +946,13 @@ export class MapController {
   }
 
   isDriving() {
-    return this._driveWatchId != null;
+    return this._driveWatchId != null && ['active','paused'].includes(this._driveMotion?.phase);
+  }
+
+  setDrivingZoomMode(mode,zoom=null){
+    this._driveZoomMode=mode==='manual'?'manual':'auto';
+    if(this._driveZoomMode==='manual'&&Number.isFinite(Number(zoom))){this._driveManualZoom=this.setZoom(Number(zoom));}
+    return{mode:this._driveZoomMode,zoom:this._driveManualZoom};
   }
 
   _clearDrivingGuides() {
@@ -991,10 +1019,11 @@ export class MapController {
     }
   }
 
-  startDriving({ onUpdate = () => {}, onError = () => {} } = {}) {
+  startDriving({ onUpdate = () => {}, onError = () => {}, autoDetect=false, routeActive=false } = {}) {
     if (this._destroyed) throw new Error('종료된 지도에서는 주행 추적을 시작할 수 없습니다.');
     if (!navigator.geolocation?.watchPosition) throw new Error('이 브라우저에서는 실시간 위치 추적을 지원하지 않습니다.');
-    if (this._driveWatchId != null) return true;
+    if (this._driveWatchId != null) { if(!autoDetect){this._driveForceActive=true;this._driveMotion={...this._driveMotion,phase:'active',manual:true,suppressed:false};} return true; }
+    this._driveForceActive=!autoDetect;
     let previousPoint = this._drivePoint;
     let lastHeading = normalizeHeading(this._driveHeading);
     const errorMessage = error => {
@@ -1008,33 +1037,33 @@ export class MapController {
       const point = { lat: Number(position.coords.latitude), lng: Number(position.coords.longitude) };
       if (!validPoint(point)) return;
       const moved = previousPoint ? geoDistance(previousPoint, point) : 0;
-      let heading = normalizeHeading(position.coords.heading);
-      if (heading == null && previousPoint && moved >= 4) heading = geoBearing(previousPoint, point);
-      if (heading == null) heading = lastHeading;
-      if (heading == null) heading = 0;
-      const speed = Number.isFinite(Number(position.coords.speed)) && Number(position.coords.speed) >= 0 ? Number(position.coords.speed) : 0;
+      const speed = position.coords.speed != null && Number.isFinite(Number(position.coords.speed)) && Number(position.coords.speed) >= 0 ? Number(position.coords.speed) : null;
+      this._driveMotion=updateDrivingMotion(this._driveMotion,{...point,heading:position.coords.heading,speed,accuracy:Number(position.coords.accuracy),timestamp:position.timestamp},{now:Number(position.timestamp)||Date.now(),routeActive:typeof routeActive==='function'?routeActive():Boolean(routeActive),manual:this._driveForceActive});
+      const heading=this._driveMotion.reliableHeading;
+      const active=['active','paused'].includes(this._driveMotion.phase);
       lastHeading = heading;
       previousPoint = point;
       this._drivePoint = { ...point };
       this._driveHeading = heading;
-      this._driveSpeed = speed;
+      this._driveSpeed = this._driveMotion.speed;
       this._youPoint = { ...point };
-      this._setDrivingHeadingUp(heading, true);
-      this._showYou(point, { heading, driving: true });
-      this._renderDrivingGuides(point, heading, speed);
+      this._setDrivingInteraction(active);
+      this._setDrivingHeadingUp(heading, active);
+      this._showYou(point, { heading, driving: active&&heading!=null });
+      if(active)this._renderDrivingGuides(point, heading, this._driveMotion.speed);
 
       if (this.map && this.ready) {
         const currentZoom = Number(this.map.getZoom());
-        const targetZoom = speed >= 22 ? 13 : speed >= 11 ? 14 : 15;
-        const camera = this._drivingCenter(point, heading, speed);
+        const targetZoom = this._driveZoomMode==='manual'?(this._driveManualZoom??currentZoom):drivingZoomForSpeed(this._driveMotion.speed);
+        const camera = active&&heading!=null?this._drivingCenter(point, heading, this._driveMotion.speed):point;
         this._center = { ...camera };
         this._queryCenter = { ...camera };
         this._internal(() => {
           if (this.provider === 'naver') {
-            if (Number.isFinite(currentZoom) && currentZoom !== targetZoom) this.map.setZoom(targetZoom);
-            this.map.panTo(this._naverPoint(camera));
+            if (active&&Number.isFinite(currentZoom) && currentZoom !== targetZoom) this.map.setZoom(targetZoom);
+            if(active)this.map.panTo(this._naverPoint(camera));
           } else {
-            this.map.setView([camera.lat, camera.lng], targetZoom, { animate: false });
+            if(active)this.map.setView([camera.lat, camera.lng], targetZoom, { animate: false });
           }
         });
         this._scheduleMarkers();
@@ -1044,6 +1073,8 @@ export class MapController {
         point: { ...point },
         heading,
         speed,
+        phase:this._driveMotion.phase,
+        headingSource:this._driveMotion.headingSource,
         accuracy: Number(position.coords.accuracy) || null,
         timestamp: Number(position.timestamp) || Date.now()
       });
@@ -1054,7 +1085,7 @@ export class MapController {
       onError(wrapped);
     };
     try {
-      this._setDrivingInteraction(true);
+      this._setDrivingInteraction(this._driveForceActive);
       this._driveWatchId = navigator.geolocation.watchPosition(success, failure, {
         enableHighAccuracy: true,
         maximumAge: 1500,
@@ -1072,6 +1103,8 @@ export class MapController {
       try { navigator.geolocation.clearWatch(this._driveWatchId); } catch { /* ignore browser cleanup errors */ }
     }
     this._driveWatchId = null;
+    this._driveForceActive=false;
+    this._driveMotion=createDrivingMotionState();
     this._driveSpeed = 0;
     this._setDrivingHeadingUp(0, false);
     this._setDrivingInteraction(false);
@@ -1088,8 +1121,8 @@ export class MapController {
 
   _showYou(point, { heading = null, driving = false } = {}) {
     if (!this.map) return;
-    const normalized = normalizeHeading(heading) ?? 0;
-    const content = '<span class="map-you' + (driving ? ' is-driving' : '') + '" style="--drive-heading:' + normalized.toFixed(1) + 'deg" aria-label="' + (driving ? '주행 중 현재 위치' : '내 위치') + '"></span>';
+    const normalized = normalizeHeading(heading);
+    const content = '<span class="map-you' + (driving ? ' is-driving' : '') + '" style="--drive-heading:' + (normalized??0).toFixed(1) + 'deg" aria-label="' + (driving ? '주행 중 현재 위치' : '내 위치') + '"></span>';
     const size = driving ? 30 : 18;
     const anchor = size / 2;
     if (this.provider === 'naver') {
