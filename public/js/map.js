@@ -221,7 +221,7 @@ function installMarkerStyles() {
     '.map-provider-notice[hidden]{display:none}',
     '.price-marker-shell{background:none!important;border:0!important}',
     '.station-marker{position:relative;width:72px;height:64px;pointer-events:none}',
-    '.marker-brand-badge{display:flex;align-items:center;justify-content:center;width:24px;height:24px;border:2px solid #fff;border-radius:50%;background:#173e34;color:#fff;font:900 8px/1 system-ui,sans-serif;box-shadow:0 2px 6px #102a2438;flex:none}',
+    '.marker-brand-badge{display:flex;align-items:center;justify-content:center;width:24px;height:24px;border:2px solid #fff;border-radius:50%;background:var(--brand-color,#173e34);color:var(--brand-ink,#fff);font:900 8px/1 system-ui,sans-serif;box-shadow:0 2px 6px #102a2438;flex:none}',
     '.station-marker>.marker-brand-badge{position:absolute;left:14px;bottom:31px;z-index:8;pointer-events:none}.selected-station-callout>.marker-brand-badge{width:29px;height:29px;font-size:9px}',
     '.station-marker .price-pin{position:absolute;left:36px;bottom:7px;display:flex;align-items:center;justify-content:center;width:34px;height:34px;min-width:34px;min-height:34px;padding:0;border:3px solid #fff;border-radius:50%;background:var(--pin,#2f7df6);color:#fff;box-shadow:0 3px 10px #132b3c4a;cursor:pointer;pointer-events:auto}',
     '.station-marker .price-pin:after{content:"";position:absolute;left:50%;bottom:-7px;width:10px;height:10px;transform:translateX(-50%) rotate(45deg);border-right:3px solid #fff;border-bottom:3px solid #fff;background:var(--pin,#2f7df6);border-radius:0 0 2px 0}',
@@ -281,12 +281,13 @@ function installMarkerStyles() {
  * setCenter/focus/locate/showRoute do not call onCenterChange.
  */
 export class MapController {
-  constructor(container, { onCenterChange = () => {}, onViewportChange = () => {}, onSelect = () => {}, onPick = null, onState = () => {}, markerPresentation = null } = {}) {
+  constructor(container, { onCenterChange = () => {}, onViewportChange = () => {}, onSelect = () => {}, onDeselect = () => {}, onPick = null, onState = () => {}, markerPresentation = null } = {}) {
     this.container = typeof container === 'string' ? document.querySelector(container) : container;
     if (!this.container) throw new Error('지도를 표시할 영역이 없습니다.');
     this.onCenterChange = onCenterChange;
     this.onViewportChange = onViewportChange;
     this.onSelect = onSelect;
+    this.onDeselect = onDeselect;
     this.onPick = onPick;
     this.onState = onState;
     this.markerPresentation = typeof markerPresentation === 'function' ? markerPresentation : null;
@@ -300,6 +301,8 @@ export class MapController {
     this._markers = new Map();
     this._markerPool = new Map();
     this._markerState = new Map();
+    this._markerClickAt = 0;
+    this._markerClickId = null;
     this._retainedLabels = new Map();
     this._renderRevision = 0;
     this._queryCenter = { ...this._center };
@@ -376,8 +379,7 @@ export class MapController {
       event.stopPropagation();
       const id = button.dataset.stationId;
       if (!this._markers.has(id)) return;
-      this.setStations(this._stations, id, this._fuel);
-      this.onSelect(id);
+      this._selectStationMarker(id);
     };
     for (const type of ['pointerdown', 'wheel', 'touchstart', 'keydown']) {
       this.canvas.addEventListener(type, this._intentHandler, { passive: true, capture: true });
@@ -393,6 +395,20 @@ export class MapController {
       this._resizeObserver = new ResizeObserver(() => this.resize());
       this._resizeObserver.observe(this.container);
     }
+  }
+
+  _selectStationMarker(id) {
+    if (!this._markers.has(id)) return;
+    if (this._markerClickId === id && Date.now() - this._markerClickAt < 300) return;
+    this._markerClickAt = Date.now();
+    this._markerClickId = id;
+    this.setStations(this._stations, id, this._fuel);
+    this.onSelect(id);
+  }
+
+  _deselectFromMap() {
+    if (Date.now() - this._markerClickAt < 300) return;
+    this.onDeselect?.();
   }
 
   resize() {
@@ -481,6 +497,7 @@ export class MapController {
     listen('click', event => {
       const point = { lat: event.coord?.lat(), lng: event.coord?.lng() };
       if (validPoint(point)) this.onPick?.(point);
+      this._deselectFromMap();
     });
   }
 
@@ -523,7 +540,7 @@ export class MapController {
         }
       });
       this.map.on('moveend zoomend', () => this._idle());
-      this.map.on('click', event => this.onPick?.({ lat: event.latlng.lat, lng: event.latlng.lng }));
+      this.map.on('click', event => { this.onPick?.({ lat: event.latlng.lat, lng: event.latlng.lng }); this._deselectFromMap(); });
       this.ready = true;
       this._center = center;
       this._notice('네이버 지도를 연결하지 못해 OpenStreetMap 지도로 표시합니다.');
@@ -759,7 +776,7 @@ export class MapController {
     const unit = presentation ? String(presentation.unit || '') : info ? '원' : '';
     const brand=brandVisual(row.brand,BRANDS[row.brand]||row.brand);
     const facts = [brand.label, row.facilities?.self === true ? '셀프' : row.facilities?.self === false ? '일반' : null, info?.sourceDate ? info.sourceDate + ' 기준' : confidence.label].filter(Boolean).join(' · ');
-    const brandBadge='<span class="marker-brand-badge" title="'+escapeHTML(brand.label)+'">'+escapeHTML(brand.short)+'</span>';
+    const brandBadge='<span class="marker-brand-badge" style="--brand-color:'+escapeHTML(brand.color)+';--brand-ink:'+escapeHTML(brand.ink)+'" title="'+escapeHTML(brand.label)+'">'+escapeHTML(brand.short)+'</span>';
     const callout=selected?'<button type="button" class="selected-station-callout" data-station-id="'+escapeHTML(id)+'" aria-label="'+escapeHTML((row.name||'주유소')+' 상세 보기')+'">'+brandBadge+'<strong>'+escapeHTML(row.name||'주유소')+'</strong><b aria-hidden="true">›</b></button>':'';
     const rankLabel=presentation?.badgeLabel&&priceRank?String(presentation.badgeLabel).replace('{rank}',String(priceRank)):priceRank===1?'최저':priceRank?priceRank+'위':'';
     const rankDelay=priceRank?((priceRank-1)*0.12).toFixed(2)+'s':'0s';
@@ -785,6 +802,8 @@ export class MapController {
       marker = this.provider === 'naver'
         ? new globalThis.naver.maps.Marker({ map: this.map, position: this._naverPoint(point), title: row.name, icon: makeIcon(), zIndex })
         : globalThis.L.marker([point.lat, point.lng], { icon: makeIcon(), keyboard: false, bubblingMouseEvents: false, title: row.name, zIndexOffset: zIndex }).addTo(this.map);
+      if(this.provider==='naver')this._listeners?.push(globalThis.naver.maps.Event.addListener(marker,'click',()=>this._selectStationMarker(id)));
+      else marker.on?.('click',event=>{globalThis.L.DomEvent.stopPropagation(event);this._selectStationMarker(id);});
     } else {
       if (moved) {
         if (this.provider === 'naver') marker.setPosition(this._naverPoint(point));
