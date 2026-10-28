@@ -85,6 +85,19 @@ export function filterStations(stations, {fuel,center,bounds,query='',brand='',s
     }).filter(s=>s.currentPrice && (!freshOnly||s.confidence.eligible))
     .sort((a,b)=>sort==='distance'?a.distance-b.distance||a.currentPrice.price-b.currentPrice.price:a.currentPrice.price-b.currentPrice.price||a.distance-b.distance);
 }
+export function searchStations(stations,{query='',fuel,center,brand='',self=false,freshOnly=false,limit=12,now=Date.now()}={}){
+  const normalized=normalizeSearchText(query).trim(),terms=normalized.split(/\s+/).filter(Boolean);
+  if(!terms.length)return [];
+  return stations.filter(s=>hasMapCoordinates(s)&&(!brand||s.brand===brand)&&(!self||s.facilities?.self===true))
+    .map(station=>{
+      const name=normalizeSearchText(station.name),address=normalizeSearchText([station.address,station.roadAddress,station.routeName,station.direction,BRANDS[station.brand]].filter(Boolean).join(' '));
+      if(!terms.every(term=>`${name} ${address}`.includes(term)))return null;
+      const currentPrice=getFuelPrice(station,fuel),confidence=currentPrice?freshness(currentPrice.priceUpdatedAt,currentPrice.fetchedAt,now,currentPrice.priceTimeStatus,currentPrice.sourceDate):{state:'unknown',label:'가격 미제공',eligible:false};
+      if(!currentPrice||(freshOnly&&!confidence.eligible))return null;
+      const rank=name===normalized?0:name.includes(normalized)?1:terms.every(term=>name.includes(term))?2:3;
+      return {...station,currentPrice,confidence,distance:distanceMeters(center,station),searchRank:rank};
+    }).filter(Boolean).sort((a,b)=>a.searchRank-b.searchRank||a.distance-b.distance||a.currentPrice.price-b.currentPrice.price).slice(0,Math.max(1,limit));
+}
 export function summarizeVisiblePrices(stations) {
   const comparable = stations.filter(s=>s.confidence?.eligible && finite(s.currentPrice?.price) && s.currentPrice.price>0);
   return {total:stations.length,comparable:comparable.length,reference:stations.length-comparable.length,lowest:comparable.length?Math.min(...comparable.map(s=>s.currentPrice.price)):null};
