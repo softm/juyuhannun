@@ -11,7 +11,7 @@ const [html,app,map,styles,mobileCss]=await Promise.all([
  readFile(new URL('../public/mobile-map.css',import.meta.url),'utf8')
 ]);
 
-test('brand visuals expose recognizable color wordmarks',()=>{
+test('brand visuals crop recognizable symbols without tiny wordmarks',()=>{
  assert.equal(BRAND_VISUALS.SKE.logo,'SK energy');
  assert.equal(BRAND_VISUALS.GSC.logo,'GS Caltex');
  assert.equal(BRAND_VISUALS.SOL.logo,'S-OIL');
@@ -23,11 +23,16 @@ test('brand visuals expose recognizable color wordmarks',()=>{
  assert.equal(BRAND_VISUALS.E1G.image,'./assets/brands/e1.png');
  assert.match(html,/brand-logo-sk[\s\S]*brand-logo-gs[\s\S]*brand-logo-hd[\s\S]*brand-logo-soil/);
  assert.match(styles,/\.more-hero\{[\s\S]*linear-gradient/);
- assert.match(styles,/brand-logo-sk\{background-image:url\('\.\/assets\/brands\/sk-energy\.jpg'\)\}/);
+ assert.match(styles,/brand-logo-sk\{background-image:url\('\.\/assets\/brands\/sk-energy\.jpg'\);background-position:-53px center/);
+ assert.match(styles,/brand-badge\.has-logo img\[src\$="sk-energy\.jpg"\]/);
+ assert.match(styles,/data-brand="SOL"\]\::after/);
+ assert.match(styles,/data-brand="SKE"\]\::after/);
+ assert.match(styles,/border-radius:50%/);
+ assert.match(map,/marker-brand-badge\.has-logo img\[src\$="gs-caltex\.png"\]/);
+ assert.doesNotMatch(styles,/\.brand-badge\.has-logo img\{[^}]*object-fit:contain/);
  assert.match(app,/brand\.image\?`<span class="brand-badge has-logo"/);
+ assert.match(app,/brandVisualInfo\.image\?`<span class="focus-brand-logo"/);
  assert.match(map,/brand\.image\?'<span class="marker-brand-badge has-logo"/);
- assert.match(map,/--brand-logo-scale:/);
- assert.match(map,/transform:scale\(var\(--brand-logo-scale,1\)\)/);
  assert.equal(BRAND_VISUALS.SKE.logoScale,2.05);
  assert.equal(BRAND_VISUALS.E1G.logoScale,1.65);
 });
