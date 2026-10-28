@@ -75,8 +75,11 @@ test('route planner keeps the input flow compact and the primary action always r
   assert.match(mobileCss, /@media\(min-width:640px\) and \(max-width:1000px\)[\s\S]*width:470px/);
   assert.match(app, /activeStep=routeReady\?'results':destinationReady\?'options':'destination'/);
   assert.match(html, /id="route-panel-close"[^>]+aria-label="가는 길 주유소 화면 닫기"/);
+  assert.match(html, /id="route-panel-exit"[^>]+aria-label="가는 길 주소 찾기를 닫고 지도로 돌아가기"/);
   assert.match(app, /function closeRoutePanel\(\)[\s\S]*hasRouteResults\(\)[\s\S]*closeRoutePlanner\(\)[\s\S]*selectView\('nearby'\)/);
+  assert.match(app, /\['route-panel-close','route-panel-exit'\]/);
   assert.match(styles, /\.route-panel-close\{[^}]*width:36px[^}]*height:36px/);
+  assert.match(styles, /\.route-panel-exit\{[^}]*width:100%[^}]*min-height:42px/);
 });
 
 test('route detail closes to the map and exposes a dedicated route-results dock button', () => {

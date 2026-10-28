@@ -16,8 +16,16 @@ test('brand visuals expose recognizable color wordmarks',()=>{
  assert.equal(BRAND_VISUALS.GSC.logo,'GS Caltex');
  assert.equal(BRAND_VISUALS.SOL.logo,'S-OIL');
  assert.match(brandVisual('HDO').color,/^#/);
+ assert.equal(BRAND_VISUALS.SKE.image,'./assets/brands/sk-energy.jpg');
+ assert.equal(BRAND_VISUALS.GSC.image,'./assets/brands/gs-caltex.png');
+ assert.equal(BRAND_VISUALS.HDO.image,'./assets/brands/hd-hyundai-oilbank.svg');
+ assert.equal(BRAND_VISUALS.SOL.image,'./assets/brands/s-oil.png');
+ assert.equal(BRAND_VISUALS.E1G.image,'./assets/brands/e1.png');
  assert.match(html,/brand-logo-sk[\s\S]*brand-logo-gs[\s\S]*brand-logo-hd[\s\S]*brand-logo-soil/);
  assert.match(styles,/\.more-hero\{[\s\S]*linear-gradient/);
+ assert.match(styles,/brand-logo-sk\{background-image:url\('\.\/assets\/brands\/sk-energy\.jpg'\)\}/);
+ assert.match(app,/brand\.image\?`<span class="brand-badge has-logo"/);
+ assert.match(map,/brand\.image\?'<span class="marker-brand-badge has-logo"/);
 });
 
 test('SDK marker click opens detail and an empty map click clears selection',()=>{
