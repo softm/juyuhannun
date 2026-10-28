@@ -51,6 +51,7 @@ test('going-there remains reachable while the mobile menu is folded',()=>{
  assert.match(app,/focus-route-shortcut[\s\S]{0,120}openRoutePlanner/);
  assert.match(mobileCss,/mobile-map-browse \.focus-route-shortcut[\s\S]*mobile-map-expanded \.focus-route-shortcut/);
  assert.doesNotMatch(mobileCss,/mobile-map-menu-collapsed[^}]*focus-route-shortcut[^}]*display:none/);
+ assert.match(mobileCss,/mobile-map-menu-collapsed\.mobile-map-browse \.focus-route-shortcut,[\s\S]*top:calc\(10px \+ env\(safe-area-inset-top,0px\)\);z-index:192/);
 });
 
 test('area rescan exposes an in-progress state before completion',()=>{
