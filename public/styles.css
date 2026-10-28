@@ -16,9 +16,15 @@ dialog{padding:34px;border:1px solid #dce6d6;border-radius:20px;background:#fff;
 .station-detail-ad-label{display:block;margin-bottom:6px;color:#8a9691;font-size:9px;line-height:1}
 .station-detail-ad-body{display:flex;justify-content:center;width:100%;overflow:hidden}
 @media(max-width:1000px){.station-detail-ad-host{margin-top:18px;padding-bottom:max(12px,env(safe-area-inset-bottom))}}
-.juyu-bottom-ad{position:fixed;inset:auto 0 0;z-index:930;display:flex;align-items:center;flex-direction:column;padding-bottom:env(safe-area-inset-bottom);background:#fff;border-top:1px solid var(--line);box-shadow:0 -3px 16px #17362b1c}
+.juyu-bottom-ad{position:fixed;inset:auto 0 0;z-index:930;display:flex;align-items:center;flex-direction:column;padding-bottom:env(safe-area-inset-bottom);background:#fff;border-top:1px solid var(--line);box-shadow:0 -3px 16px #17362b1c;transform:translateY(var(--juyu-bottom-ad-drag,0));transition:transform .2s ease,background .2s ease,box-shadow .2s ease}
 .juyu-bottom-ad[hidden],.juyu-bottom-ad-panel[hidden]{display:none!important}
-.juyu-bottom-ad-toggle{min-width:108px;min-height:38px;padding:7px 16px;color:#52695b;font-size:11px;font-weight:700}
+.juyu-bottom-ad-toggle{position:relative;display:flex;width:82px;min-height:32px;align-items:center;justify-content:center;gap:8px;margin:0;padding:7px 14px;border:0;border-radius:0 0 15px 15px;background:#f4f8f6;color:#44685c;touch-action:none;cursor:ns-resize}
+.juyu-bottom-ad-grip{display:block;width:32px;height:4px;border-radius:999px;background:#8da69d}
+.juyu-bottom-ad-chevron{width:7px;height:7px;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:translateY(-2px) rotate(45deg);transition:transform .2s ease}
+.juyu-bottom-ad.is-collapsed{pointer-events:none;background:transparent;border-top-color:transparent;box-shadow:none}
+.juyu-bottom-ad.is-collapsed .juyu-bottom-ad-toggle{pointer-events:auto;margin-bottom:5px;border:1px solid #d6e4de;border-radius:16px;background:#fffffff2;box-shadow:0 3px 12px #17362b20;cursor:pointer}
+.juyu-bottom-ad.is-collapsed .juyu-bottom-ad-chevron{transform:translateY(2px) rotate(225deg)}
+.juyu-bottom-ad.is-dragging{transition:none}
 .juyu-bottom-ad-panel{display:flex;justify-content:center;width:100%;min-height:100px;padding:0 0 8px;overflow:hidden}
 body.juyu-bottom-ad-active:not(.energy-page) .workspace{height:calc(100dvh - 66px - var(--juyu-bottom-ad-space,0px))}
 body.juyu-bottom-ad-active.energy-page .energy-workspace{height:calc(100dvh - 140px - var(--juyu-bottom-ad-space,0px))}
