@@ -47,6 +47,15 @@ function mergeBasicAndPrice(basicRows,currentRows,{fetchedAt,kind,sourceDate=nul
  for(const row of currentRows){const s=parseOpinetRow(row,{fetchedAt,kind,sourceDate});if(!s)continue;const old=byId.get(s.id);byId.set(s.id,old?{...old,...s,address:s.address??old.address,roadAddress:s.roadAddress??old.roadAddress,phone:s.phone??old.phone,prices:{...old.prices,...s.prices},facilities:{...old.facilities,...s.facilities}}:s);}
  return byId;
 }
+function mergeStationsById(...groups){
+ const merged=new Map();
+ for(const rows of groups)for(const s of rows??[]){
+  if(!s?.id)continue;
+  const old=merged.get(s.id);
+  merged.set(s.id,old?{...old,...s,address:s.address||old.address,roadAddress:s.roadAddress||old.roadAddress,phone:s.phone||old.phone,brand:s.brand||old.brand,brandName:s.brandName||old.brandName,facilities:{...old.facilities,...s.facilities},prices:{...old.prices,...s.prices}}:s);
+ }
+ return [...merged.values()];
+}
 export function coordinateIndex(rows){
  // The same public record occurs in the seed, previous snapshots and fresh data,
  // and both of its addresses can yield the same regional key. Those repetitions
@@ -114,8 +123,9 @@ async function collectNationwideSnapshot({outputDirectory=resolve(ROOT,'public/d
  const previousDownloadStatus=previousCollection.lastDownloadStatus??(previousManifest?.lastAttempt?.status==='error'?'error':reused?'ready':null);
  const plan=planNationwideCollection({now:started,hasPrices:Boolean(reused),sourceDate:reused?.sourceDate,fetchedAt:reused?.fetchedAt,lastDownloadAttemptAt:previousAttemptAt,lastDownloadStatus:previousDownloadStatus,forceRefresh});
  let fetchedAt=reused?.fetchedAt??null,targetDate=reused?.sourceDate?.replaceAll('-','')??kstDate(started),downloadBytes=reused?.downloadBytes??0,all=reused?.stations??null,priceSource='cache';
- let downloadCalls=0,downloadAttempts=[],downloadError=null,downloadFailure=null;
+ let downloadCalls=0,downloadAttempts=[],downloadError=null,downloadFailure=null,lpgDownloadError=previousManifest?.lpg?.error??null,lpgDownloadStatus=previousManifest?.lpg?.status??'unavailable',lpgDownloadBytes=previousManifest?.lpg?.bytes??0,lpgPriceCount=previousManifest?.lpg?.priceCount??0;
  let businessStations=[],businessStatus='unavailable',businessFetchedAt=null,businessBytes=0,businessError=null;
+ let lpgBusinessStations=[],lpgBusinessStatus='unavailable',lpgBusinessFetchedAt=null,lpgBusinessBytes=0,lpgBusinessError=null;
  let lastDownloadedAt=previousCollection.lastDownloadedAt??null,lastDownloadStatus=previousDownloadStatus,lastDownloadAttemptAt=previousAttemptAt;
  const previousBusiness=await readJson(resolve(outputDirectory,'business.json'));
  businessStations=Array.isArray(previousBusiness?.stations)?previousBusiness.stations:[];
@@ -137,6 +147,26 @@ async function collectNationwideSnapshot({outputDirectory=resolve(ROOT,'public/d
    await atomicWriteJson(resolve(outputDirectory,'business.json'),{...(previousBusiness??{version:1,provider:'opinet-public-download',stations:[],count:0,bytes:0,fetchedAt:null}),status:businessStatus,lastAttempt:{at:attemptedAt,status:'error',error:businessError},cache:{...previousBusiness?.cache,stale:Boolean(businessStations.length)},error:businessError});
   }
  }
+ const previousLpgBusiness=await readJson(resolve(outputDirectory,'business-lpg.json'));
+ lpgBusinessStations=Array.isArray(previousLpgBusiness?.stations)?previousLpgBusiness.stations:[];
+ lpgBusinessFetchedAt=previousLpgBusiness?.fetchedAt??null;lpgBusinessBytes=previousLpgBusiness?.bytes??0;
+ lpgBusinessStatus=previousLpgBusiness?.status??(lpgBusinessStations.length?'ready':'unavailable');
+ const lpgBusinessAge=started-Date.parse(lpgBusinessFetchedAt??'');
+ const lpgBusinessDue=forceRefresh||!lpgBusinessStations.length||!Number.isFinite(lpgBusinessAge)||lpgBusinessAge>=6*60*60*1000;
+ if(lpgBusinessDue&&typeof downloadClient.businessLpgInfo==='function'){
+  try{
+   const result=await downloadClient.businessLpgInfo();
+   lpgBusinessFetchedAt=new Date(clock()).toISOString();lpgBusinessBytes=result.bytes;
+   lpgBusinessStations=[...mergeBasicAndPrice(result.rows,[],{fetchedAt:lpgBusinessFetchedAt,kind:'lpg'}).values()];
+   if(lpgBusinessStations.length<minRows)throw new ServiceError('OPINET_LPG_BUSINESS_DOWNLOAD_EMPTY','사업자 기본정보에서 유효한 자동차충전소를 충분히 받지 못했습니다.');
+   lpgBusinessStatus='ready';lpgBusinessError=null;
+   await atomicWriteJson(resolve(outputDirectory,'business-lpg.json'),{version:1,status:'ready',provider:'opinet-public-download',fetchedAt:lpgBusinessFetchedAt,source:{...SOURCE,name:'한국석유공사 오피넷 자동차충전소 사업자 기본정보(현재기준)'},count:lpgBusinessStations.length,bytes:lpgBusinessBytes,stations:lpgBusinessStations.map(({prices,...s})=>s),lastAttempt:{at:attemptedAt,status:'ready'}});
+  }catch(error){
+   lpgBusinessError=publicError(error);lpgBusinessStatus=lpgBusinessStations.length?'partial':'error';
+   await atomicWriteJson(resolve(outputDirectory,'business-lpg.json'),{...(previousLpgBusiness??{version:1,provider:'opinet-public-download',stations:[],count:0,bytes:0,fetchedAt:null}),status:lpgBusinessStatus,lastAttempt:{at:attemptedAt,status:'error',error:lpgBusinessError},cache:{...previousLpgBusiness?.cache,stale:Boolean(lpgBusinessStations.length)},error:lpgBusinessError});
+  }
+ }
+ businessStations=mergeStationsById(businessStations,lpgBusinessStations);
  if(plan.due){
   const dates=[kstDate(started),previousKstDate(started)];let gasPrice=null;
   lastDownloadAttemptAt=attemptedAt;
@@ -151,12 +181,20 @@ async function collectNationwideSnapshot({outputDirectory=resolve(ROOT,'public/d
     const rows=[...mergeBasicAndPrice([],result.rows,{fetchedAt:attemptedAt,kind:'station',sourceDate:requestedDate}).values()];
     if(rows.filter(s=>Object.keys(s.prices||{}).length).length<minRows)throw new ServiceError('OPINET_DOWNLOAD_EMPTY','전국 CSV에서 유효한 개별 가격을 충분히 받지 못했습니다.');
     gasPrice=result;
-    if(businessStations.length){
-     const merged=new Map(businessStations.map(s=>[s.id,{...s,prices:{...(s.prices||{})}}]));
-     for(const s of rows){const old=merged.get(s.id);merged.set(s.id,old?{...old,...s,address:s.address||old.address,roadAddress:s.roadAddress||old.roadAddress,phone:s.phone||old.phone,brand:s.brand||old.brand,brandName:s.brandName||old.brandName,facilities:{...old.facilities,...s.facilities},prices:{...old.prices,...s.prices}}:s);}
-     all=[...merged.values()];
-    }else all=rows;
-    targetDate=requestedDate;fetchedAt=attemptedAt;downloadBytes=result.bytes;priceSource='download';
+    let lpgRows=[];
+    if(typeof downloadClient.dailyLpgPrices==='function'){
+     try{
+      const lpgResult=await downloadClient.dailyLpgPrices({targetDate:requestedDate});
+      const lpgDate=normalizePriceDate(lpgResult.sourceDate??requestedDate);
+      const lpgRowDates=new Set((lpgResult.rows??[]).map(row=>value(row,['기준일자','기준일','date'])).filter(Boolean).map(normalizePriceDate));
+      if(lpgDate!==normalizePriceDate(requestedDate)||[...lpgRowDates].some(date=>date!==lpgDate))throw new ServiceError('OPINET_LPG_DOWNLOAD_DATE_MISMATCH','전국 LPG CSV 기준일이 요청일과 다릅니다.');
+      lpgRows=[...mergeBasicAndPrice([],lpgResult.rows,{fetchedAt:attemptedAt,kind:'lpg',sourceDate:requestedDate}).values()].filter(s=>s.prices.K015);
+      if(lpgRows.length<minRows)throw new ServiceError('OPINET_LPG_DOWNLOAD_EMPTY','전국 LPG CSV에서 유효한 자동차용부탄 가격을 충분히 받지 못했습니다.');
+      lpgDownloadStatus='ready';lpgDownloadBytes=lpgResult.bytes??0;lpgPriceCount=lpgRows.length;lpgDownloadError=null;
+     }catch(error){lpgDownloadError=publicError(error);lpgDownloadStatus='error';}
+    }
+    all=mergeStationsById(businessStations,rows,lpgRows);
+    targetDate=requestedDate;fetchedAt=attemptedAt;downloadBytes=(result.bytes??0)+lpgDownloadBytes;priceSource='download';
     lastDownloadedAt=new Date(clock()).toISOString();lastDownloadStatus=downloadCalls>1?'fallback':'ready';
     downloadAttempts.push({...attempt,status:'ready',completedAt:lastDownloadedAt});
     break;
@@ -233,13 +271,15 @@ async function collectNationwideSnapshot({outputDirectory=resolve(ROOT,'public/d
  if(!collection.eligible)warnings.push({code:'NATIONWIDE_PRICE_REFRESH_PENDING',message:'가격 기준일 또는 수집 경과시간이 최신 비교 범위를 벗어나 마지막 확인 가격으로 보관하고 재수집을 기다립니다.'});
  if(collection.lastDownloadStatus==='error')warnings.push({code:'NATIONWIDE_DOWNLOAD_RETRY_PENDING',message:'전국 가격 다운로드가 실패해 기존 가격과 기준시각을 보존하고 다음 수집 때 재시도합니다.'});
  if(businessStatus!=='ready')warnings.push({code:'BUSINESS_INFO_DOWNLOAD_'+businessStatus.toUpperCase(),message:businessStations.length?'사업자 기본정보 새 다운로드가 실패해 이전 기본정보를 유지합니다.':'사업자 기본정보를 아직 확보하지 못했습니다.'});
+ if(lpgBusinessStatus!=='ready')warnings.push({code:'LPG_BUSINESS_INFO_DOWNLOAD_'+lpgBusinessStatus.toUpperCase(),message:lpgBusinessStations.length?'자동차충전소 기본정보 새 다운로드가 실패해 이전 기본정보를 유지합니다.':'자동차충전소 기본정보를 아직 확보하지 못했습니다.'});
+ if(lpgDownloadStatus==='error')warnings.push({code:'LPG_PRICE_DOWNLOAD_ERROR',message:'전국 LPG 가격 다운로드가 실패해 지역 API에서 확인한 LPG 가격만 표시합니다.'});
  const coverage={kind:'nationwide',complete:ratio>=0.98,serviceReady,totalPriceStations:priced.length,mappedPriceStations:mappedPriced.length,mappedRatio:Number(ratio.toFixed(4)),priceDate:targetDate.slice(0,4)+'-'+targetDate.slice(4,6)+'-'+targetDate.slice(6,8),description:'오피넷 유가내려받기의 사업자별 일일 판매가격 CSV를 정기 수집하고 필요할 때 재시도하며 공공데이터와 공식 상세 API 좌표를 병합합니다.'};
  const status=serviceReady&&ratio>=0.98&&collection.eligible&&lastDownloadStatus!=='error'?'ready':'partial';
  const lastAttempt=plan.due?{at:attemptedAt,status:downloadCalls>1?'partial':status,calls:downloadCalls+standard.calls,downloadCalls}:previousManifest?.lastAttempt??{at:fetchedAt,status,calls:0};
  const latest={version:2,status,provider:'opinet-public-download',dataGranularity:'station',fetchedAt,source:SOURCE,coverage,stations:mappedPriced,cache:{hit:priceSource==='cache',ageSeconds:Number.isFinite(Date.parse(fetchedAt))?Math.max(0,Math.floor((clock()-Date.parse(fetchedAt))/1000)):null,stale:!collection.eligible||lastDownloadStatus==='error'},warnings,lastAttempt,collection};
  const master={version:2,status,provider:'opinet-public-download',fetchedAt,source:SOURCE,coverage,stations:all.map(({prices,...s})=>s),warnings};
  const history={version:2,date:coverage.priceDate,collectedOn:Number.isFinite(Date.parse(fetchedAt))?seoulDay(Date.parse(fetchedAt)):null,provider:'opinet-public-download',fetchedAt,stations:priced.map(s=>({id:s.id,prices:s.prices}))};
- const manifest={version:2,status,provider:'opinet-public-download',fetchedAt,lastAttempt:latest.lastAttempt,collection,stationCount:all.length,priceStationCount:priced.length,mappedPriceStationCount:mappedPriced.length,mappedRatio:coverage.mappedRatio,serviceReady,standardDataStatus:standard.status,standardCalls:standard.calls,standardFetchedAt,standardLastAttemptAt,priceDate:coverage.priceDate,downloadBytes,priceSource,businessInfo:{status:businessStatus,fetchedAt:businessFetchedAt,count:businessStations.length,bytes:businessBytes,matchedPriceCount:businessMatchedPrice,businessWithoutPriceCount:businessWithoutPrice,priceWithoutBusinessCount:priceWithoutBusiness,error:businessError},historyDate:coverage.priceDate,latest:'./latest.json',master:'./master.json',business:'./business.json',history:`./history/${coverage.priceDate}.json`,sources:[SOURCE,{name:'한국석유공사 오피넷 사업자 기본정보(현재기준)',url:'https://www.opinet.co.kr/user/opdown/opDownload.do'},{name:'전국주유소표준데이터',url:'https://www.data.go.kr/data/15129441/standard.do'}]};
+ const manifest={version:2,status,provider:'opinet-public-download',fetchedAt,lastAttempt:latest.lastAttempt,collection,stationCount:all.length,priceStationCount:priced.length,mappedPriceStationCount:mappedPriced.length,mappedRatio:coverage.mappedRatio,serviceReady,standardDataStatus:standard.status,standardCalls:standard.calls,standardFetchedAt,standardLastAttemptAt,priceDate:coverage.priceDate,downloadBytes,priceSource,businessInfo:{status:businessStatus,fetchedAt:businessFetchedAt,count:businessStations.length,bytes:businessBytes,matchedPriceCount:businessMatchedPrice,businessWithoutPriceCount:businessWithoutPrice,priceWithoutBusinessCount:priceWithoutBusiness,error:businessError},lpg:{status:lpgDownloadStatus,priceCount:lpgPriceCount,bytes:lpgDownloadBytes,error:lpgDownloadError,businessInfo:{status:lpgBusinessStatus,fetchedAt:lpgBusinessFetchedAt,count:lpgBusinessStations.length,bytes:lpgBusinessBytes,error:lpgBusinessError}},historyDate:coverage.priceDate,latest:'./latest.json',master:'./master.json',business:'./business.json',lpgBusiness:'./business-lpg.json',history:`./history/${coverage.priceDate}.json`,sources:[SOURCE,{name:'한국석유공사 오피넷 사업자 기본정보(현재기준)',url:'https://www.opinet.co.kr/user/opdown/opDownload.do'},{name:'전국주유소표준데이터',url:'https://www.data.go.kr/data/15129441/standard.do'}]};
  // List search retains every priced station; missing coordinates only exclude a map marker.
  const searchable={...latest,coverage:{...coverage,searchIncludesUnmapped:true},stations:priced};
  await atomicWriteJson(resolve(outputDirectory,'search.json'),searchable);
