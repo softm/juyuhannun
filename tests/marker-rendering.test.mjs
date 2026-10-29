@@ -247,6 +247,20 @@ test('dot-scale markers keep a larger transparent touch target without growing t
   assert.match(mapSource,/data-marker-scale="dot"[^']*price-pin:not\(\.selected\)\{width:15px;height:15px/);
 });
 
+test('mobile viewport marker updates preserve price ranks until an explicit comparison refresh',()=>{
+  const h=harness(),c=h.controller,fresh=new Date().toISOString();
+  const first=[1500,1510,1520,1530,1540,1550].map((price,index)=>row(`first-${index}`,{prices:{B027:{price,priceUpdatedAt:fresh,fetchedAt:fresh}}}));
+  c.setStations(first);h.flush();
+  assert.deepEqual([...c._priceRanks.keys()],first.slice(0,5).map(item=>item.id));
+  const moved=[1400,1410,1420,1430,1440,1450].map((price,index)=>row(`moved-${index}`,{prices:{B027:{price,priceUpdatedAt:fresh,fetchedAt:fresh}}}));
+  c.setStations(moved,null,'B027',{refreshComparison:false});h.flush();
+  assert.deepEqual([...c._priceRanks.keys()],first.slice(0,5).map(item=>item.id));
+  assert.doesNotMatch(c._markerState.get('moved-0').content,/lowest-price-badge/);
+  c.setStations(moved,null,'B027',{refreshComparison:true});h.flush();
+  assert.deepEqual([...c._priceRanks.keys()],moved.slice(0,5).map(item=>item.id));
+  assert.match(c._markerState.get('moved-0').content,/lowest-price-badge rank-1/);
+});
+
 test('route recommendation bubbles keep one green body and color only rank text pills',()=>{
   assert.match(mapSource,/\.lowest-price-badge\{[^']*background:#159b72/);
   assert.match(mapSource,/\.lowest-price-badge:after\{[^']*background:#159b72/);
