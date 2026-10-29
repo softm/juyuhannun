@@ -250,6 +250,8 @@ function installMarkerStyles() {
     '.lowest-price-badge.rank-5 .lowest-tag{background:#dc2626;color:#fff;border-color:#fecaca}',
     '.lowest-price-badge strong{position:relative;z-index:2;font-size:14px;font-weight:900;white-space:nowrap}',
     '.lowest-price-badge:focus-visible{outline:3px solid #0b5c4f;outline-offset:3px}',
+    '.station-marker.is-selected.is-lowest .lowest-price-badge{left:48px;bottom:64px;animation:none}',
+    '.station-marker.is-selected.is-lowest .selected-station-callout{bottom:112px}',
     '.station-marker.is-lowest:not(.is-selected) .price-pin{display:none}',
     '.price-pin.is-stale:not(.selected){filter:saturate(.55);opacity:.84}',
     '.selected-station-callout{position:absolute;left:48px;bottom:82px;transform:translateX(-50%);display:flex;align-items:center;gap:8px;width:max-content;max-width:240px;min-height:44px;padding:8px 12px 8px 9px;border:1px solid #d8e3dc;border-radius:14px;background:#fff;color:#173e34;box-shadow:0 7px 22px #102a2433;font:800 13px/1.25 system-ui,sans-serif;appearance:none;text-align:left;cursor:pointer;pointer-events:auto;touch-action:manipulation;z-index:6}',
@@ -789,7 +791,7 @@ export class MapController {
     const callout=selected?'<button type="button" class="selected-station-callout" data-station-id="'+escapeHTML(id)+'" aria-label="'+escapeHTML((row.name||'주유소')+' 상세 보기')+'"><strong>'+escapeHTML(row.name||'주유소')+'</strong><b aria-hidden="true">›</b></button>':'';
     const rankLabel=presentation?.badgeLabel&&priceRank?String(presentation.badgeLabel).replace('{rank}',String(priceRank)):priceRank===1?'최저':priceRank?priceRank+'위':'';
     const rankDelay=priceRank?((priceRank-1)*0.12).toFixed(2)+'s':'0s';
-    const lowestBadge=isTopPrice&&!selected?'<button type="button" class="lowest-price-badge rank-'+priceRank+'" style="--rank-delay:'+rankDelay+'" data-station-id="'+escapeHTML(id)+'" aria-label="'+escapeHTML((row.name||'주유소')+' '+rankLabel+' '+visiblePrice+'원 상세 보기')+'" title="'+escapeHTML((row.name||'주유소')+' 상세 보기')+'">'+pinBrandBadge+'<span class="lowest-tag">'+escapeHTML(rankLabel)+'</span><strong>'+escapeHTML(visiblePrice)+'원</strong></button>':'';
+    const lowestBadge=isTopPrice?'<button type="button" class="lowest-price-badge rank-'+priceRank+'" style="--rank-delay:'+rankDelay+'" data-station-id="'+escapeHTML(id)+'" aria-label="'+escapeHTML((row.name||'주유소')+' '+rankLabel+' '+visiblePrice+'원 상세 보기')+'" title="'+escapeHTML((row.name||'주유소')+' 상세 보기')+'">'+pinBrandBadge+'<span class="lowest-tag">'+escapeHTML(rankLabel)+'</span><strong>'+escapeHTML(visiblePrice)+'원</strong></button>':'';
     const detailLabel=selected?'':'<span class="price-pin-name"><span class="price-label-title">'+escapeHTML(row.name || '주유소')+'</span><span class="price-label-value">'+escapeHTML(visiblePrice+(visiblePrice!=='—'?unit:''))+'</span><span class="price-label-detail">'+escapeHTML(facts)+'</span></span>';
     const content = '<div class="station-marker tone-' + tone + (selected ? ' is-selected' : '') + (isTopPrice ? ' is-lowest rank-'+priceRank : '') + (hasVisiblePrice ? ' has-visible-price' : '') + '">'+lowestBadge+callout+'<button type="button" class="price-pin' + (selected ? ' selected' : '') +
       (stale ? ' is-stale' : '') + '" data-station-id="' + escapeHTML(id) +
