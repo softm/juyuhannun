@@ -131,7 +131,8 @@ test('collapsed map menu keeps fuel selection clear of the menu button',()=>{
   assert.match(html,/focus-dock-list[\s\S]*focus-route-shortcut[\s\S]*focus-dock-more/);
   assert.match(css,/mobile-focus-dock\{[^}]*grid-template-columns:repeat\(3,minmax\(0,1fr\)\)/);
   assert.match(css,/mobile-focus-dock \.focus-route-shortcut\{[^}]*position:static[^}]*background:transparent/);
-  assert.match(css,/focus-collapsed-fuel[\s\S]*left:62px;right:auto/);
+  assert.match(css,/focus-collapsed-fuel[\s\S]*left:72px;right:auto/);
+  assert.match(css,/@media\(max-width:350px\)[\s\S]*focus-collapsed-fuel\{left:68px;right:auto/);
   assert.match(css,/focus-fuel-toggle\{display:flex;min-width:92px[\s\S]*gap:5px/);
   assert.match(css,/focus-fuel-tabs\{position:absolute[\s\S]*grid-template-columns:1fr 1fr/);
 });
