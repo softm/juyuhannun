@@ -70,6 +70,7 @@ test('mobile view, fuel and filter controls fold into a menu after ten seconds',
   assert.match(app, /mobileMapMenuToggle\?\.addEventListener\('click'/);
   assert.match(app, /icon\(expanded\?'close':'menu'\)/);
   assert.match(app, /visibilitychange'[\s\S]*showMobileMapMenu\(\)/);
+  assert.match(app, /\$\('map'\)\?\.addEventListener\('pointerdown'[\s\S]*setMobileMapMenuExpanded\(false,\{restartTimer:false\}\)/);
 });
 
 test('mobile search closes on focus exit and keeps fuel and filter popovers mutually exclusive', () => {

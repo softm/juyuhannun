@@ -234,12 +234,17 @@ test('selected top-five station keeps its rank chip alongside the selected marke
   c.setStations(rows,'rank3');h.flush();
   const selected=c._markerState.get('rank3').content;
   assert.match(selected,/station-marker tone-[a-z]+ is-selected is-lowest rank-3/);
-  assert.match(selected,/lowest-price-badge rank-3/);
-  assert.match(selected,/>3위</);
+  assert.doesNotMatch(selected,/lowest-price-badge/);
+  assert.match(selected,/selected-rank-chip rank-3">3위</);
   assert.match(selected,/price-pin selected/);
   assert.match(selected,/selected-station-callout/);
-  assert.match(mapSource,/\.station-marker\.is-selected\.is-lowest \.lowest-price-badge\{[^']*bottom:64px[^']*animation:none/);
-  assert.match(mapSource,/\.station-marker\.is-selected\.is-lowest \.selected-station-callout\{bottom:112px\}/);
+  assert.match(mapSource,/\.selected-rank-chip\{[^']*position:absolute[^']*pointer-events:none/);
+  assert.match(mapSource,/\.selected-rank-chip\.rank-3\{background:#7c3aed/);
+});
+
+test('dot-scale markers keep a larger transparent touch target without growing the visible dot',()=>{
+  assert.match(mapSource,/data-marker-scale="dot"[^']*price-pin:not\(\.selected\):before[^']*inset:-10px[^']*background:transparent/);
+  assert.match(mapSource,/data-marker-scale="dot"[^']*price-pin:not\(\.selected\)\{width:15px;height:15px/);
 });
 
 test('route recommendation bubbles keep one green body and color only rank text pills',()=>{
