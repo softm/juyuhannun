@@ -118,11 +118,14 @@ test('route results transition between planner, list and map without covering th
     assert.match(html, new RegExp(`id="${id}"`));
   }
   assert.match(app, /routePlannerOpen=false;rememberDestination\(\);render\(\);if\(mobileMapView\.isMobile\(\)\)mobileMapView\.openListSheet\(\)/);
-  assert.match(app, /onListBack:\(\)=>\{if\(!hasRouteResults\(\)\)return false;selectView\('nearby'\);return true;\}/);
+  assert.match(app, /onListBack:\(\)=>\{if\(state\.view==='saved'\|\|hasRouteResults\(\)\)\{selectView\('nearby'\);return true;\}return false;\}/);
   assert.match(app, /가는 길 종료하고 지도 안 주유소로 돌아가기/);
   assert.match(app, /plannerVisible\?'지도 결과 보기':'경로 변경'/);
   assert.match(app, /if\(hasRouteResults\(\)\)\{if\(isRoutePlannerVisible\(\)\)closeRoutePlanner\(\);else openRoutePlanner\(\)/);
   assert.match(mobileView, /function handleListBack\(\)\{if\(onListBack\(\{mode\}\)===true\)return;closeListSheet\(\);\}/);
+  assert.match(mobileView, /if\(next==='closed'\)\{handleListBack\(\);return;\}/);
+  assert.match(mobileView, /if\(mode==='list-sheet'\)\{event\.preventDefault\(\);handleListBack\(\);return;\}/);
+  assert.match(mobileView, /else if\(listModes\.has\(mode\)&&onListBack\(\{mode\}\)!==true\)setMode\('map-browse'\)/);
   assert.match(mobileCss, /body\.route-mode\.route-planner-open\.mobile-map-browse \.workspace>\.sidebar>\.route-panel/);
   assert.doesNotMatch(mobileCss, /body\.route-mode\.mobile-map-browse \.workspace>\.sidebar>\.route-panel/);
   assert.match(mobileCss, /grid-template-columns:minmax\(0,1\.35fr\) minmax\(0,1fr\) 62px/);

@@ -216,7 +216,7 @@ test('five-state mobile focus flow includes map browse and draggable list sheet 
   assert.match(html, /id="mobile-list-sheet-collapse"[\s\S]{0,240}>접기<\/span>/);
   assert.match(html, /id="mobile-list-sheet-close"[\s\S]{0,180}data-icon="back"/);
   assert.match(app, /listSheetCollapseButton:\$\('mobile-list-sheet-collapse'\)/);
-  assert.match(view, /listSheetCollapseButton\?\.addEventListener\('click',closeListSheet\)/);
+  assert.match(view, /listSheetCollapseButton\?\.addEventListener\('click',handleListBack\)/);
   assert.match(view, /sidebar\.toggleAttribute\('data-map-overlay',listOpen\)/);
   assert.match(css, /body\.mobile-map-browse \.mobile-focus-dock/);
   assert.match(css, /body\.mobile-list-sheet\.mobile-list-expanded/);
@@ -227,7 +227,7 @@ test('list collapse button hides the sheet instead of resizing it', () => {
   assert.match(html, /id="mobile-list-sheet-collapse"[^>]+aria-label="목록 접기"/);
   assert.doesNotMatch(html, /id="mobile-list-sheet-collapse"[\s\S]{0,240}data-icon=/);
   assert.doesNotMatch(view, /toggleListSizeSnap|toggleListSheetSize/);
-  assert.match(view, /listSheetCollapseButton\?\.removeEventListener\('click',closeListSheet\)/);
+  assert.match(view, /listSheetCollapseButton\?\.removeEventListener\('click',handleListBack\)/);
 });
 
 test('list handle follows the pointer outside its small hit area and closes when pulled fully down', () => {
@@ -242,7 +242,7 @@ test('list handle follows the pointer outside its small hit area and closes when
   assert.match(view, /Math\.max\(230,viewport\*\.38\)/);
   assert.match(view, /Math\.min\(expanded-64,Math\.max\(compact\+72,viewport\*\.50\)\)/);
   assert.match(view, /suppressListHandleClick/);
-  assert.match(view, /if\(next==='closed'\)\{closeListSheet\(\);return;\}/);
+  assert.match(view, /if\(next==='closed'\)\{handleListBack\(\);return;\}/);
   assert.match(css, /sidebar\.is-dragging\{min-height:64px!important/);
   assert.match(html, /아래로 끝까지 끌면 닫기/);
 });
