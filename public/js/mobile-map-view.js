@@ -258,7 +258,7 @@ export function setupMobileMapView({
     if(dragState.moved)setTimeout(()=>{suppressListHandleClick=false;},0);
     if(cancelled){applyListHeight(listSnapHeight());return;}
     const next=resolveListDragSnap({currentHeight,velocity,currentSnap:listSnap,compactHeight:listSnapHeight('compact'),mediumHeight:listSnapHeight('medium'),expandedHeight:listSnapHeight('expanded')});
-    if(next==='closed'){closeListSheet();return;}
+    if(next==='closed'){handleListBack();return;}
     setListSnap(next);
   }
 
@@ -267,11 +267,11 @@ export function setupMobileMapView({
     setListSnap(listSnap==='compact'?'medium':listSnap==='medium'?'expanded':'compact');
   }
 
-  function toggleList(){if(destroyed||!media.matches)return;if(listModes.has(mode))closeListSheet();else if(focusModes.has(mode))openListSheet();}
+  function toggleList(){if(destroyed||!media.matches)return;if(listModes.has(mode))handleListBack();else if(focusModes.has(mode))openListSheet();}
   function exit({restoreFocus=true,skipHistory=false}={}){if(destroyed)return;if(skipHistory)disarmHistoryInPlace();if(!media.matches)return;hideDetail();sidebar.style.removeProperty('--list-drag-y');sidebar.style.removeProperty('--list-live-height');setMode('map-browse');if(restoreFocus&&focusDockList?.isConnected)focusDockList.focus({preventScroll:true});}
   function afterLayout(callback){if(typeof callback!=='function')return;requestAnimationFrame(()=>requestAnimationFrame(()=>{if(!destroyed)callback();}));}
-  function onKeyDown(event){if(event.defaultPrevented||!media.matches||event.key!=='Escape')return;if(document.querySelector('dialog[open]:not(#detail-dialog)'))return;if(mode==='expanded-tools'){event.preventDefault();setDetailMode('focus-detail');return;}if(detailModes.has(mode)){event.preventDefault();closeDetail();return;}if(mode==='list-sheet-expanded'){event.preventDefault();setListSnap('medium');return;}if(mode==='list-sheet'){event.preventDefault();closeListSheet();return;}if(mode==='map-browse'){event.preventDefault();setMode('map-collapsed');return;}if(mode==='map-collapsed'){event.preventDefault();setMode('map-browse');}}
-  function onPopState(){if(!historyArmed)return;historyArmed=false;if(detailModes.has(mode)){hideDetail();setMode(detailReturnMode||'map-browse');}else if(listModes.has(mode))setMode('map-browse');}
+  function onKeyDown(event){if(event.defaultPrevented||!media.matches||event.key!=='Escape')return;if(document.querySelector('dialog[open]:not(#detail-dialog)'))return;if(mode==='expanded-tools'){event.preventDefault();setDetailMode('focus-detail');return;}if(detailModes.has(mode)){event.preventDefault();closeDetail();return;}if(mode==='list-sheet-expanded'){event.preventDefault();setListSnap('medium');return;}if(mode==='list-sheet'){event.preventDefault();handleListBack();return;}if(mode==='map-browse'){event.preventDefault();setMode('map-collapsed');return;}if(mode==='map-collapsed'){event.preventDefault();setMode('map-browse');}}
+  function onPopState(){if(!historyArmed)return;historyArmed=false;if(detailModes.has(mode)){hideDetail();setMode(detailReturnMode||'map-browse');}else if(listModes.has(mode)&&onListBack({mode})!==true)setMode('map-browse');}
   function onMediaChange(){if(media.matches){startMobileExpanded();return;}disarmHistoryInPlace();hideDetail();body.classList.remove('mobile-map-mode','mobile-map-focus','mobile-map-expanded','mobile-map-browse','mobile-map-collapsed','mobile-list-sheet','mobile-list-expanded');sidebar.inert=false;sidebar.removeAttribute('data-map-overlay');sidebar.style.removeProperty('--list-drag-y');sidebar.style.removeProperty('--list-live-height');mode='default';requestResize();syncButtons();}
 
   const onWindowPointerUp=e=>finishHandleDrag(e);
@@ -292,7 +292,7 @@ export function setupMobileMapView({
   window.addEventListener('pointercancel',onWindowPointerCancel);
   listSheetHandle?.addEventListener('click',onListHandleClick);
   listSheetHandle?.addEventListener('pointerdown',onListPointerDown);
-  listSheetCollapseButton?.addEventListener('click',closeListSheet);
+  listSheetCollapseButton?.addEventListener('click',handleListBack);
   window.addEventListener('pointermove',onListWindowPointerMove,{passive:false});
   window.addEventListener('pointerup',onListWindowPointerUp);
   window.addEventListener('pointercancel',onListWindowPointerCancel);
@@ -302,5 +302,5 @@ export function setupMobileMapView({
   media.addEventListener('change',onMediaChange);
   if(media.matches)startMobileExpanded();else syncButtons();
 
-  return {startMobileExpanded,enterDetail,closeDetail,toggleDetailExpanded,openListSheet,closeListSheet,toggleMapChrome,exit,afterLayout,isActive:()=>focusModes.has(mode),isDetailOpen:()=>detailModes.has(mode),isMobile:()=>media.matches,getMode:()=>mode,destroy(){if(destroyed)return;disarmHistoryInPlace();hideDetail();body.classList.remove('mobile-map-mode','mobile-map-focus','mobile-map-expanded','mobile-map-browse','mobile-map-collapsed','mobile-list-sheet','mobile-list-expanded');sidebar.removeAttribute('data-map-overlay');destroyed=true;toggleButton.removeEventListener('click',toggleMapChrome);listButton.removeEventListener('click',toggleList);detailExpandButton?.removeEventListener('click',toggleDetailExpanded);detailHandle?.removeEventListener('click',onHandleClick);detailHandle?.removeEventListener('pointerdown',onHandlePointerDown);window.removeEventListener('pointermove',onHandlePointerMove);window.removeEventListener('pointerup',onWindowPointerUp);window.removeEventListener('pointercancel',onWindowPointerCancel);listSheetHandle?.removeEventListener('click',onListHandleClick);listSheetHandle?.removeEventListener('pointerdown',onListPointerDown);listSheetCollapseButton?.removeEventListener('click',closeListSheet);window.removeEventListener('pointermove',onListWindowPointerMove);window.removeEventListener('pointerup',onListWindowPointerUp);window.removeEventListener('pointercancel',onListWindowPointerCancel);listSheetClose?.removeEventListener('click',handleListBack);document.removeEventListener('keydown',onKeyDown);window.removeEventListener('popstate',onPopState);media.removeEventListener('change',onMediaChange);}};
+  return {startMobileExpanded,enterDetail,closeDetail,toggleDetailExpanded,openListSheet,closeListSheet,toggleMapChrome,exit,afterLayout,isActive:()=>focusModes.has(mode),isDetailOpen:()=>detailModes.has(mode),isMobile:()=>media.matches,getMode:()=>mode,destroy(){if(destroyed)return;disarmHistoryInPlace();hideDetail();body.classList.remove('mobile-map-mode','mobile-map-focus','mobile-map-expanded','mobile-map-browse','mobile-map-collapsed','mobile-list-sheet','mobile-list-expanded');sidebar.removeAttribute('data-map-overlay');destroyed=true;toggleButton.removeEventListener('click',toggleMapChrome);listButton.removeEventListener('click',toggleList);detailExpandButton?.removeEventListener('click',toggleDetailExpanded);detailHandle?.removeEventListener('click',onHandleClick);detailHandle?.removeEventListener('pointerdown',onHandlePointerDown);window.removeEventListener('pointermove',onHandlePointerMove);window.removeEventListener('pointerup',onWindowPointerUp);window.removeEventListener('pointercancel',onWindowPointerCancel);listSheetHandle?.removeEventListener('click',onListHandleClick);listSheetHandle?.removeEventListener('pointerdown',onListPointerDown);listSheetCollapseButton?.removeEventListener('click',handleListBack);window.removeEventListener('pointermove',onListWindowPointerMove);window.removeEventListener('pointerup',onListWindowPointerUp);window.removeEventListener('pointercancel',onListWindowPointerCancel);listSheetClose?.removeEventListener('click',handleListBack);document.removeEventListener('keydown',onKeyDown);window.removeEventListener('popstate',onPopState);media.removeEventListener('change',onMediaChange);}};
 }
