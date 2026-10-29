@@ -737,7 +737,7 @@ body.route-mode.route-results-ready .map-secondary-actions .route-results-toggle
  body.mobile-map-menu-collapsed.mobile-map-browse .focus-quick-actions,
  body.mobile-map-menu-collapsed.mobile-map-expanded .focus-quick-actions{display:contents}
  body.mobile-map-menu-collapsed.mobile-map-browse .focus-collapsed-fuel,
- body.mobile-map-menu-collapsed.mobile-map-expanded .focus-collapsed-fuel{display:block;position:fixed;right:calc(50% + 43px);top:calc(10px + env(safe-area-inset-top,0px));z-index:193;pointer-events:auto}
+ body.mobile-map-menu-collapsed.mobile-map-expanded .focus-collapsed-fuel{display:block;position:fixed;left:62px;right:auto;top:calc(10px + env(safe-area-inset-top,0px));z-index:193;pointer-events:auto}
  .focus-collapsed-fuel>#focus-fuel-toggle{display:flex;min-width:92px;max-width:108px;height:46px;align-items:center;justify-content:flex-start;gap:5px;padding:0 9px 0 5px;border:1px solid #c9ddd6;border-radius:23px;background:#fffffff5;color:#174b40;font-size:11px;font-weight:900;white-space:nowrap;box-shadow:0 8px 24px #17362e2d}
  .focus-collapsed-fuel>#focus-fuel-toggle .fuel-tab-icon{width:34px;height:34px;flex:none}
  .focus-collapsed-fuel>#focus-fuel-toggle .fuel-tab-icon svg{width:18px;height:18px}.focus-collapsed-fuel>#focus-fuel-toggle .fuel-toggle-chevron{display:none}.focus-collapsed-fuel>#focus-fuel-toggle #focus-fuel-label{overflow:hidden;text-overflow:ellipsis}
@@ -756,6 +756,14 @@ body.route-mode.route-results-ready .map-secondary-actions .route-results-toggle
  body.mobile-map-menu-collapsed.mobile-map-expanded .mobile-map-toggle{top:calc(118px + env(safe-area-inset-top,0px))}
  body.mobile-map-menu-collapsed.route-mode.route-planner-open.mobile-map-browse .workspace>.sidebar>.route-panel,
  body.mobile-map-menu-collapsed.route-mode.route-planner-open.mobile-map-expanded .workspace>.sidebar>.route-panel{top:calc(64px + env(safe-area-inset-top,0px))}
+}
+
+/* Route shortcut opens one focused planner: menu button, planner and bottom dock only. */
+@media(max-width:1000px){
+ body.route-mode.route-planner-open.mobile-map-menu-collapsed.mobile-map-browse .workspace>.sidebar>.route-panel,
+ body.route-mode.route-planner-open.mobile-map-menu-collapsed.mobile-map-expanded .workspace>.sidebar>.route-panel{top:calc(66px + env(safe-area-inset-top,0px))}
+ body.route-mode.route-planner-open .focus-collapsed-fuel,
+ body.route-mode.route-planner-open .focus-rescan{display:none!important}
 }
 @media(max-width:370px){
  body.route-mode .route-progress-steps li{gap:4px;font-size:8px}
