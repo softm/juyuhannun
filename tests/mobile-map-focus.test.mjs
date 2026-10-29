@@ -121,7 +121,7 @@ test('focus mode keeps marker callout and stages compact versus expanded tools',
   assert.match(css, /mobile-map-expanded[\s\S]*expanded-map-action/);
 });
 
-test('collapsed map menu keeps fuel selection immediately left of the route shortcut',()=>{
+test('collapsed map menu keeps fuel selection clear of the menu button',()=>{
   assert.match(html,/id="focus-fuel-toggle"[^>]+aria-controls="focus-fuel-tabs"/);
   assert.match(html,/data-focus-fuel="B027"[\s\S]*data-focus-fuel="D047"/);
   assert.match(app,/focus-fuel-toggle'[\s\S]*focus-fuel-tabs/);
@@ -131,9 +131,23 @@ test('collapsed map menu keeps fuel selection immediately left of the route shor
   assert.match(html,/focus-dock-list[\s\S]*focus-route-shortcut[\s\S]*focus-dock-more/);
   assert.match(css,/mobile-focus-dock\{[^}]*grid-template-columns:repeat\(3,minmax\(0,1fr\)\)/);
   assert.match(css,/mobile-focus-dock \.focus-route-shortcut\{[^}]*position:static[^}]*background:transparent/);
-  assert.match(css,/focus-collapsed-fuel[\s\S]*right:calc\(50% \+ 43px\)/);
+  assert.match(css,/focus-collapsed-fuel[\s\S]*left:62px;right:auto/);
   assert.match(css,/focus-fuel-toggle\{display:flex;min-width:92px[\s\S]*gap:5px/);
   assert.match(css,/focus-fuel-tabs\{position:absolute[\s\S]*grid-template-columns:1fr 1fr/);
+});
+
+test('bottom route shortcut opens only the focused planner chrome',()=>{
+  assert.match(app,/function openRoutePlanner\(\)[\s\S]*setMobileMapMenuExpanded\(false,\{restartTimer:false\}\)/);
+  assert.match(css,/route-mode\.route-planner-open\.mobile-map-menu-collapsed[\s\S]*route-panel\{top:calc\(66px/);
+  assert.match(css,/route-mode\.route-planner-open \.focus-collapsed-fuel[\s\S]*display:none!important/);
+  assert.match(html,/focus-dock-list[\s\S]*focus-dock-more[\s\S]*route-mode-exit/);
+});
+
+test('Android fullscreen app exposes an exit action only in the more menu',()=>{
+  assert.match(html,/id="more-app-exit" hidden[\s\S]*<strong>앱 종료<\/strong>/);
+  assert.match(app,/androidApp=\/JuyuhannunAndroid\\\//);
+  assert.match(app,/more-app-exit'[\s\S]*hidden=!androidApp[\s\S]*juyuhannun:\/\/exit/);
+  assert.match(styles,/more-menu-icon\.exit/);
 });
 
 test('bottom list and more dock uses balanced compact vertical spacing',()=>{
