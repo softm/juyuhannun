@@ -215,8 +215,9 @@ function installMarkerStyles() {
   const style = document.createElement('style');
   style.id = 'juyuhannun-map-style';
   style.textContent = [
-    '.juyuhannun-map{isolation:isolate;background:#eef2ef}',
+    '.juyuhannun-map{isolation:isolate;overflow:hidden;background:#eef2ef}',
     '.juyuhannun-map>.map-surface{position:absolute;inset:0;z-index:0}',
+    '.juyuhannun-map>.map-surface.heading-up{transform:rotate(calc(var(--map-bearing,0deg) * -1)) scale(1.42);transform-origin:50% 50%;transition:transform .22s linear}',
     '.map-provider-notice{position:absolute;left:12px;bottom:48px;z-index:1000;max-width:min(310px,calc(100% - 70px));padding:9px 12px;border:1px solid #d8e0dc;border-radius:10px;background:rgba(255,255,255,.97);color:#405449;font-size:12px;line-height:1.45;box-shadow:0 3px 12px #12251a12;pointer-events:none}',
     '.map-provider-notice[hidden]{display:none}',
     '.price-marker-shell{background:none!important;border:0!important}',
@@ -335,6 +336,7 @@ export class MapController {
     this._locationRevision = 0;
     this._driveWatchId = null;
     this._driveHeading = null;
+    this._driveMapRotation = null;
     this._driveTrailCoords = [];
     this._driveRoadPredictionCoords = [];
     this._driveTrail = null;
@@ -940,13 +942,20 @@ export class MapController {
   }
 
   _setDrivingHeadingUp(heading, active = true) {
-    // Naver Maps JS does not expose a native bearing/rotation control.
-    // Rotating the entire map DOM also rotates baked map labels and station overlays,
-    // so keep the base map north-up and express travel direction with the vehicle arrow
-    // plus trail/prediction guides.
     if (!this.canvas) return;
-    this.canvas.classList.toggle('driving-guidance-active',Boolean(active));
-    this.canvas.style.setProperty('--drive-heading',String(normalizeHeading(heading) ?? 0));
+    const normalized=normalizeHeading(heading);
+    const enabled=Boolean(active)&&normalized!=null;
+    this.canvas.classList.toggle('driving-guidance-active',enabled);
+    this.canvas.classList.toggle('heading-up',enabled);
+    if(!enabled){this._driveMapRotation=null;this.canvas.style.removeProperty('--map-bearing');this.canvas.style.setProperty('--drive-heading','0');return;}
+    if(this._driveMapRotation==null)this._driveMapRotation=normalized;
+    else{
+      const previous=((this._driveMapRotation%360)+360)%360;
+      const shortest=((normalized-previous+540)%360)-180;
+      this._driveMapRotation+=shortest;
+    }
+    this.canvas.style.setProperty('--map-bearing',this._driveMapRotation.toFixed(1)+'deg');
+    this.canvas.style.setProperty('--drive-heading','0');
   }
 
   _setDrivingInteraction(active) {
@@ -1155,7 +1164,10 @@ export class MapController {
   _showYou(point, { heading = null, driving = false } = {}) {
     if (!this.map) return;
     const normalized = normalizeHeading(heading);
-    const content = '<span class="map-you' + (driving ? ' is-driving' : '') + '" style="--drive-heading:' + (normalized??0).toFixed(1) + 'deg" aria-label="' + (driving ? '주행 중 현재 위치' : '내 위치') + '"></span>';
+    // The map surface rotates by -heading, so rotating the arrow by +heading
+    // cancels that transform and keeps the direction indicator screen-up.
+    const displayHeading=normalized??0;
+    const content = '<span class="map-you' + (driving ? ' is-driving' : '') + '" style="--drive-heading:' + displayHeading.toFixed(1) + 'deg" aria-label="' + (driving ? '주행 중 현재 위치' : '내 위치') + '"></span>';
     const size = driving ? 30 : 18;
     const anchor = size / 2;
     if (this.provider === 'naver') {
