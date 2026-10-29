@@ -225,6 +225,23 @@ test('top five current-fuel prices get bouncing clickable rank badges',()=>{
   assert.equal(c._markerState.get('rank6').rank,null);
 });
 
+test('selected top-five station keeps its rank chip alongside the selected marker',()=>{
+  const h=harness(),c=h.controller;
+  const fresh=new Date().toISOString();
+  const rows=[1578,1580,1590,1600,1610,1620].map((price,index)=>row('rank'+(index+1),{
+    prices:{B027:{price,priceUpdatedAt:fresh,fetchedAt:fresh}}
+  }));
+  c.setStations(rows,'rank3');h.flush();
+  const selected=c._markerState.get('rank3').content;
+  assert.match(selected,/station-marker tone-[a-z]+ is-selected is-lowest rank-3/);
+  assert.match(selected,/lowest-price-badge rank-3/);
+  assert.match(selected,/>3위</);
+  assert.match(selected,/price-pin selected/);
+  assert.match(selected,/selected-station-callout/);
+  assert.match(mapSource,/\.station-marker\.is-selected\.is-lowest \.lowest-price-badge\{[^']*bottom:64px[^']*animation:none/);
+  assert.match(mapSource,/\.station-marker\.is-selected\.is-lowest \.selected-station-callout\{bottom:112px\}/);
+});
+
 test('route recommendation bubbles keep one green body and color only rank text pills',()=>{
   assert.match(mapSource,/\.lowest-price-badge\{[^']*background:#159b72/);
   assert.match(mapSource,/\.lowest-price-badge:after\{[^']*background:#159b72/);
