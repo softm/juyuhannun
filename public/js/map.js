@@ -239,6 +239,8 @@ function installMarkerStyles() {
     '.station-marker .price-pin.selected .price-pin-glyph{display:none}',
     '.station-marker .price-pin.selected>.marker-brand-badge{display:flex}',
     '.station-marker .price-pin.selected .price-pin-value{display:block}',
+    '.selected-rank-chip{position:absolute;right:-9px;top:-13px;z-index:5;min-width:34px;padding:5px 7px;border:2px solid #fff;border-radius:999px;background:#087156;color:#fff;box-shadow:0 2px 8px #092f2766;font:950 11px/1 system-ui,sans-serif;letter-spacing:-.45px;white-space:nowrap;pointer-events:none}',
+    '.selected-rank-chip.rank-1{background:#ffcf00;color:#352500;border-color:#fff2a3}.selected-rank-chip.rank-2{background:#2563eb;border-color:#bfdbfe}.selected-rank-chip.rank-3{background:#7c3aed;border-color:#ddd6fe}.selected-rank-chip.rank-4{background:#ea580c;border-color:#fed7aa}.selected-rank-chip.rank-5{background:#dc2626;border-color:#fecaca}',
     '@keyframes lowest-price-bounce{0%,100%{transform:translateX(-50%) translateY(0) scale(1)}18%{transform:translateX(-50%) translateY(-8px) scale(1.035)}36%{transform:translateX(-50%) translateY(0) scale(.99)}52%{transform:translateX(-50%) translateY(-4px) scale(1.018)}68%{transform:translateX(-50%) translateY(0) scale(1)}}',
     '.lowest-price-badge{position:absolute;left:36px;bottom:45px;z-index:7;display:flex;align-items:center;gap:5px;width:max-content;min-width:118px;height:40px;padding:0 10px 0 5px;border:3px solid #fff;border-radius:21px;background:#159b72;color:#fff;box-shadow:0 6px 16px #173d3252;font:800 13px/1 system-ui,sans-serif;letter-spacing:-.3px;pointer-events:auto;cursor:pointer;touch-action:manipulation;transform-origin:50% 100%;animation:lowest-price-bounce 1.6s cubic-bezier(.22,.8,.3,1) var(--rank-delay,0s) infinite}',
     '.lowest-price-badge:after{content:"";position:absolute;left:50%;bottom:-7px;width:10px;height:10px;transform:translateX(-50%) rotate(45deg);border-right:3px solid #fff;border-bottom:3px solid #fff;background:#159b72;border-radius:0 0 2px 0}',
@@ -250,8 +252,6 @@ function installMarkerStyles() {
     '.lowest-price-badge.rank-5 .lowest-tag{background:#dc2626;color:#fff;border-color:#fecaca}',
     '.lowest-price-badge strong{position:relative;z-index:2;font-size:14px;font-weight:900;white-space:nowrap}',
     '.lowest-price-badge:focus-visible{outline:3px solid #0b5c4f;outline-offset:3px}',
-    '.station-marker.is-selected.is-lowest .lowest-price-badge{left:48px;bottom:64px;animation:none}',
-    '.station-marker.is-selected.is-lowest .selected-station-callout{bottom:112px}',
     '.station-marker.is-lowest:not(.is-selected) .price-pin{display:none}',
     '.price-pin.is-stale:not(.selected){filter:saturate(.55);opacity:.84}',
     '.selected-station-callout{position:absolute;left:48px;bottom:82px;transform:translateX(-50%);display:flex;align-items:center;gap:8px;width:max-content;max-width:240px;min-height:44px;padding:8px 12px 8px 9px;border:1px solid #d8e3dc;border-radius:14px;background:#fff;color:#173e34;box-shadow:0 7px 22px #102a2433;font:800 13px/1.25 system-ui,sans-serif;appearance:none;text-align:left;cursor:pointer;pointer-events:auto;touch-action:manipulation;z-index:6}',
@@ -262,6 +262,7 @@ function installMarkerStyles() {
     '.selected-station-callout strong{max-width:168px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.selected-station-callout b{font-size:18px;font-weight:500;color:#42675d}',
     '.price-pin-name{display:none!important}',
     '.map-surface[data-marker-scale="dot"] .price-pin:not(.selected),.map-surface.dense-markers .price-pin:not(.selected){width:15px;height:15px;min-width:15px;min-height:15px;border-width:2px;bottom:1px;box-shadow:0 1px 4px #1236}',
+    '.map-surface[data-marker-scale="dot"] .price-pin:not(.selected):before,.map-surface.dense-markers .price-pin:not(.selected):before{content:"";position:absolute;inset:-10px;border-radius:50%;background:transparent}',
     'body.route-mode .map-surface[data-marker-scale="dot"] .price-pin:not(.selected),body.route-mode .map-surface.dense-markers .price-pin:not(.selected){width:18px;height:18px;min-width:18px;min-height:18px;border-width:3px;box-shadow:0 0 0 1px #0f172a4d,0 2px 7px #0f172a66}',
     '.map-surface[data-marker-scale="dot"] .price-pin:not(.selected):after,.map-surface.dense-markers .price-pin:not(.selected):after{display:none}',
     '.map-surface[data-marker-scale="dot"] .price-pin:not(.selected) .price-pin-glyph,.map-surface.dense-markers .price-pin:not(.selected) .price-pin-glyph{display:none}',
@@ -791,12 +792,13 @@ export class MapController {
     const callout=selected?'<button type="button" class="selected-station-callout" data-station-id="'+escapeHTML(id)+'" aria-label="'+escapeHTML((row.name||'주유소')+' 상세 보기')+'"><strong>'+escapeHTML(row.name||'주유소')+'</strong><b aria-hidden="true">›</b></button>':'';
     const rankLabel=presentation?.badgeLabel&&priceRank?String(presentation.badgeLabel).replace('{rank}',String(priceRank)):priceRank===1?'최저':priceRank?priceRank+'위':'';
     const rankDelay=priceRank?((priceRank-1)*0.12).toFixed(2)+'s':'0s';
-    const lowestBadge=isTopPrice?'<button type="button" class="lowest-price-badge rank-'+priceRank+'" style="--rank-delay:'+rankDelay+'" data-station-id="'+escapeHTML(id)+'" aria-label="'+escapeHTML((row.name||'주유소')+' '+rankLabel+' '+visiblePrice+'원 상세 보기')+'" title="'+escapeHTML((row.name||'주유소')+' 상세 보기')+'">'+pinBrandBadge+'<span class="lowest-tag">'+escapeHTML(rankLabel)+'</span><strong>'+escapeHTML(visiblePrice)+'원</strong></button>':'';
+    const lowestBadge=isTopPrice&&!selected?'<button type="button" class="lowest-price-badge rank-'+priceRank+'" style="--rank-delay:'+rankDelay+'" data-station-id="'+escapeHTML(id)+'" aria-label="'+escapeHTML((row.name||'주유소')+' '+rankLabel+' '+visiblePrice+'원 상세 보기')+'" title="'+escapeHTML((row.name||'주유소')+' 상세 보기')+'">'+pinBrandBadge+'<span class="lowest-tag">'+escapeHTML(rankLabel)+'</span><strong>'+escapeHTML(visiblePrice)+'원</strong></button>':'';
+    const selectedRankChip=isTopPrice&&selected?'<span class="selected-rank-chip rank-'+priceRank+'">'+escapeHTML(rankLabel)+'</span>':'';
     const detailLabel=selected?'':'<span class="price-pin-name"><span class="price-label-title">'+escapeHTML(row.name || '주유소')+'</span><span class="price-label-value">'+escapeHTML(visiblePrice+(visiblePrice!=='—'?unit:''))+'</span><span class="price-label-detail">'+escapeHTML(facts)+'</span></span>';
     const content = '<div class="station-marker tone-' + tone + (selected ? ' is-selected' : '') + (isTopPrice ? ' is-lowest rank-'+priceRank : '') + (hasVisiblePrice ? ' has-visible-price' : '') + '">'+lowestBadge+callout+'<button type="button" class="price-pin' + (selected ? ' selected' : '') +
       (stale ? ' is-stale' : '') + '" data-station-id="' + escapeHTML(id) +
       '" aria-label="' + escapeHTML(label) + '" aria-pressed="' + selected + '" title="' + escapeHTML(label) +
-      '">'+pinBrandBadge+'<span class="price-pin-glyph" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="12" height="17" rx="2"/><path d="M6 7h6v4H6ZM1 21h16m-2-8h2v5a2 2 0 0 0 4 0V8l-4-4m3 3v4h1"/></svg></span><span class="price-pin-value">' + escapeHTML(visiblePrice) +
+      '">'+pinBrandBadge+selectedRankChip+'<span class="price-pin-glyph" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="12" height="17" rx="2"/><path d="M6 7h6v4H6ZM1 21h16m-2-8h2v5a2 2 0 0 0 4 0V8l-4-4m3 3v4h1"/></svg></span><span class="price-pin-value">' + escapeHTML(visiblePrice) +
       (visiblePrice!=='—'&&unit ? '<small>' + escapeHTML(unit) + '</small>' : '') + '</span>'+detailLabel+'</button></div>';
     let marker = this._markers.get(id) || this._markerPool.get(id);
     const zIndex = selected ? 5000 : isTopPrice ? 4100-priceRank*10 : this._retainedLabels.has(id) ? 1000 : 100;
