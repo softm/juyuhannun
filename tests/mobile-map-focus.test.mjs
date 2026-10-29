@@ -352,6 +352,18 @@ test('fuel type controls use circular icon badges like the filter control', () =
   assert.match(css,/fuel-tabs button\.active/);
 });
 
+test('mobile fuel triggers match the menu listbox options',()=>{
+  assert.match(html,/id="mobile-fuel-toggle"[^>]+aria-haspopup="listbox"[^>]*>[\s\S]*fuel-tab-icon gasoline/);
+  assert.match(html,/id="fuel-tabs" role="listbox"/);
+  assert.match(html,/data-fuel="B027"[^>]+role="option"[^>]+aria-selected="true"/);
+  assert.match(html,/id="focus-fuel-toggle"[^>]+aria-haspopup="listbox"/);
+  assert.match(html,/id="focus-fuel-tabs"[^>]+role="listbox"/);
+  assert.match(app,/button\.querySelector\('\.fuel-tab-icon'\)/);
+  assert.match(app,/setAttribute\('aria-selected',String\(active\)\)/);
+  assert.match(css,/mobile-fuel-toggle\{[\s\S]*border-radius:14px!important[\s\S]*mobile-fuel-toggle \.fuel-tab-icon/);
+  assert.match(css,/focus-fuel-toggle\{[\s\S]*border-radius:14px!important/);
+});
+
 
 test('mobile default zoom uses the requested neighborhood-scale view', async () => {
   const config = await readFile(new URL('../public/config.js', import.meta.url), 'utf8');
