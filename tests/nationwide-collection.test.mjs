@@ -46,6 +46,26 @@ test('collect, reuse and failed refresh preserve observations and visible failur
  assert.equal(JSON.parse(await readFile(join(dir,'manifest.json'),'utf8')).lastAttempt.error.code,'OPINET_DOWNLOAD_FAILED');
  const failedSearch=JSON.parse(await readFile(join(dir,'search.json'),'utf8'));assert.equal(failedSearch.stations.length,2);assert.equal(failedSearch.fetchedAt,fetchedAt);assert.equal(failedSearch.cache.stale,true);
 });
+test('nationwide public download merges automotive LPG prices without using the limited API',async t=>{
+ const dir=await mkdtemp(join(tmpdir(),'juyu-lpg-'));t.after(()=>rm(dir,{recursive:true,force:true}));
+ const now=Date.parse('2026-10-30T01:00:00Z');
+ const lpgStation={...station,name:'테스트LPG충전소',roadAddress:'서울특별시 중구 테스트로 2',address:'서울 중구 테스트동 2'};
+ await writeFile(join(dir,'coordinate-seed.json'),JSON.stringify({stations:[lpgStation]}));
+ const calls=[];
+ const downloadClient={
+  dailyPrices:async({targetDate})=>({rows:[{'고유번호':'A1','상호':station.name,'주소':station.address,'기준일자':targetDate,'보통휘발유':'1750'}],sourceDate:targetDate,bytes:100}),
+  dailyLpgPrices:async({targetDate})=>{calls.push(['lpg-price',targetDate]);return {rows:[{'고유번호':'L1','상호':lpgStation.name,'주소':lpgStation.address,'기준일자':targetDate,'자동차부탄':'1123'}],sourceDate:targetDate,bytes:50};},
+  businessLpgInfo:async()=>{calls.push(['lpg-business']);return {rows:[{'고유번호':'L1','상호':lpgStation.name,'주소':lpgStation.address,'상표':'SK가스'}],bytes:25};},
+ };
+ const result=await collectNationwide({outputDirectory:dir,nearbyPath:join(dir,'nearby.json'),clock:()=>now,minRows:1,fetchImpl:async()=>{throw new Error('offline');},downloadClient});
+ assert.equal(result.total,2);
+ const searchable=JSON.parse(await readFile(join(dir,'search.json'),'utf8'));
+ const lpg=searchable.stations.find(row=>row.id==='L1');
+ assert.equal(lpg.prices.K015.price,1123);assert.equal(lpg.kind,'lpg');
+ const manifest=JSON.parse(await readFile(join(dir,'manifest.json'),'utf8'));
+ assert.equal(manifest.lpg.status,'ready');assert.equal(manifest.lpg.priceCount,1);assert.equal(manifest.lpg.businessInfo.count,1);
+ assert.deepEqual(calls,[['lpg-business'],['lpg-price','20261030']]);
+});
 test('status distinguishes total prices, mapped records, quota and a failed source from a successful build',()=>{
  const d=summarizeData({manifest:{priceStationCount:10238,priceDate:'2026-10-19'},nationwide:{status:'partial',stations:[{id:'A1',...station,prices:{B027:{price:1750}}}],coverage:{serviceReady:true,complete:false}},regional:{status:'partial',quota:{used:300,limit:300,remaining:0},lastAttempt:{status:'error'},error:{code:'OPINET_DAILY_QUOTA_EXCEEDED',message:'한도 소진'}}});
  assert.equal(d.activeMap,'nationwide');assert.equal(d.nationwide.totalPriceStations,10238);assert.equal(d.nationwide.mappedPriceStations,1);assert.equal(d.nationwide.unmappedPriceStations,10237);assert.equal(d.quota.remaining,0);assert.equal(d.collections.find(row=>row.id==='regional').retained,true);assert.equal(d.fuels[0].mappedStationCount,1);
