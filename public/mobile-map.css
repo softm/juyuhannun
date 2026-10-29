@@ -631,6 +631,25 @@ body.route-mode.route-results-ready .map-secondary-actions .route-results-toggle
  body.route-mode.route-planner-open.mobile-map-expanded .workspace>.sidebar>.route-panel{left:18px;right:auto;bottom:auto!important;width:470px;height:min(600px,calc(100dvh - 216px - var(--juyu-bottom-ad-space,0px) - env(safe-area-inset-top,0px)))}
 }
 
+/* Fuel triggers use the same icon-option language as their listbox items. */
+@media(max-width:1000px){
+ body.mobile-map-browse .mobile-fuel-toggle,
+ body.mobile-map-expanded .mobile-fuel-toggle{
+   min-width:106px;border:1px solid #dce7e2!important;border-radius:14px!important;background:#fff!important;color:#174b40!important;box-shadow:none!important
+ }
+ body.mobile-map-browse .mobile-fuel-toggle .fuel-tab-icon,
+ body.mobile-map-expanded .mobile-fuel-toggle .fuel-tab-icon{width:30px;height:30px}
+ body.mobile-map-browse .mobile-fuel-toggle .fuel-toggle-chevron,
+ body.mobile-map-expanded .mobile-fuel-toggle .fuel-toggle-chevron,
+ .focus-collapsed-fuel>#focus-fuel-toggle .fuel-toggle-chevron{display:flex!important;margin-left:auto;transition:transform .18s ease}
+ body.mobile-map-browse .mobile-fuel-toggle[aria-expanded="true"] .fuel-toggle-chevron,
+ body.mobile-map-expanded .mobile-fuel-toggle[aria-expanded="true"] .fuel-toggle-chevron,
+ .focus-collapsed-fuel>#focus-fuel-toggle[aria-expanded="true"] .fuel-toggle-chevron{transform:rotate(180deg)}
+ .focus-collapsed-fuel>#focus-fuel-toggle{
+   min-width:112px!important;max-width:126px!important;border-radius:14px!important;background:#fff!important;box-shadow:0 8px 24px #17362e24!important
+ }
+}
+
 /* Compact mobile map tools: fuel, filter, search and icon-only close. */
 @media(max-width:1000px){
  body.mobile-map-browse:not(.mobile-map-menu-collapsed) .workspace>.sidebar>.search-block,
