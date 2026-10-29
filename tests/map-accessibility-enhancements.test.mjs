@@ -49,9 +49,9 @@ test('SDK marker click opens detail and an empty map click clears selection',()=
 test('going-there remains reachable while the mobile menu is folded',()=>{
  assert.match(html,/id="focus-route-shortcut"[^>]+가는 길 주유소 찾기/);
  assert.match(app,/focus-route-shortcut[\s\S]{0,120}openRoutePlanner/);
- assert.match(mobileCss,/mobile-map-browse \.focus-route-shortcut[\s\S]*mobile-map-expanded \.focus-route-shortcut/);
+ assert.match(mobileCss,/mobile-map-browse \.mobile-focus-dock \.focus-route-shortcut/);
  assert.doesNotMatch(mobileCss,/mobile-map-menu-collapsed[^}]*focus-route-shortcut[^}]*display:none/);
- assert.match(mobileCss,/mobile-map-menu-collapsed\.mobile-map-browse \.focus-route-shortcut,[\s\S]*top:calc\(10px \+ env\(safe-area-inset-top,0px\)\);z-index:192/);
+ assert.match(mobileCss,/mobile-focus-dock \.focus-route-shortcut\{[^}]*position:static[^}]*background:transparent/);
 });
 
 test('area rescan exposes an in-progress state before completion',()=>{

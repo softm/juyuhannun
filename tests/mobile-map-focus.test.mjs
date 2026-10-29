@@ -128,7 +128,9 @@ test('collapsed map menu keeps fuel selection immediately left of the route shor
   assert.match(html,/id="focus-fuel-label">휘발유<\/span>/);
   assert.match(html,/id="focus-fuel-toggle"[\s\S]*fuel-tab-icon gasoline/);
   assert.match(app,/focusButton\.querySelector\('\.fuel-tab-icon'\)/);
-  assert.match(css,/focus-route-shortcut[\s\S]*left:calc\(50% \+ 36px\)[\s\S]*translateX\(-50%\)/);
+  assert.match(html,/focus-dock-list[\s\S]*focus-route-shortcut[\s\S]*focus-dock-more/);
+  assert.match(css,/mobile-focus-dock\{[^}]*grid-template-columns:repeat\(3,minmax\(0,1fr\)\)/);
+  assert.match(css,/mobile-focus-dock \.focus-route-shortcut\{[^}]*position:static[^}]*background:transparent/);
   assert.match(css,/focus-collapsed-fuel[\s\S]*right:calc\(50% \+ 43px\)/);
   assert.match(css,/focus-fuel-toggle\{display:flex;min-width:92px[\s\S]*gap:5px/);
   assert.match(css,/focus-fuel-tabs\{position:absolute[\s\S]*grid-template-columns:1fr 1fr/);
@@ -387,8 +389,8 @@ test('driving mode keeps map overlays upright and shows actual plus predicted tr
   assert.match(styles,/\.map-secondary-actions\{[^}]*display:flex/);
   assert.match(styles,/@media\(min-width:761px\) and \(max-width:1366px\)\{\.map-secondary-action\{[^}]*width:48px/);
   assert.match(app,/\$\('drive-mode'\)\.addEventListener\('click'/);
-  assert.match(styles, /\.drive-scale\{position:fixed;left:50%;right:auto;top:auto;bottom:calc\(104px/);
-  assert.match(styles, /body\.route-mode \.drive-scale\{bottom:calc\(238px/);
+  assert.match(styles, /\.drive-scale\{position:fixed;left:50%;right:auto;top:auto;bottom:calc\(76px/);
+  assert.match(styles, /body\.route-mode \.drive-scale\{bottom:calc\(224px/);
   assert.match(map,/projectPoint/);
   assert.match(map,/_renderDrivingGuides/);
   assert.match(map,/strokeStyle:\s*'shortdash'/);
@@ -401,7 +403,9 @@ test('driving mode keeps map overlays upright and shows actual plus predicted tr
   assert.match(css,/body\.driving-mode \.driving-station-status/);
   assert.match(map,/_setDrivingHeadingUp/);
   assert.match(map,/driving-guidance-active/);
-  assert.doesNotMatch(styles,/\.map-surface\.heading-up/);
+  assert.match(map,/\.map-surface\.heading-up/);
+  assert.match(map,/--map-bearing/);
+  assert.match(map,/const shortest=\(\(normalized-previous\+540\)%360\)-180/);
   assert.match(app,/파랑=이동동선/);
   assert.match(app,/refreshDrivingRoadPrediction/);
   assert.match(app,/\/route\/predict/);
