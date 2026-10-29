@@ -412,7 +412,7 @@ export class MapController {
     if (this._markerClickId === id && Date.now() - this._markerClickAt < 300) return;
     this._markerClickAt = Date.now();
     this._markerClickId = id;
-    this.setStations(this._stations, id, this._fuel);
+    this.setStations(this._stations, id, this._fuel,{refreshComparison:false});
     this.onSelect(id);
   }
 
@@ -470,7 +470,7 @@ export class MapController {
         if (this._destroyed) throw error;
         await this._fallback(error);
       }
-      this.setStations(this._stations, this._selectedId, this._fuel);
+      this.setStations(this._stations, this._selectedId, this._fuel,{refreshComparison:false});
       return this;
     })().catch(error => { this._initTask = null; throw error; });
     return this._initTask;
@@ -555,7 +555,7 @@ export class MapController {
       this._center = center;
       this._notice('네이버 지도를 연결하지 못해 OpenStreetMap 지도로 표시합니다.');
       this._state('fallback', 'OpenStreetMap 지도 · 네이버 지도 연결을 확인하지 못했습니다.');
-      this.setStations(this._stations, this._selectedId, this._fuel);
+      this.setStations(this._stations, this._selectedId, this._fuel,{refreshComparison:false});
       if (this._baseRouteCoords.length > 1) this.showRoute(this._baseRouteCoords,{kind:'base',fitBounds:true,...(this._routeEndpoints||{})});
       if (this._viaRouteCoords.length > 1) this.showRoute(this._viaRouteCoords,{kind:'via',fitBounds:false});
       if (this._youPoint) this._showYou(this._youPoint, { heading: this._driveHeading, driving: this._driveWatchId != null });
@@ -692,13 +692,14 @@ export class MapController {
     });
   }
 
-  setStations(stations, selectedId = null, fuel = 'B027') {
+  setStations(stations, selectedId = null, fuel = 'B027',{refreshComparison=true}={}) {
+    const fuelChanged=this._fuel!==fuel;
     this._stations = Array.isArray(stations) ? stations : [];
     this._selectedId = selectedId == null ? null : String(selectedId);
     this._fuel = fuel;
     const now = Date.now();
-    this._priceBands = markerPriceBands(this._stations, this._fuel, now);
-    this._priceRanks = markerTopPriceRanks(this._stations, this._fuel, now, 5);
+    if(refreshComparison){this._priceBands = markerPriceBands(this._stations, this._fuel, now);this._priceRanks = markerTopPriceRanks(this._stations, this._fuel, now, 5);}
+    else if(fuelChanged){this._priceBands=null;this._priceRanks=new Map();}
     this._scheduleMarkers();
   }
 
@@ -905,7 +906,7 @@ export class MapController {
     if (!point) throw new Error('이 주유소의 위치를 확인할 수 없습니다.');
     this._navigationRevision++;
     this._selectedId = String(station.id);
-    this.setStations(this._stations, this._selectedId, this._fuel);
+    this.setStations(this._stations, this._selectedId, this._fuel,{refreshComparison:false});
     let target = point;
     if (this.map) {
       const panel = [...document.querySelectorAll('[data-map-overlay]')].find(element => {
