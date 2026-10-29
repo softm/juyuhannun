@@ -85,6 +85,9 @@ export class OpinetBrowserDownloadClient{
       await rm(downloadDir,{recursive:true,force:true}).catch(()=>{});
     }
   }
+  async businessLpgInfo(){
+    return this.businessInfo({businessType:'lpg'});
+  }
   async dailyPrices({businessType='station',targetDate=kstDate(this.clock())}={}){
     if(!['station','lpg'].includes(businessType))throw new ServiceError('OPINET_DOWNLOAD_REQUEST_INVALID','전국 일일가격 다운로드 업종을 확인해 주세요.',400);
     if(!/^\d{8}$/.test(String(targetDate)))throw new ServiceError('OPINET_DOWNLOAD_DATE_INVALID','오피넷 일일가격 기준일을 확인해 주세요.',400);
@@ -179,5 +182,8 @@ export class OpinetBrowserDownloadClient{
       if(browser)await browser.close().catch(()=>{});
       await rm(downloadDir,{recursive:true,force:true}).catch(()=>{});
     }
+  }
+  async dailyLpgPrices({targetDate=kstDate(this.clock())}={}){
+    return this.dailyPrices({businessType:'lpg',targetDate});
   }
 }
