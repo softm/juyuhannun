@@ -38,6 +38,7 @@ const state={fuel:FUEL_TYPES.some(f=>f.code===requestedFuel)?requestedFuel:'B027
 const FUEL_VISUAL={B027:{label:'휘발유',icon:'droplet',tone:'gasoline'},D047:{label:'경유',icon:'pump',tone:'diesel'},B034:{label:'고급휘발유',icon:'star',tone:'premium'},K015:{label:'LPG',icon:'flame',tone:'lpg'}};
 function syncMobileFuelToggle(){const item=FUEL_VISUAL[state.fuel]||FUEL_VISUAL.B027;const button=$('mobile-fuel-toggle'),label=$('mobile-fuel-label'),focusButton=$('focus-fuel-toggle'),focusLabel=$('focus-fuel-label');if(focusButton){focusButton.setAttribute('aria-label',`유종 선택, 현재 ${item.label}`);const focusBadge=focusButton.querySelector('.fuel-tab-icon');if(focusBadge){focusBadge.className='fuel-tab-icon '+item.tone;focusBadge.innerHTML='<span class="icon">'+icon(item.icon)+'</span>';}}if(focusLabel)focusLabel.textContent=item.label;document.querySelectorAll('[data-focus-fuel]').forEach(x=>{const active=x.dataset.focusFuel===state.fuel;x.classList.toggle('active',active);x.setAttribute('aria-selected',String(active));x.setAttribute('aria-pressed',String(active));});if(!button||!label)return;button.setAttribute('aria-label',`유종 선택, 현재 ${item.label}`);label.textContent=item.label;const badge=button.querySelector('.fuel-tab-icon');if(badge){badge.className='fuel-tab-icon '+item.tone;badge.innerHTML='<span class="icon">'+icon(item.icon)+'</span>';}}
 const localHost=['localhost','127.0.0.1','[::1]'].includes(location.hostname);
+const androidApp=/JuyuhannunAndroid\//.test(navigator.userAgent);
 const sharedId=params.get('station');
 if(sharedId&&/^[\w-]{1,50}$/.test(sharedId)&&params.has('slat')&&params.has('slng')){const lat=Number(params.get('slat')),lng=Number(params.get('slng'));if(finite(lat)&&finite(lng)&&lat>=32&&lat<=40&&lng>=123&&lng<=133)state.center={lat,lng};}
 const apiBase=(APP_CONFIG.apiBase||(localHost?'/api':'')).replace(/\/$/,'');
@@ -363,6 +364,7 @@ function openRoutePlanner(){
   }
   render();
  }
+ if(mobileMapView.isMobile())setMobileMapMenuExpanded(false,{restartTimer:false});
  requestAnimationFrame(()=>$('route-destination-query')?.focus({preventScroll:true}));
 }
 function closeRoutePlanner(){
@@ -623,6 +625,7 @@ $('focus-dock-more').addEventListener('click',()=>{if(hasRouteResults()){if(isRo
 $('more-favorites')?.addEventListener('click',()=>{closeDialog('more-dialog');selectView('saved');openFocusList();});
 $('more-recent-clear')?.addEventListener('click',()=>{recentDestinations=[];saveStorage(RECENT_DESTINATIONS_KEY,recentDestinations);renderRecentDestinations();closeDialog('more-dialog');toast('최근 목적지를 모두 삭제했습니다.');});
 $('more-info')?.addEventListener('click',()=>{closeDialog('more-dialog');showDialog('info-dialog');});
+if($('more-app-exit')){$('more-app-exit').hidden=!androidApp;$('more-app-exit').addEventListener('click',()=>{closeDialog('more-dialog');location.href='juyuhannun://exit';});}
 $('locate').addEventListener('click',async()=>{const b=$('locate');b.disabled=true;try{if(!state.mapReady)throw new Error('지도가 준비되는 중입니다.');const position=await map.locate();lastLocatedPoint={lat:position.lat,lng:position.lng};state.center={lat:position.lat,lng:position.lng};toast('현재 위치 주변으로 이동했습니다.');}catch(error){toast(error.message||'현재 위치를 확인하지 못했습니다. 위치 권한을 확인해 주세요.');}finally{b.disabled=false;}});
 for(const id of ['open-info','footer-info'])$(id).addEventListener('click',()=>showDialog('info-dialog'));
 document.querySelectorAll('[data-close]').forEach(b=>b.addEventListener('click',()=>{if(b.dataset.close==='detail-dialog'&&mobileMapView.isMobile())mobileMapView.closeDetail();else closeDialog(b.dataset.close);}));
