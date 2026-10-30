@@ -58,5 +58,7 @@ test('area rescan exposes an in-progress state before completion',()=>{
  assert.match(app,/focus-rescan[\s\S]*classList\.add\('is-progress'\)/);
  assert.match(app,/setAttribute\('aria-busy','true'\)/);
  assert.match(app,/지도 영역 확인 중/);
+ assert.match(mobileCss,/@media\(min-width:1001px\)\{[\s\S]*\.focus-rescan\{display:flex;position:absolute;left:50%;bottom:20px/);
+ assert.match(mobileCss,/body\.route-mode \.focus-rescan,body\.driving-mode \.focus-rescan\{display:none\}/);
  assert.match(mobileCss,/\.rescan-spinner\{/);
 });
