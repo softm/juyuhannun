@@ -3,6 +3,7 @@ import { MapController } from './map.js';
 import { escapeHTML as esc, money, finite, getFuelPrice, formatTime, freshness, stationNavigationURL } from './core.js';
 import { isKoreanPoint, safeSourceUrl, visibleBenchmarks, energyCacheKey, retainEnergySnapshot } from './energy-core.js';
 import { mountBottomAd } from './adfit.js';
+import { beginActionProgress } from '../shared/action-progress.js';
 
 const $ = id => document.getElementById(id);
 mountBottomAd();
@@ -83,6 +84,7 @@ function setBusy() {
 }
 
 async function loadData() {
+  const finishProgress = beginActionProgress('공식 가격 자료 확인 중…');
   const generation = ++state.generation;
   state.controller?.abort();
   state.controller = null;
@@ -91,6 +93,7 @@ async function loadData() {
     state.envelope = { status: 'reference_only' };
     state.records = [];
     render();
+    finishProgress('수소 가격 안내 표시 완료');
     return;
   }
   const view = state.view, source = sources[view];
@@ -130,6 +133,7 @@ async function loadData() {
     if (state.records.length) state.cache.set(key, state.envelope);
   } finally {
     clearTimeout(timer);
+    finishProgress('가격 자료 확인 완료');
     if (generation === state.generation) {
       state.controller = null;
       state.loading = false;

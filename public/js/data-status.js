@@ -1,5 +1,6 @@
 import {escapeHTML as esc,formatTime} from './core.js';
 import {availabilityAt} from './data-status-model.js';
+import {beginActionProgress} from '../shared/action-progress.js';
 const $=id=>document.getElementById(id),names={ready:'정상',partial:'일부 자료',error:'갱신 실패',awaiting_credentials:'연결 대기',awaiting_data:'자료 대기',paused_quota:'호출 예산 대기',success:'수집 성공',cached:'기존 자료 재사용',reused:'기존 자료 재사용'};
 const n=v=>Number.isFinite(v)?v.toLocaleString('ko-KR'):'—';
 const issueText=e=>e?.code?.startsWith('OPINET_DOWNLOAD')||e?.code==='OPINET_BROWSER_DOWNLOAD_ERROR'?'요청한 기준일의 전국 가격 파일을 확보하지 못했습니다. 이전 가격을 보존하며 다시 확인합니다.':e?.message||'갱신 상태 확인 필요';
@@ -85,6 +86,7 @@ function render(d){
 }
 async function load(){
  if(inFlight)return inFlight;
+ const finishProgress=beginActionProgress('수집 현황 확인 중…');
  $('reload').disabled=true;
  inFlight=(async()=>{
   try{
@@ -93,7 +95,7 @@ async function load(){
    const d=await response.json();if(d.version!==1||!d.nationwide||!Array.isArray(d.collections))throw new Error('수집 현황 형식을 확인할 수 없습니다.');
    currentData=d;render(d);
   }catch(error){$('notice').className='notice error';$('notice').textContent=(error.name==='TimeoutError'?'현황 응답이 지연됩니다. 다시 시도해 주세요.':error.message)+(currentData?' 마지막으로 읽은 현황을 유지합니다.':'');}
-  finally{$('reload').disabled=false;inFlight=null;}
+  finally{finishProgress('수집 현황 확인 완료');$('reload').disabled=false;inFlight=null;}
  })();return inFlight;
 }
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)load();});

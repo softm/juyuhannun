@@ -2,6 +2,7 @@ import {APP_CONFIG} from '../config.js';
 import {MapController} from './map.js';
 import {pickListScrollStation,setupMobileMapView} from './mobile-map-view.js';
 import {createMapLoadingController} from '../shared/map-loading.js';
+import {beginActionProgress} from '../shared/action-progress.js';
 import {mountBottomAd,mountStationDetailAd,mountStationListAds} from './adfit.js';
 import {loadStationData,loadStaticJSON,mergeStationData,reselectStationPrices} from './data-loader.js';
 import {FUEL_TYPES,BRANDS,escapeHTML as esc,money,finite,distanceMeters,getFuelPrice,freshness,formatTime,filterStations,searchStations,summarizeVisiblePrices,hasMapCoordinates,stationNavigationURL} from './core.js';
@@ -141,7 +142,8 @@ async function requestJSON(url,signal,options={}){
 routeMode=createRouteModeController({requestJSON});
 function loadData(){
  if(dataRequest)return dataRequest;
- dataRequest=loadDataOnce().finally(()=>{dataRequest=null;});
+ const finishProgress=beginActionProgress('가격 자료 확인 중…');
+ dataRequest=loadDataOnce().finally(()=>{finishProgress('가격 자료 확인 완료');dataRequest=null;});
  return dataRequest;
 }
 async function loadDataOnce(){
@@ -627,8 +629,9 @@ function startDrivingMode({hud=false}={}){
  }
 }
 $('drive-mode').addEventListener('click',()=>{if(state.driving.active)stopDrivingMode({message:'주행 추적을 종료했습니다.'});else startDrivingMode();});
-$('drive-hud-mode').addEventListener('click',()=>{if(androidApp){nativeRadarActive=!nativeRadarActive;syncDrivingButton();location.href=`juyuhannun://radar?enabled=${nativeRadarActive?'1':'0'}`;toast(nativeRadarActive?'투명 레이더를 준비합니다. 권한 승인 후 티맵·카카오맵 위에 표시됩니다.':'투명 레이더를 종료했습니다.');return;}if(!state.driving.active){startDrivingMode({hud:true});return;}state.driving.hud=!state.driving.hud;syncDrivingButton();updateDrivingHud();toast(state.driving.hud?'2.5D 주행 HUD로 전환했습니다.':'일반 지도 주행모드로 돌아왔습니다.');});
+$('drive-hud-mode').addEventListener('click',()=>{if(androidApp){location.href='juyuhannun://radar?mode=choose';toast('2.5D 오버레이·3D 지도·카메라 AR 중 사용할 모드를 선택해 주세요.');return;}if(!state.driving.active){startDrivingMode({hud:true});return;}state.driving.hud=!state.driving.hud;syncDrivingButton();updateDrivingHud();toast(state.driving.hud?'2.5D 주행 HUD로 전환했습니다.':'일반 지도 주행모드로 돌아왔습니다.');});
 window.addEventListener('juyuhannun-radar-state',event=>{if(!androidApp)return;nativeRadarActive=event.detail?.active===true;syncDrivingButton();});
+window.addEventListener('juyuhannun-visual-mode',event=>{if(!androidApp)return;const mode=event.detail?.mode;if(mode==='map3d'){if(!state.driving.active)startDrivingMode({hud:true});else{state.driving.hud=true;syncDrivingButton();updateDrivingHud();}toast('주유한눈 3D 지도 모드를 시작합니다.');}else if(mode==='off'&&state.driving.active&&state.driving.hud)stopDrivingMode({message:'주행 시각화를 종료했습니다.'});});
 $('drive-zoom-range')?.addEventListener('input',()=>{const zoom=Number($('drive-zoom-range').value);$('drive-zoom-value').value=String(zoom);state.driving.zoomMode='manual';map.setDrivingZoomMode('manual',zoom);$('drive-zoom-auto').setAttribute('aria-pressed','false');});
 $('drive-zoom-auto')?.addEventListener('click',()=>{state.driving.zoomMode='auto';map.setDrivingZoomMode('auto');$('drive-zoom-auto').setAttribute('aria-pressed','true');toast('속도에 맞춰 지도 배율을 자동 조정합니다.');});
 $('route-results-toggle').addEventListener('click',()=>{
