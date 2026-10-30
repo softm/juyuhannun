@@ -23,7 +23,7 @@ if(process.env.PUBLIC_API_BASE){
 // Immutable code paths keep old CDN/browser assets from mixing with a new build.
 // Price data is intentionally outside this namespace and fetched with no-store.
 const hash=createHash('sha256');
-const immutablePaths=['js','shared','config.js','adfit-config.js',...(await readdir(`${root}dist`)).filter(name=>name.endsWith('.css'))];
+const immutablePaths=['js','shared','vendor','config.js','adfit-config.js',...(await readdir(`${root}dist`)).filter(name=>name.endsWith('.css'))];
 hash.update('immutable-paths\0').update(immutablePaths.join('\0')).update('\0');
 async function hashCode(directory,prefix=''){
  for(const entry of (await readdir(directory,{withFileTypes:true})).sort((a,b)=>a.name.localeCompare(b.name))){
