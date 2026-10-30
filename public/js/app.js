@@ -564,7 +564,7 @@ function syncDrivingButton(){
  button.title=active?'주행 추적 종료':'주행 추적 시작';
  document.body.classList.toggle('driving-mode',active);
  document.body.classList.toggle('driving-hud-mode',active&&state.driving.hud);
- const hudButton=$('drive-hud-mode');if(hudButton){hudButton.setAttribute('aria-pressed',String(active&&state.driving.hud));hudButton.setAttribute('aria-label',active&&state.driving.hud?'3D 주행 HUD 종료':'3D 주행 HUD 시작');hudButton.title=active&&state.driving.hud?'3D HUD 끄기':'3D 주행 HUD';}
+ const hudButton=$('drive-hud-mode');if(hudButton){hudButton.setAttribute('aria-pressed',String(active&&state.driving.hud));hudButton.setAttribute('aria-label',active&&state.driving.hud?'2.5D 주행 HUD 종료':'2.5D 주행 HUD 시작');hudButton.title=active&&state.driving.hud?'2.5D HUD 끄기':'2.5D 주행 HUD';}
  drivingHud?.setActive(active&&state.driving.hud);
  const scale=$('drive-scale');if(scale)scale.hidden=!active;
  if(!active)syncDrivingStationStatus();
@@ -614,14 +614,14 @@ function startDrivingMode({hud=false}={}){
      },
      onError:error=>{stopDrivingMode({message:error.message||'주행 위치를 확인하지 못했습니다.'});}
    });
-   toast(hud?'3D 주행 HUD 시작 · 진행 방향의 주유소를 거리와 가격으로 표시합니다.':'주행모드 시작 · 지도와 마커는 정방향을 유지하고 차량 화살표로 진행방향을 표시합니다. 파란선은 이동동선, 초록 점선은 예상 진행동선입니다.');
+   toast(hud?'2.5D 주행 HUD 시작 · 진행 방향의 주유소를 거리와 가격으로 표시합니다.':'주행모드 시작 · 지도와 마커는 정방향을 유지하고 차량 화살표로 진행방향을 표시합니다. 파란선은 이동동선, 초록 점선은 예상 진행동선입니다.');
  }catch(error){
    state.driving={active:false,hud:false,phase:'off',point:null,heading:null,speed:0,accuracy:null,zoomMode:'auto'};syncDrivingButton();
    toast(error.message||'주행 추적을 시작하지 못했습니다.');
  }
 }
 $('drive-mode').addEventListener('click',()=>{if(state.driving.active)stopDrivingMode({message:'주행 추적을 종료했습니다.'});else startDrivingMode();});
-$('drive-hud-mode').addEventListener('click',()=>{if(!state.driving.active){startDrivingMode({hud:true});return;}state.driving.hud=!state.driving.hud;syncDrivingButton();updateDrivingHud();toast(state.driving.hud?'3D 주행 HUD로 전환했습니다.':'일반 지도 주행모드로 돌아왔습니다.');});
+$('drive-hud-mode').addEventListener('click',()=>{if(!state.driving.active){startDrivingMode({hud:true});return;}state.driving.hud=!state.driving.hud;syncDrivingButton();updateDrivingHud();toast(state.driving.hud?'2.5D 주행 HUD로 전환했습니다.':'일반 지도 주행모드로 돌아왔습니다.');});
 $('drive-zoom-range')?.addEventListener('input',()=>{const zoom=Number($('drive-zoom-range').value);$('drive-zoom-value').value=String(zoom);state.driving.zoomMode='manual';map.setDrivingZoomMode('manual',zoom);$('drive-zoom-auto').setAttribute('aria-pressed','false');});
 $('drive-zoom-auto')?.addEventListener('click',()=>{state.driving.zoomMode='auto';map.setDrivingZoomMode('auto');$('drive-zoom-auto').setAttribute('aria-pressed','true');toast('속도에 맞춰 지도 배율을 자동 조정합니다.');});
 $('route-results-toggle').addEventListener('click',()=>{
