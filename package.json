@@ -19,7 +19,6 @@
     "collect:comparisons": "node scripts/collect-comparisons.mjs"
   },
   "dependencies": {
-    "playwright-core": "^1.56.0",
-    "three": "^0.184.0"
+    "playwright-core": "^1.56.0"
   }
 }
