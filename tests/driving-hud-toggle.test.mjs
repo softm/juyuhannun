@@ -17,4 +17,7 @@ test('HUD 재진입은 마지막 카드와 신뢰 가능한 진행 방향을 유
  assert.match(hud,/drive-hud-distance/);
  assert.match(hud,/가장 가까운 곳.*m 남음/);
  assert.match(css,/\.drive-hud-distance\{/);
+ assert.match(app,/juyuhannun:\/\/radar\?mode=choose/);
+ assert.match(app,/juyuhannun-visual-mode/);
+ assert.match(app,/mode==='map3d'/);
 });
