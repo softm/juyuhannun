@@ -135,9 +135,17 @@ body:not(.energy-page) .app-header{height:66px;padding:0 24px}
 .route-results-toggle[aria-pressed="true"]{border-color:#0f6b57;background:#0f6b57;color:#fff;box-shadow:0 0 0 4px #0f6b5724,0 7px 20px #17362e28}
 .route-results-toggle[aria-pressed="false"]{border-color:#ddd4f7;background:#fff;color:#765ac6}
 .route-results-toggle .icon{display:flex;align-items:center;justify-content:center}
+.drive-hud-toggle[aria-pressed="true"]{border-color:#48d7b0;background:#073f35;color:#c9fff0;box-shadow:0 0 0 4px #24c99d35,0 8px 24px #071f1a55}
+.drive-hud{position:absolute;inset:0;z-index:9;overflow:hidden;background:linear-gradient(180deg,#071b2aa8 0%,#0b544573 44%,#071b2acc 100%);pointer-events:none}
+.drive-hud[hidden]{display:none!important}.drive-hud-canvas{position:absolute;inset:0;width:100%;height:100%}
+.drive-hud-heading{position:absolute;z-index:2;left:50%;top:22px;display:grid;min-width:180px;transform:translateX(-50%);text-align:center;color:#fff;text-shadow:0 2px 8px #0008}
+.drive-hud-heading span{color:#6fffd6;font-size:10px;font-weight:950;letter-spacing:.22em}.drive-hud-heading strong{font-size:18px}.drive-hud-heading small{color:#d4eae4;font-size:9px}
+.drive-hud-horizon{position:absolute;left:8%;right:8%;top:42%;height:1px;background:linear-gradient(90deg,transparent,#9dffe3aa,transparent);box-shadow:0 0 14px #65ffd0}
+.drive-hud-horizon::before,.drive-hud-horizon::after{content:"";position:absolute;top:-4px;width:36%;height:8px;border-top:1px solid #baffeb66}.drive-hud-horizon::before{left:0;transform:rotate(4deg)}.drive-hud-horizon::after{right:0;transform:rotate(-4deg)}
 @media(hover:hover){.map-secondary-action:hover{background:#edf2ed}}
 @media(min-width:1001px) and (max-width:1100px){.map-secondary-actions{right:70px;top:181px}}
 @media(min-width:761px) and (max-width:1366px){.map-secondary-action{width:48px;height:48px;border-radius:12px}.map-secondary-action svg{width:22px;height:22px}}
+@media(max-width:1000px){.drive-hud{position:fixed;inset:0;z-index:168}.drive-hud-heading{top:calc(22px + env(safe-area-inset-top,0px))}body.driving-hud-mode .map-canvas{filter:saturate(.45) brightness(.72)}}
 
 
 /* Desktop station detail modal */
