@@ -22,14 +22,17 @@ function stationCard(station,index){
  const logo=document.createElement('span');logo.className='drive-hud-brand';logo.style.background=brand.color||'#64748b';logo.style.color=brand.ink||'#fff';
  if(brand.image){const image=document.createElement('img');image.src=brand.image;image.alt='';logo.appendChild(image);}else logo.textContent=brand.short||'?';
  const copy=document.createElement('span');copy.className='drive-hud-station-copy';const price=document.createElement('strong');price.textContent=`${Number(station.price).toLocaleString('ko-KR')}원`;const detail=document.createElement('small');detail.textContent=`${station.name} · ${station.distanceLabel}`;copy.append(price,detail);
- const direction=document.createElement('span');direction.className='drive-hud-direction';direction.textContent=Math.abs(station.delta)<12?'↑':station.delta<0?'↖':'↗';direction.setAttribute('aria-hidden','true');card.append(logo,copy,direction);return card;
+ const distance=document.createElement('strong');distance.className='drive-hud-distance';distance.textContent=`${Math.round(station.distanceMeters).toLocaleString('ko-KR')}m`;
+ const direction=document.createElement('span');direction.className='drive-hud-direction';direction.textContent=Math.abs(station.delta)<12?'↑':station.delta<0?'↖':'↗';direction.setAttribute('aria-hidden','true');card.append(logo,copy,distance,direction);return card;
 }
 
 export function createDrivingHud({host}={}){
  if(!host)return{setActive(){},update(){},resize(){},destroy(){}};
  const stage=document.createElement('div');stage.className='drive-hud-stage';stage.innerHTML='<div class="drive-hud-road" aria-hidden="true"><i></i><i></i><i></i></div><div class="drive-hud-stations" role="list" aria-label="전방 주유소"></div>';
- host.appendChild(stage);const stationsHost=stage.querySelector('.drive-hud-stations');let active=false;
- function setActive(next){active=Boolean(next);host.hidden=!active;if(!active)stationsHost.replaceChildren();}
- function update(stations,{point,heading}={}){if(!active)return;stationsHost.replaceChildren(...selectHudStations(stations,{point,heading}).map(stationCard));}
+ host.appendChild(stage);const stationsHost=stage.querySelector('.drive-hud-stations'),nearestOutput=host.querySelector('#drive-hud-nearest');let active=false;
+ // Keep the last rendered cards while hidden. GPS heading can briefly be null
+ // after resuming, so clearing here would leave the HUD empty until movement.
+ function setActive(next){active=Boolean(next);host.hidden=!active;}
+ function update(stations,{point,heading}={}){if(!active)return;const selected=selectHudStations(stations,{point,heading});stationsHost.replaceChildren(...selected.map(stationCard));if(nearestOutput)nearestOutput.textContent=selected.length?`가장 가까운 곳 ${Math.round(selected[0].distanceMeters).toLocaleString('ko-KR')}m 남음`:'전방 주유소 확인 중';}
  return{setActive,update,resize(){},destroy(){stage.remove();}};
 }

@@ -52,6 +52,8 @@ let dataRequest=null;
 let lastDataCheckAt=0;
 let drivingPredictionAt=0;
 let drivingPredictionKey='';
+let lastDrivingHeading=null;
+let lastDrivingPoint=null;
 let routeMode=null;
 let routePickTarget=null;
 let routeOriginRequest=null;
@@ -62,6 +64,7 @@ let listFocusedStationId=null;
 let routePlannerOpen=false;
 let mobileComparisonRefreshRequested=true;
 let drivingHud=null;
+let nativeRadarActive=false;
 const DATA_REFRESH_MS=5*60*1000;
 function collectionStats(){const now=Date.now(),minute=Math.floor(now/60000);if(recordStats?.source===state.all&&recordStats.fuel===state.fuel&&recordStats.minute===minute)return recordStats;let mapped=0,fresh=0;for(const station of state.all){if(!hasMapCoordinates(station))continue;mapped++;const p=getFuelPrice(station,state.fuel);if(p&&freshness(p.priceUpdatedAt,p.fetchedAt,now,p.priceTimeStatus,p.sourceDate).eligible)fresh++;}return recordStats={source:state.all,fuel:state.fuel,minute,mapped,fresh};}
 function refreshPriceSelection(now){const sources=state.envelope?.sourceSnapshots,minute=Math.floor(now/60000);if(!sources||(priceSelection?.sources===sources&&priceSelection.minute===minute))return;state.all=reselectStationPrices(state.all,sources,{now});priceSelection={sources,minute};}
@@ -564,7 +567,7 @@ function syncDrivingButton(){
  button.title=active?'주행 추적 종료':'주행 추적 시작';
  document.body.classList.toggle('driving-mode',active);
  document.body.classList.toggle('driving-hud-mode',active&&state.driving.hud);
- const hudButton=$('drive-hud-mode');if(hudButton){hudButton.setAttribute('aria-pressed',String(active&&state.driving.hud));hudButton.setAttribute('aria-label',active&&state.driving.hud?'2.5D 주행 HUD 종료':'2.5D 주행 HUD 시작');hudButton.title=active&&state.driving.hud?'2.5D HUD 끄기':'2.5D 주행 HUD';}
+ const hudActive=androidApp?nativeRadarActive:active&&state.driving.hud,hudButton=$('drive-hud-mode');if(hudButton){hudButton.setAttribute('aria-pressed',String(hudActive));hudButton.setAttribute('aria-label',androidApp?(hudActive?'투명 레이더 종료':'투명 레이더 시작'):(hudActive?'2.5D 주행 HUD 종료':'2.5D 주행 HUD 시작'));hudButton.title=androidApp?(hudActive?'투명 레이더 끄기':'다른 앱 위 투명 레이더'):(hudActive?'2.5D HUD 끄기':'2.5D 주행 HUD');}
  drivingHud?.setActive(active&&state.driving.hud);
  const scale=$('drive-scale');if(scale)scale.hidden=!active;
  if(!active)syncDrivingStationStatus();
@@ -602,12 +605,15 @@ async function refreshDrivingRoadPrediction(point,heading,speed){
  }catch{}
 }
 function handleDrivingUpdate({point,heading,speed,accuracy,phase='active'}){
- const active=['active','paused'].includes(phase);state.driving={...state.driving,active,phase,point,heading,speed,accuracy};lastLocatedPoint={...point,accuracy,timestamp:Date.now()};state.center={...point};syncDrivingButton();if(active){refreshDrivingRoadPrediction(point,heading,speed);updateDrivingHud();render();}
+ const active=['active','paused'].includes(phase),reliableHeading=Number.isFinite(heading)?heading:(Number.isFinite(state.driving.heading)?state.driving.heading:lastDrivingHeading);
+ if(Number.isFinite(reliableHeading))lastDrivingHeading=reliableHeading;
+ if(point&&Number.isFinite(point.lat)&&Number.isFinite(point.lng))lastDrivingPoint={...point};
+ state.driving={...state.driving,active,phase,point,heading:reliableHeading,speed,accuracy};lastLocatedPoint={...point,accuracy,timestamp:Date.now()};state.center={...point};syncDrivingButton();if(active){refreshDrivingRoadPrediction(point,reliableHeading,speed);updateDrivingHud();render();}
 }
 function startDrivingMode({hud=false}={}){
  if(!state.mapReady){toast('지도가 준비된 뒤 주행 추적을 시작해 주세요.');return;}
  try{
-   state.driving.active=true;state.driving.hud=hud;syncDrivingButton();syncDrivingStationStatus();
+   state.driving.active=true;state.driving.hud=hud;state.driving.point=lastDrivingPoint||lastLocatedPoint||state.driving.point;state.driving.heading=lastDrivingHeading;syncDrivingButton();syncDrivingStationStatus();updateDrivingHud();
    map.startDriving({
      onUpdate:({point,heading,speed,accuracy})=>{
        handleDrivingUpdate({point,heading,speed,accuracy,phase:'active'});
@@ -621,7 +627,8 @@ function startDrivingMode({hud=false}={}){
  }
 }
 $('drive-mode').addEventListener('click',()=>{if(state.driving.active)stopDrivingMode({message:'주행 추적을 종료했습니다.'});else startDrivingMode();});
-$('drive-hud-mode').addEventListener('click',()=>{if(!state.driving.active){startDrivingMode({hud:true});return;}state.driving.hud=!state.driving.hud;syncDrivingButton();updateDrivingHud();toast(state.driving.hud?'2.5D 주행 HUD로 전환했습니다.':'일반 지도 주행모드로 돌아왔습니다.');});
+$('drive-hud-mode').addEventListener('click',()=>{if(androidApp){nativeRadarActive=!nativeRadarActive;syncDrivingButton();location.href=`juyuhannun://radar?enabled=${nativeRadarActive?'1':'0'}`;toast(nativeRadarActive?'투명 레이더를 준비합니다. 권한 승인 후 티맵·카카오맵 위에 표시됩니다.':'투명 레이더를 종료했습니다.');return;}if(!state.driving.active){startDrivingMode({hud:true});return;}state.driving.hud=!state.driving.hud;syncDrivingButton();updateDrivingHud();toast(state.driving.hud?'2.5D 주행 HUD로 전환했습니다.':'일반 지도 주행모드로 돌아왔습니다.');});
+window.addEventListener('juyuhannun-radar-state',event=>{if(!androidApp)return;nativeRadarActive=event.detail?.active===true;syncDrivingButton();});
 $('drive-zoom-range')?.addEventListener('input',()=>{const zoom=Number($('drive-zoom-range').value);$('drive-zoom-value').value=String(zoom);state.driving.zoomMode='manual';map.setDrivingZoomMode('manual',zoom);$('drive-zoom-auto').setAttribute('aria-pressed','false');});
 $('drive-zoom-auto')?.addEventListener('click',()=>{state.driving.zoomMode='auto';map.setDrivingZoomMode('auto');$('drive-zoom-auto').setAttribute('aria-pressed','true');toast('속도에 맞춰 지도 배율을 자동 조정합니다.');});
 $('route-results-toggle').addEventListener('click',()=>{
