@@ -9,7 +9,7 @@ test('방위각과 상대 방향을 계산한다',()=>{
  assert.equal(signedBearingDelta(10,350),20);
 });
 
-test('3D HUD는 진행 방향 72도 안의 가까운 주유소만 제한해 표시한다',()=>{
+test('2.5D HUD는 진행 방향 72도 안의 가까운 주유소만 제한해 표시한다',()=>{
  const point={lat:37.5,lng:127},stations=[
   {id:'front',lat:37.51,lng:127,distanceMeters:1100},
   {id:'right',lat:37.5,lng:127.01,distanceMeters:900},
