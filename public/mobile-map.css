@@ -219,6 +219,14 @@
 
 /* 2026-10-23 five-state focus toggle: detail -> map browse -> expanded detail -> list sheet -> expanded list. */
 .mobile-list-sheet-handle,.mobile-list-sheet-collapse,.mobile-list-sheet-caption,.mobile-focus-dock,.focus-rescan,.focus-route-shortcut,.focus-collapsed-fuel,.route-mode-exit{display:none}.focus-quick-actions{display:contents}
+@media(min-width:1001px){
+  .focus-rescan{display:flex;position:absolute;left:50%;bottom:20px;z-index:14;transform:translateX(-50%);align-items:center;gap:7px;min-height:42px;padding:0 18px;border:1px solid #d5e2dd;border-radius:22px;background:#fffffff2;color:#1769d7;font-size:12px;font-weight:800;box-shadow:0 6px 20px #17362e24;backdrop-filter:blur(10px)}
+  .focus-rescan:hover{border-color:#9fc8bb;background:#fff;transform:translateX(-50%) translateY(-1px)}
+  .focus-rescan:focus-visible{outline:3px solid #1769d733;outline-offset:2px}
+  .focus-rescan.is-progress{color:#667a73;cursor:wait}
+  .focus-rescan .rescan-spinner{width:15px;height:15px;border:2px solid #d4e2dd;border-top-color:#1769d7;border-radius:50%;animation:spin .7s linear infinite}
+  body.route-mode .focus-rescan,body.driving-mode .focus-rescan{display:none}
+}
 @media(max-width:1000px){
   body.mobile-map-browse .workspace>.sidebar{display:block;position:fixed;inset:0;z-index:118;border:0;background:transparent;pointer-events:none;box-shadow:none}
   body.mobile-map-browse .workspace>.sidebar>:not(.search-block){display:none!important}
