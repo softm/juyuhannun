@@ -10,6 +10,7 @@ import {createRouteSimulationController} from './route-simulation.js';
 import {addressSearchPresentation} from './address-search.js';
 import {normalizeRouteHistory,rememberRouteDestination} from './route-history.js';
 import {brandVisual} from './brand-visuals.js';
+import {createDrivingHud} from './driving-hud.js';
 
 const $=(id)=>document.getElementById(id);
 mountBottomAd();
@@ -26,6 +27,7 @@ iconPaths.back='<path d="m15 18-6-6 6-6"/>';
 iconPaths.mic='<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3m-4 0h8"/>';
 iconPaths['chevron-down']='<path d="m7 10 5 5 5-5"/>';
 iconPaths.navigation='<path d="m12 3 7 18-7-4-7 4 7-18Z"/>';
+iconPaths.radar='<path d="M4 19a8 8 0 0 1 16 0M7 19a5 5 0 0 1 10 0M10 19a2 2 0 0 1 4 0M12 5v4m-5-2 3 3m7-3-3 3"/>';
 const icon=(name)=>`<svg viewBox="0 0 24 24" aria-hidden="true">${iconPaths[name]||iconPaths.pin}</svg>`;
 document.querySelectorAll('[data-icon]').forEach(el=>el.innerHTML=icon(el.dataset.icon));
 function readStorage(key,fallback){try{return JSON.parse(localStorage.getItem(key))??fallback;}catch{return fallback;}}
@@ -34,7 +36,7 @@ const storedFavorites=readStorage('juyu:favorites:v1',[]);
 const storedFuel=readStorage('juyu:fuel:v1','B027');
 const params=new URLSearchParams(location.search);
 const requestedFuel=params.get('fuel')||storedFuel;
-const state={fuel:FUEL_TYPES.some(f=>f.code===requestedFuel)?requestedFuel:'B027',view:'nearby',bounds:null,listLimit:60,center:{...APP_CONFIG.defaultCenter},envelope:null,all:[],visible:[],selected:null,query:'',brand:'',self:false,freshOnly:false,sort:'price',routeSort:'recommended',routeResultScope:'recommended',favorites:new Set(Array.isArray(storedFavorites)?storedFavorites.filter(v=>typeof v==='string'&&/^[\w-]{1,50}$/.test(v)).slice(0,500):[]),generation:0,controller:null,mapReady:false,mapFailed:false,searchGeneration:0,loading:false,driving:{active:false,phase:'off',point:null,heading:null,speed:0,accuracy:null,zoomMode:'auto'}};
+const state={fuel:FUEL_TYPES.some(f=>f.code===requestedFuel)?requestedFuel:'B027',view:'nearby',bounds:null,listLimit:60,center:{...APP_CONFIG.defaultCenter},envelope:null,all:[],visible:[],selected:null,query:'',brand:'',self:false,freshOnly:false,sort:'price',routeSort:'recommended',routeResultScope:'recommended',favorites:new Set(Array.isArray(storedFavorites)?storedFavorites.filter(v=>typeof v==='string'&&/^[\w-]{1,50}$/.test(v)).slice(0,500):[]),generation:0,controller:null,mapReady:false,mapFailed:false,searchGeneration:0,loading:false,driving:{active:false,hud:false,phase:'off',point:null,heading:null,speed:0,accuracy:null,zoomMode:'auto'}};
 const FUEL_VISUAL={B027:{label:'휘발유',icon:'droplet',tone:'gasoline'},D047:{label:'경유',icon:'pump',tone:'diesel'},B034:{label:'고급휘발유',icon:'star',tone:'premium'},K015:{label:'LPG',icon:'flame',tone:'lpg'}};
 function syncMobileFuelToggle(){const item=FUEL_VISUAL[state.fuel]||FUEL_VISUAL.B027;const button=$('mobile-fuel-toggle'),label=$('mobile-fuel-label'),focusButton=$('focus-fuel-toggle'),focusLabel=$('focus-fuel-label');if(focusButton){focusButton.setAttribute('aria-label',`유종 선택, 현재 ${item.label}`);const focusBadge=focusButton.querySelector('.fuel-tab-icon');if(focusBadge){focusBadge.className='fuel-tab-icon '+item.tone;focusBadge.innerHTML='<span class="icon">'+icon(item.icon)+'</span>';}}if(focusLabel)focusLabel.textContent=item.label;document.querySelectorAll('[data-focus-fuel]').forEach(x=>{const active=x.dataset.focusFuel===state.fuel;x.classList.toggle('active',active);x.setAttribute('aria-selected',String(active));x.setAttribute('aria-pressed',String(active));});if(!button||!label)return;button.setAttribute('aria-label',`유종 선택, 현재 ${item.label}`);label.textContent=item.label;const badge=button.querySelector('.fuel-tab-icon');if(badge){badge.className='fuel-tab-icon '+item.tone;badge.innerHTML='<span class="icon">'+icon(item.icon)+'</span>';}}
 const localHost=['localhost','127.0.0.1','[::1]'].includes(location.hostname);
@@ -59,6 +61,7 @@ let listSelectionFrame=0;
 let listFocusedStationId=null;
 let routePlannerOpen=false;
 let mobileComparisonRefreshRequested=true;
+let drivingHud=null;
 const DATA_REFRESH_MS=5*60*1000;
 function collectionStats(){const now=Date.now(),minute=Math.floor(now/60000);if(recordStats?.source===state.all&&recordStats.fuel===state.fuel&&recordStats.minute===minute)return recordStats;let mapped=0,fresh=0;for(const station of state.all){if(!hasMapCoordinates(station))continue;mapped++;const p=getFuelPrice(station,state.fuel);if(p&&freshness(p.priceUpdatedAt,p.fetchedAt,now,p.priceTimeStatus,p.sourceDate).eligible)fresh++;}return recordStats={source:state.all,fuel:state.fuel,minute,mapped,fresh};}
 function refreshPriceSelection(now){const sources=state.envelope?.sourceSnapshots,minute=Math.floor(now/60000);if(!sources||(priceSelection?.sources===sources&&priceSelection.minute===minute))return;state.all=reselectStationPrices(state.all,sources,{now});priceSelection={sources,minute};}
@@ -69,6 +72,7 @@ function setMapNotice(message){$('map-notice').textContent=message;$('map-notice
 function updateViewport({center,bounds}){state.center=state.driving.active&&state.driving.point?{...state.driving.point}:center;state.bounds=bounds;state.listLimit=60;render();}
 function handleMapState({provider,status,message}){const typeButton=$('map-type-toggle');typeButton.hidden=provider!=='naver';if(provider!=='naver'){typeButton.setAttribute('aria-pressed','false');typeButton.setAttribute('aria-label','지도 유형 전환 미지원');typeButton.title='지도 유형 전환 미지원';}else if(typeButton.getAttribute('aria-label')==='지도 유형 전환 미지원'){typeButton.setAttribute('aria-label','위성 지도 보기');typeButton.title='위성 지도 보기';}if(status==='error'||provider==='leaflet')setMapNotice(message||'대체 지도에서 확인하고 있습니다.');else if(status==='ready')setMapNotice('');}
 const map=new MapController($('map'),{onViewportChange:updateViewport,onSelect:id=>selectStation(id),onDeselect:()=>clearStationSelection(),onPick:point=>handleRouteMapPick(point),onState:handleMapState,markerPresentation:row=>state.view==='route'&&finite(row.progressMeters)?{value:row.currentPrice?.price,unit:'원',label:`${row.name} · 경로 ${(row.progressMeters/1000).toFixed(1)}km 지점`,stale:row.confidence?.eligible!==true,rank:Number(row.routeRank)>=1&&Number(row.routeRank)<=3?Number(row.routeRank):null,badgeLabel:'추천 {rank}',tone:'green'}:null});
+drivingHud=createDrivingHud({host:$('drive-hud')});
 $('map')?.addEventListener('pointerdown',()=>{if(document.body.classList.contains('mobile-map-browse')||document.body.classList.contains('mobile-map-expanded'))setMobileMapMenuExpanded(false,{restartTimer:false});},{capture:true,passive:true});
 const routeSimulation=createRouteSimulationController({host:$('route-simulation'),onPosition:(point,options)=>map.setRouteSimulationPoint(point,options),onClear:()=>map.clearRouteSimulationPoint()});
 const mapLoading=createMapLoadingController($('map-loading'));
@@ -559,16 +563,31 @@ function syncDrivingButton(){
  button.setAttribute('aria-label',active?'주행 추적 종료':'주행 추적 시작');
  button.title=active?'주행 추적 종료':'주행 추적 시작';
  document.body.classList.toggle('driving-mode',active);
+ document.body.classList.toggle('driving-hud-mode',active&&state.driving.hud);
+ const hudButton=$('drive-hud-mode');if(hudButton){hudButton.setAttribute('aria-pressed',String(active&&state.driving.hud));hudButton.setAttribute('aria-label',active&&state.driving.hud?'3D 주행 HUD 종료':'3D 주행 HUD 시작');hudButton.title=active&&state.driving.hud?'3D HUD 끄기':'3D 주행 HUD';}
+ drivingHud?.setActive(active&&state.driving.hud);
  const scale=$('drive-scale');if(scale)scale.hidden=!active;
  if(!active)syncDrivingStationStatus();
 }
 function stopDrivingMode({message=''}={}){
  if(state.driving.active||map.isDriving())map.stopDriving({keepMarker:true});
- state.driving={active:false,phase:'off',point:null,heading:null,speed:0,accuracy:null,zoomMode:'auto'};
+ state.driving={active:false,hud:false,phase:'off',point:null,heading:null,speed:0,accuracy:null,zoomMode:'auto'};
  syncDrivingButton();
  if(state.mapReady){state.center=map.getCenter();state.bounds=map.getBounds();}
  render();
  if(message)toast(message);
+}
+function updateDrivingHud(){
+ if(!state.driving.active||!state.driving.hud||!state.driving.point||!Number.isFinite(state.driving.heading))return;
+ const now=Date.now(),stations=[];
+ for(const station of state.all){
+  if(!hasMapCoordinates(station)||(state.brand&&station.brand!==state.brand)||(state.self&&station.facilities?.self!==true))continue;
+  const price=getFuelPrice(station,state.fuel);if(!price?.price)continue;
+  const confidence=freshness(price.priceUpdatedAt,price.fetchedAt,now,price.priceTimeStatus,price.sourceDate);if(state.freshOnly&&!confidence.eligible)continue;
+  const distance=distanceMeters(state.driving.point,station),brand=brandVisual(station.brand,BRANDS[station.brand]||station.brand);
+  stations.push({...station,price:price.price,distanceMeters:distance,distanceLabel:distance<1000?`${Math.round(distance)}m`:`${(distance/1000).toFixed(1)}km`,brandVisual:brand});
+ }
+ drivingHud.update(stations,{point:state.driving.point,heading:state.driving.heading});
 }
 async function refreshDrivingRoadPrediction(point,heading,speed){
  if(!apiBase||!point||!Number.isFinite(heading))return;
@@ -583,25 +602,26 @@ async function refreshDrivingRoadPrediction(point,heading,speed){
  }catch{}
 }
 function handleDrivingUpdate({point,heading,speed,accuracy,phase='active'}){
- const active=['active','paused'].includes(phase);state.driving={...state.driving,active,phase,point,heading,speed,accuracy};lastLocatedPoint={...point,accuracy,timestamp:Date.now()};state.center={...point};syncDrivingButton();if(active){refreshDrivingRoadPrediction(point,heading,speed);render();}
+ const active=['active','paused'].includes(phase);state.driving={...state.driving,active,phase,point,heading,speed,accuracy};lastLocatedPoint={...point,accuracy,timestamp:Date.now()};state.center={...point};syncDrivingButton();if(active){refreshDrivingRoadPrediction(point,heading,speed);updateDrivingHud();render();}
 }
-function startDrivingMode(){
+function startDrivingMode({hud=false}={}){
  if(!state.mapReady){toast('지도가 준비된 뒤 주행 추적을 시작해 주세요.');return;}
  try{
-   state.driving.active=true;syncDrivingButton();syncDrivingStationStatus();
+   state.driving.active=true;state.driving.hud=hud;syncDrivingButton();syncDrivingStationStatus();
    map.startDriving({
      onUpdate:({point,heading,speed,accuracy})=>{
        handleDrivingUpdate({point,heading,speed,accuracy,phase:'active'});
      },
      onError:error=>{stopDrivingMode({message:error.message||'주행 위치를 확인하지 못했습니다.'});}
    });
-   toast('주행모드 시작 · 지도와 마커는 정방향을 유지하고 차량 화살표로 진행방향을 표시합니다. 파란선은 이동동선, 초록 점선은 예상 진행동선입니다.');
+   toast(hud?'3D 주행 HUD 시작 · 진행 방향의 주유소를 거리와 가격으로 표시합니다.':'주행모드 시작 · 지도와 마커는 정방향을 유지하고 차량 화살표로 진행방향을 표시합니다. 파란선은 이동동선, 초록 점선은 예상 진행동선입니다.');
  }catch(error){
-   state.driving={active:false,phase:'off',point:null,heading:null,speed:0,accuracy:null,zoomMode:'auto'};syncDrivingButton();
+   state.driving={active:false,hud:false,phase:'off',point:null,heading:null,speed:0,accuracy:null,zoomMode:'auto'};syncDrivingButton();
    toast(error.message||'주행 추적을 시작하지 못했습니다.');
  }
 }
 $('drive-mode').addEventListener('click',()=>{if(state.driving.active)stopDrivingMode({message:'주행 추적을 종료했습니다.'});else startDrivingMode();});
+$('drive-hud-mode').addEventListener('click',()=>{if(!state.driving.active){startDrivingMode({hud:true});return;}state.driving.hud=!state.driving.hud;syncDrivingButton();updateDrivingHud();toast(state.driving.hud?'3D 주행 HUD로 전환했습니다.':'일반 지도 주행모드로 돌아왔습니다.');});
 $('drive-zoom-range')?.addEventListener('input',()=>{const zoom=Number($('drive-zoom-range').value);$('drive-zoom-value').value=String(zoom);state.driving.zoomMode='manual';map.setDrivingZoomMode('manual',zoom);$('drive-zoom-auto').setAttribute('aria-pressed','false');});
 $('drive-zoom-auto')?.addEventListener('click',()=>{state.driving.zoomMode='auto';map.setDrivingZoomMode('auto');$('drive-zoom-auto').setAttribute('aria-pressed','true');toast('속도에 맞춰 지도 배율을 자동 조정합니다.');});
 $('route-results-toggle').addEventListener('click',()=>{
