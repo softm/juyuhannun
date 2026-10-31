@@ -247,6 +247,11 @@ test('dot-scale markers keep a larger transparent touch target without growing t
   assert.match(mapSource,/data-marker-scale="dot"[^']*price-pin:not\(\.selected\)\{width:15px;height:15px/);
 });
 
+test('driving mode keeps station markers upright while the map rotates',()=>{
+  assert.match(mapSource,/\.map-surface\.heading-up \.station-marker\{transform:rotate\(var\(--map-bearing,0deg\)\);transform-origin:36px 51px/);
+  assert.match(mapSource,/\.map-surface\.heading-up \.station-marker\.is-selected\{transform-origin:48px 78px\}/);
+});
+
 test('mobile viewport marker updates preserve price ranks until an explicit comparison refresh',()=>{
   const h=harness(),c=h.controller,fresh=new Date().toISOString();
   const first=[1500,1510,1520,1530,1540,1550].map((price,index)=>row(`first-${index}`,{prices:{B027:{price,priceUpdatedAt:fresh,fetchedAt:fresh}}}));
