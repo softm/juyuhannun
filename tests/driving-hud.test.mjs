@@ -17,5 +17,19 @@ test('2.5D HUD는 진행 방향 72도 안의 가까운 주유소만 제한해 �
   {id:'far',lat:37.6,lng:127,distanceMeters:11000}
  ];
  assert.deepEqual(selectHudStations(stations,{point,heading:0}).map(row=>row.id),['front']);
- assert.equal(selectHudStations(Array.from({length:10},(_,i)=>({id:String(i),lat:37.501+i*.0001,lng:127,distanceMeters:100+i})),{point,heading:0}).length,6);
+ assert.equal(selectHudStations(Array.from({length:10},(_,i)=>({id:String(i),lat:37.501+i*.0001,lng:127,distanceMeters:100+i})),{point,heading:0}).length,1);
+});
+
+test('2.5D HUD는 같은 화면 위치의 표지를 겹쳐 쌓지 않는다',()=>{
+ const point={lat:37.5,lng:127},stations=[
+  {id:'near',lat:37.505,lng:127,distanceMeters:550},
+  {id:'near-duplicate',lat:37.5052,lng:127.0001,distanceMeters:570},
+  {id:'mid-left',lat:37.515,lng:126.992,distanceMeters:1800},
+  {id:'mid-right',lat:37.515,lng:127.008,distanceMeters:1800},
+  {id:'far',lat:37.55,lng:127,distanceMeters:5500}
+ ];
+ const selected=selectHudStations(stations,{point,heading:0});
+ assert.ok(selected.length<=4);
+ assert.ok(selected.some(row=>row.id==='near'));
+ assert.ok(!selected.some(row=>row.id==='near-duplicate'));
 });

@@ -20,4 +20,7 @@ test('HUD 재진입은 마지막 카드와 신뢰 가능한 진행 방향을 유
  assert.match(app,/juyuhannun:\/\/radar\?mode=choose/);
  assert.match(app,/juyuhannun-visual-mode/);
  assert.match(app,/mode==='map3d'/);
+ assert.match(app,/bottomAd\?\.setSuppressed\(active\)/);
+ assert.match(app,/drivingSearchBounds/);
+ assert.match(css,/\.juyu-bottom-ad\.is-driving-suppressed/);
 });
