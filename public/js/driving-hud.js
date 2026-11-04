@@ -7,13 +7,21 @@ export function bearingDegrees(from,to){
  return (Math.atan2(y,x)/RAD+360)%360;
 }
 export function signedBearingDelta(bearing,heading){return ((bearing-heading+540)%360)-180;}
-export function selectHudStations(stations,{point,heading,maxDistance=10000,maxItems=6}={}){
+export function selectHudStations(stations,{point,heading,maxDistance=10000,maxItems=4}={}){
  if(!point||!Number.isFinite(heading))return[];
- return stations.map(station=>{
+ const candidates=stations.map(station=>{
   const distance=Number(station.distanceMeters),bearing=bearingDegrees(point,station),delta=signedBearingDelta(bearing,heading);
-  return{...station,distanceMeters:distance,bearing,delta};
+  const depth=clamp(Math.log10(Math.max(50,distance)/50)/Math.log10(200),0,1);
+  return{...station,distanceMeters:distance,bearing,delta,projectionX:delta/72,projectionDepth:depth};
  }).filter(station=>Number.isFinite(station.lat)&&Number.isFinite(station.lng)&&Number.isFinite(station.distanceMeters)&&station.distanceMeters<=maxDistance&&Math.abs(station.delta)<=72)
- .sort((a,b)=>(a.distanceMeters*(1+Math.abs(a.delta)/90))-(b.distanceMeters*(1+Math.abs(b.delta)/90))).slice(0,maxItems);
+ .sort((a,b)=>(a.distanceMeters*(1+Math.abs(a.delta)/90))-(b.distanceMeters*(1+Math.abs(b.delta)/90)));
+ const selected=[];
+ for(const station of candidates){
+  const separated=selected.every(row=>Math.abs(row.projectionX-station.projectionX)>=.22||Math.abs(row.projectionDepth-station.projectionDepth)>=.17);
+  if(separated)selected.push(station);
+  if(selected.length>=maxItems)break;
+ }
+ return selected;
 }
 
 function stationCard(station,index){

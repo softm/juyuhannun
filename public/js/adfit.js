@@ -101,6 +101,7 @@ export function mountBottomAd({win=window,doc=document}={}){
   const onPointerEnd=event=>{if(!dragging)return;button.releasePointerCapture?.(event.pointerId);const collapse=dragDistance>=36;resetDrag();if(collapse)setExpanded(false);};
   button.addEventListener('click',toggle);button.addEventListener('pointerdown',onPointerDown);button.addEventListener('pointermove',onPointerMove);button.addEventListener('pointerup',onPointerEnd);button.addEventListener('pointercancel',onPointerEnd);
   resizeObserver=win.ResizeObserver?new win.ResizeObserver(syncSpace):null;resizeObserver?.observe(shell);sync();
-  bottomController={setExpanded,destroy(){resizeObserver?.disconnect();button.removeEventListener('click',toggle);button.removeEventListener('pointerdown',onPointerDown);button.removeEventListener('pointermove',onPointerMove);button.removeEventListener('pointerup',onPointerEnd);button.removeEventListener('pointercancel',onPointerEnd);shell.remove();doc.body.style.setProperty('--juyu-bottom-ad-space','0px');doc.body.classList.remove('juyu-bottom-ad-active');bottomController=null;}};
+  const setSuppressed=value=>{shell.classList.toggle('is-driving-suppressed',Boolean(value));syncSpace();};
+  bottomController={setExpanded,setSuppressed,destroy(){resizeObserver?.disconnect();button.removeEventListener('click',toggle);button.removeEventListener('pointerdown',onPointerDown);button.removeEventListener('pointermove',onPointerMove);button.removeEventListener('pointerup',onPointerEnd);button.removeEventListener('pointercancel',onPointerEnd);shell.remove();doc.body.style.setProperty('--juyu-bottom-ad-space','0px');doc.body.classList.remove('juyu-bottom-ad-active');bottomController=null;}};
   return bottomController;
 }
