@@ -757,10 +757,6 @@ body.route-mode.route-results-ready .map-secondary-actions .route-results-toggle
  .mobile-search-indicator,.mobile-menu-search-indicator{position:absolute;z-index:2;width:9px;height:9px;border:2px solid #fff;border-radius:50%;background:#f59e0b;box-shadow:0 1px 4px #17362e33;pointer-events:none}
  .mobile-search-indicator{top:2px;right:3px}
  .mobile-menu-search-indicator{top:2px;right:2px}
- body.mobile-map-menu-collapsed.mobile-map-browse .map-secondary-actions,
- body.mobile-map-menu-collapsed.mobile-map-expanded .map-secondary-actions{top:calc(64px + env(safe-area-inset-top,0px))}
- body.mobile-map-menu-collapsed.mobile-map-browse .mobile-map-toggle,
- body.mobile-map-menu-collapsed.mobile-map-expanded .mobile-map-toggle{top:calc(118px + env(safe-area-inset-top,0px))}
  body.mobile-map-menu-collapsed.route-mode.route-planner-open.mobile-map-browse .workspace>.sidebar>.route-panel,
  body.mobile-map-menu-collapsed.route-mode.route-planner-open.mobile-map-expanded .workspace>.sidebar>.route-panel{top:calc(64px + env(safe-area-inset-top,0px))}
 }
