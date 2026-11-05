@@ -29,19 +29,21 @@
         <div id="search-candidates" class="search-candidates" hidden></div>
         <button type="button" id="mobile-map-menu-toggle" class="mobile-map-menu-toggle" aria-expanded="true" aria-controls="station-sidebar" aria-label="지도 메뉴 닫기" title="지도 메뉴 닫기"><span class="icon" data-icon="close"></span><span id="mobile-menu-search-indicator" class="mobile-menu-search-indicator" aria-hidden="true" hidden></span><span id="mobile-map-menu-label" hidden>메뉴</span></button>
         <button type="button" id="mobile-fuel-toggle" class="mobile-fuel-toggle" aria-label="유종 선택, 현재 휘발유" aria-haspopup="listbox" aria-expanded="false" aria-controls="fuel-tabs"><span class="fuel-tab-icon gasoline"><span class="icon" data-icon="droplet"></span></span><span id="mobile-fuel-label">휘발유</span><span class="icon fuel-toggle-chevron" data-icon="chevron-down"></span></button>
+        <div class="map-fuel-brand-row">
         <div class="fuel-tabs" id="fuel-tabs" role="listbox" aria-label="유종 선택">
           <button data-fuel="B027" class="active" role="option" aria-selected="true" aria-pressed="true"><span class="fuel-tab-icon gasoline"><span class="icon" data-icon="droplet"></span></span><span class="fuel-tab-label">휘발유</span></button>
           <button data-fuel="D047" role="option" aria-selected="false" aria-pressed="false"><span class="fuel-tab-icon diesel"><span class="icon" data-icon="pump"></span></span><span class="fuel-tab-label">경유</span></button>
           <button data-fuel="B034" role="option" aria-selected="false" aria-pressed="false"><span class="fuel-tab-icon premium"><span class="icon" data-icon="star"></span></span><span class="fuel-tab-label">고급휘발유</span></button>
           <button data-fuel="K015" role="option" aria-selected="false" aria-pressed="false"><span class="fuel-tab-icon lpg"><span class="icon" data-icon="flame"></span></span><span class="fuel-tab-label">LPG</span></button>
         </div>
-        <div class="filter-line"><label class="select-wrap brand-select"><span class="sr-only">정유사</span><select id="brand-filter"><option value="">모든 정유사</option><option value="SKE">SK에너지</option><option value="GSC">GS칼텍스</option><option value="HDO">HD현대오일뱅크</option><option value="SOL">S-OIL</option><option value="RTE">알뜰주유소</option><option value="RTX">고속도로 알뜰</option><option value="NHO">농협 알뜰</option><option value="ETC">자가상표</option><option value="E1G">E1</option><option value="SKG">SK가스</option></select></label><button id="toggle-filters" class="filter-button" aria-expanded="false" aria-controls="extra-filters"><span class="icon" data-icon="sliders"></span>필터</button></div>
+        <button type="button" class="brand-picker-trigger" data-brand-picker aria-expanded="false" aria-controls="map-brand-options">브랜드 ▾</button>
+        </div>
+        <div class="filter-line"><button id="toggle-filters" class="filter-button" aria-expanded="false" aria-controls="extra-filters"><span class="icon" data-icon="sliders"></span>필터</button></div>
         <button type="button" id="mobile-search-toggle" class="mobile-search-toggle" aria-expanded="false" aria-controls="search-form" aria-label="검색 열기" title="검색 열기"><span class="icon" data-icon="search"></span><span id="mobile-search-label">검색</span><span id="mobile-search-indicator" class="mobile-search-indicator" aria-hidden="true" hidden></span></button>
         <div id="extra-filters" class="extra-filters filter-popover" hidden>
           <div class="filter-popover-head"><strong>추가 필터</strong><span>선택하면 지도와 목록에 바로 적용됩니다.</span></div>
           <label class="filter-option"><input id="self-only" type="checkbox"><span><strong>셀프 주유소만 보기</strong><small>셀프 주유가 가능한 주유소만 표시합니다.</small></span></label>
           <label class="filter-option"><input id="fresh-only" type="checkbox"><span><strong>최신 가격만 보기</strong><small>현재 가격 비교에 사용할 수 있는 최신 자료만 표시합니다.</small></span></label>
-          <label class="filter-option mobile-brand-option"><span><strong>주유소 브랜드</strong><small>선택한 브랜드만 지도와 목록에 표시합니다.</small></span><select id="mobile-brand-filter"><option value="">모든 정유사</option><option value="SKE">SK에너지</option><option value="GSC">GS칼텍스</option><option value="HDO">HD현대오일뱅크</option><option value="SOL">S-OIL</option><option value="RTE">알뜰주유소</option><option value="RTX">고속도로 알뜰</option><option value="NHO">농협 알뜰</option><option value="ETC">자가상표</option><option value="E1G">E1</option><option value="SKG">SK가스</option></select></label>
           <div class="marker-color-guide" aria-label="지도 마커 색상 안내">
             <strong>마커 색상 = 현재 유종의 가격 수준</strong>
             <div><span><i class="marker-guide-dot low"></i>저렴</span><span><i class="marker-guide-dot mid"></i>보통</span><span><i class="marker-guide-dot high"></i>비쌈</span><span><i class="marker-guide-dot stale"></i>참고·미확인</span></div>
@@ -108,6 +110,7 @@
       <div class="focus-quick-actions">
         <div class="focus-collapsed-fuel">
           <button type="button" id="focus-fuel-toggle" aria-label="유종 선택, 현재 휘발유" aria-haspopup="listbox" aria-expanded="false" aria-controls="focus-fuel-tabs"><span class="fuel-tab-icon gasoline"><span class="icon" data-icon="droplet"></span></span><span id="focus-fuel-label">휘발유</span><span class="icon fuel-toggle-chevron" data-icon="chevron-down"></span></button>
+          <button type="button" class="brand-picker-trigger" data-brand-picker aria-expanded="false" aria-controls="map-brand-options">브랜드 ▾</button>
           <div id="focus-fuel-tabs" class="focus-fuel-tabs" role="listbox" aria-label="유종 선택" hidden><button type="button" data-focus-fuel="B027" role="option" aria-selected="true"><span class="fuel-tab-icon gasoline"><span class="icon" data-icon="droplet"></span></span><span>휘발유</span></button><button type="button" data-focus-fuel="D047" role="option" aria-selected="false"><span class="fuel-tab-icon diesel"><span class="icon" data-icon="pump"></span></span><span>경유</span></button><button type="button" data-focus-fuel="B034" role="option" aria-selected="false"><span class="fuel-tab-icon premium"><span class="icon" data-icon="star"></span></span><span>고급휘발유</span></button><button type="button" data-focus-fuel="K015" role="option" aria-selected="false"><span class="fuel-tab-icon lpg"><span class="icon" data-icon="flame"></span></span><span>LPG</span></button></div>
         </div>
       </div>
@@ -130,6 +133,7 @@
   <section id="my-cloud" hidden><h3>계정에 저장한 자료</h3><p>기기의 자료와 계정 저장본은 별도로 관리됩니다. 기존 저장본은 같은 계정과 보관소 암호로 복원할 수 있습니다.</p><button type="button" id="my-backups">백업·복원 관리</button></section>
   <footer><a href="./privacy.html">개인정보처리방침</a><a href="./delete-account.html">계정 및 자료 삭제 안내</a><a id="my-account-manage" href="https://softm.github.io/account/" target="_blank" rel="noopener noreferrer" hidden>공통 계정 관리</a></footer>
 </dialog>
+<section id="map-brand-options" aria-label="브랜드 선택" hidden><strong>브랜드 선택</strong><small>여러 개 선택할 수 있어요</small><div class="brand-picker-grid"></div></section>
 </body>
 </html>
 
