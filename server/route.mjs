@@ -45,7 +45,7 @@ export function parseRecommendationsRequest(value){
     hourlyValueWonPerHour:optionalNumber(value.hourlyValueWonPerHour??0,{min:0,max:1_000_000,name:'시간 가치'}),
     option:parseRouteOption(value.option),
     selfOnly:value.selfOnly===true,
-    brand:typeof value.brand==='string'&&/^[A-Z0-9]{0,8}$/.test(value.brand)?value.brand:'',
+    brand:Array.isArray(value.brand)?[...new Set(value.brand.filter(code=>typeof code==='string'&&/^[A-Z0-9]{1,8}$/.test(code)))].slice(0,20):typeof value.brand==='string'&&/^[A-Z0-9]{0,8}$/.test(value.brand)?value.brand:'',
   };
 }
 
