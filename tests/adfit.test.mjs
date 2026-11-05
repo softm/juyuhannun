@@ -42,3 +42,13 @@ test('상세 하단 광고는 지연 요청과 실패 시 공간 반환을 유�
   assert.match(adfit,/body\.replaceChildren\(\)/);
   assert.match(adfit,/if\(!nodes\.has\(key\)\)nodes\.set\(key,createAdNode\(slot\)\)/);
 });
+
+test('주행모드에서는 모든 웹 광고 요청과 광고 영역을 중지한다',async()=>{
+  const [app,adfit]=await Promise.all([read('public/js/app.js'),read('public/js/adfit.js')]);
+  assert.match(app,/setAdsSuppressed\(active\)/);
+  assert.match(app,/!state\.driving\.active&&\[5,11,17\]\.includes\(i\)/);
+  assert.match(adfit,/let adsSuppressed=false/);
+  assert.match(adfit,/const eligible=\(\)=>!adsSuppressed/);
+  assert.match(adfit,/export function setAdsSuppressed\(value\)/);
+  assert.match(adfit,/body\.replaceChildren\(\).*setState\('suppressed'\)/s);
+});

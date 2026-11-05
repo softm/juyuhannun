@@ -73,6 +73,7 @@ test('mobile view, fuel and filter controls fold into a menu after ten seconds',
   assert.match(app, /\$\('map'\)\?\.addEventListener\('pointerdown'[\s\S]*setMobileMapMenuExpanded\(false,\{restartTimer:false\}\)/);
   assert.match(app, /mobileComparisonRefreshRequested=true/);
   assert.match(app, /refreshComparison=!mobileMapView\.isMobile\(\)\|\|mobileComparisonRefreshRequested/);
+  assert.match(app, /if\(refreshComparison&&filtered\.length\)mobileComparisonRefreshRequested=false/);
   assert.match(app, /focus-rescan'[\s\S]*mobileComparisonRefreshRequested=true;[\s\S]*가격 순위를 다시 확인했습니다/);
   assert.match(map, /setStations\(stations, selectedId = null, fuel = 'B027',\{refreshComparison=true\}=\{\}\)/);
 });
