@@ -1,4 +1,4 @@
-import {finite,getFuelPrice,freshness,hasMapCoordinates} from './core.js';
+import {matchesBrand,finite,getFuelPrice,freshness,hasMapCoordinates} from './core.js';
 
 const METERS_PER_LATITUDE_DEGREE = 110_574;
 const METERS_PER_LONGITUDE_DEGREE = 111_320;
@@ -97,7 +97,7 @@ export function findRouteCandidates(stations,path,{fuel='B027',corridorMeters=DE
   const rows=[];
   for(const station of Array.isArray(stations)?stations:[]){
     if(!station||typeof station.id!=='string'||!hasMapCoordinates(station))continue;
-    if(brand&&station.brand!==brand)continue;
+    if(!matchesBrand(station.brand,brand))continue;
     if(self&&station.facilities?.self!==true)continue;
     const currentPrice=getFuelPrice(station,fuel);if(!currentPrice)continue;
     const confidence=freshness(currentPrice.priceUpdatedAt,currentPrice.fetchedAt,now,currentPrice.priceTimeStatus,currentPrice.sourceDate);

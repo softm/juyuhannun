@@ -1,4 +1,4 @@
-import {freshness,getFuelPrice} from './core.js';
+import {matchesBrand,freshness,getFuelPrice} from './core.js';
 import {
   applyRecommendationRanks,
   calculateRouteCandidateCosts,
@@ -169,7 +169,7 @@ export function createRouteModeController({directionsProxy=DIRECTIONS_PROXY,requ
   }
 
   function rows({sort='recommended',brand='',selfOnly=false,freshOnly=false,maxDetourMinutes=10,liters,kmPerLiter,referenceFuelWonPerL,hourlyValueWonPerHour=0}={}){
-    let filtered=state.rows.filter(row=>(!brand||row.brand===brand)&&(!selfOnly||row.facilities?.self===true)&&(!freshOnly||row.confidence?.eligible));
+    let filtered=state.rows.filter(row=>matchesBrand(row.brand,brand)&&(!selfOnly||row.facilities?.self===true)&&(!freshOnly||row.confidence?.eligible));
     filtered=filtered.filter(row=>row.detour?.verified!==true||!Number.isFinite(row.detour.durationSeconds)||row.detour.durationSeconds<=maxDetourMinutes*60);
     filtered=filtered.map(row=>({...row,costs:calculateRouteCandidateCosts({unitPrice:row.currentPrice.price,liters,kmPerLiter,referenceFuelWonPerL,hourlyValueWonPerHour,detour:row.detour}),rank:null,reason:row.routeReason}));
     filtered=applyRecommendationRanks(filtered,{maxDetourMinutes,limit:5}).map(row=>({...row,routeRank:row.rank,routeReason:row.reason}));

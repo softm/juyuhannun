@@ -74,11 +74,12 @@ export function isWithinMapBounds(point,bounds) {
   return validMapBounds(bounds) && finite(point?.lat) && finite(point?.lng) &&
     point.lat>=bounds.south && point.lat<=bounds.north && point.lng>=bounds.west && point.lng<=bounds.east;
 }
+export function matchesBrand(code,chosen){return Array.isArray(chosen)?!chosen.length||chosen.includes(code):!chosen||code===chosen;}
 export function filterStations(stations, {fuel,center,bounds,query='',brand='',self=false,freshOnly=false,favorites=null,sort='price',now=Date.now()}) {
   if(!validMapBounds(bounds))return [];
   const terms=normalizeSearchText(query).trim().split(/\s+/).filter(Boolean);
   // Reject offscreen rows before price/freshness calculations and sorting.
-  return stations.filter(s=>hasMapCoordinates(s) && isWithinMapBounds(s,bounds) && (!brand||s.brand===brand) && (!self||s.facilities?.self===true) && (!favorites||favorites.has(s.id)) && terms.every(term=>normalizeSearchText([s.name,s.address,s.roadAddress,BRANDS[s.brand]].filter(Boolean).join(' ')).includes(term)))
+  return stations.filter(s=>hasMapCoordinates(s) && isWithinMapBounds(s,bounds) && matchesBrand(s.brand,brand) && (!self||s.facilities?.self===true) && (!favorites||favorites.has(s.id)) && terms.every(term=>normalizeSearchText([s.name,s.address,s.roadAddress,BRANDS[s.brand]].filter(Boolean).join(' ')).includes(term)))
     .map(station=> {
       const p=getFuelPrice(station,fuel);
       return {...station,currentPrice:p,confidence:p?freshness(p.priceUpdatedAt,p.fetchedAt,now,p.priceTimeStatus,p.sourceDate):{state:'unknown',label:'가격 미제공',eligible:false},distance:distanceMeters(center,station)};
@@ -88,7 +89,7 @@ export function filterStations(stations, {fuel,center,bounds,query='',brand='',s
 export function searchStations(stations,{query='',fuel,center,brand='',self=false,freshOnly=false,limit=12,now=Date.now()}={}){
   const normalized=normalizeSearchText(query).trim(),terms=normalized.split(/\s+/).filter(Boolean);
   if(!terms.length)return [];
-  return stations.filter(s=>hasMapCoordinates(s)&&(!brand||s.brand===brand)&&(!self||s.facilities?.self===true))
+  return stations.filter(s=>hasMapCoordinates(s)&&matchesBrand(s.brand,brand)&&(!self||s.facilities?.self===true))
     .map(station=>{
       const name=normalizeSearchText(station.name),address=normalizeSearchText([station.address,station.roadAddress,station.routeName,station.direction,BRANDS[station.brand]].filter(Boolean).join(' '));
       if(!terms.every(term=>`${name} ${address}`.includes(term)))return null;

@@ -6,7 +6,7 @@ import {createMapLoadingController} from '../shared/map-loading.js';
 import {beginActionProgress} from '../shared/action-progress.js';
 import {mountBottomAd,mountStationDetailAd,mountStationListAds,setAdsSuppressed} from './adfit.js';
 import {loadStationData,loadStaticJSON,mergeStationData,reselectStationPrices} from './data-loader.js';
-import {FUEL_TYPES,BRANDS,escapeHTML as esc,money,finite,distanceMeters,getFuelPrice,freshness,formatTime,filterStations,searchStations,summarizeVisiblePrices,hasMapCoordinates,stationNavigationURL} from './core.js';
+import {matchesBrand,FUEL_TYPES,BRANDS,escapeHTML as esc,money,finite,distanceMeters,getFuelPrice,freshness,formatTime,filterStations,searchStations,summarizeVisiblePrices,hasMapCoordinates,stationNavigationURL} from './core.js';
 import {createRouteModeController,selectRouteDisplayRows} from './route-mode.js';
 import {createRouteSimulationController} from './route-simulation.js';
 import {addressSearchPresentation} from './address-search.js';
@@ -38,7 +38,7 @@ const storedFavorites=readStorage('juyu:favorites:v1',[]);
 const storedFuel=readStorage('juyu:fuel:v1','B027');
 const params=new URLSearchParams(location.search);
 const requestedFuel=params.get('fuel')||storedFuel;
-const state={fuel:FUEL_TYPES.some(f=>f.code===requestedFuel)?requestedFuel:'B027',view:'nearby',bounds:null,listLimit:60,center:{...APP_CONFIG.defaultCenter},envelope:null,all:[],visible:[],selected:null,query:'',brand:'',self:false,freshOnly:false,sort:'price',routeSort:'recommended',routeResultScope:'recommended',favorites:new Set(Array.isArray(storedFavorites)?storedFavorites.filter(v=>typeof v==='string'&&/^[\w-]{1,50}$/.test(v)).slice(0,500):[]),generation:0,controller:null,mapReady:false,mapFailed:false,searchGeneration:0,loading:false,driving:{active:false,hud:false,phase:'off',point:null,heading:null,speed:0,accuracy:null,zoomMode:'auto'}};
+const state={fuel:FUEL_TYPES.some(f=>f.code===requestedFuel)?requestedFuel:'B027',view:'nearby',bounds:null,listLimit:60,center:{...APP_CONFIG.defaultCenter},envelope:null,all:[],visible:[],selected:null,query:'',brand:[],self:false,freshOnly:false,sort:'price',routeSort:'recommended',routeResultScope:'recommended',favorites:new Set(Array.isArray(storedFavorites)?storedFavorites.filter(v=>typeof v==='string'&&/^[\w-]{1,50}$/.test(v)).slice(0,500):[]),generation:0,controller:null,mapReady:false,mapFailed:false,searchGeneration:0,loading:false,driving:{active:false,hud:false,phase:'off',point:null,heading:null,speed:0,accuracy:null,zoomMode:'auto'}};
 const FUEL_VISUAL={B027:{label:'휘발유',icon:'droplet',tone:'gasoline'},D047:{label:'경유',icon:'pump',tone:'diesel'},B034:{label:'고급휘발유',icon:'star',tone:'premium'},K015:{label:'LPG',icon:'flame',tone:'lpg'}};
 function syncMobileFuelToggle(){const item=FUEL_VISUAL[state.fuel]||FUEL_VISUAL.B027;const button=$('mobile-fuel-toggle'),label=$('mobile-fuel-label'),focusButton=$('focus-fuel-toggle'),focusLabel=$('focus-fuel-label');if(focusButton){focusButton.setAttribute('aria-label',`유종 선택, 현재 ${item.label}`);const focusBadge=focusButton.querySelector('.fuel-tab-icon');if(focusBadge){focusBadge.className='fuel-tab-icon '+item.tone;focusBadge.innerHTML='<span class="icon">'+icon(item.icon)+'</span>';}}if(focusLabel)focusLabel.textContent=item.label;document.querySelectorAll('[data-focus-fuel]').forEach(x=>{const active=x.dataset.focusFuel===state.fuel;x.classList.toggle('active',active);x.setAttribute('aria-selected',String(active));x.setAttribute('aria-pressed',String(active));});if(!button||!label)return;button.setAttribute('aria-label',`유종 선택, 현재 ${item.label}`);label.textContent=item.label;const badge=button.querySelector('.fuel-tab-icon');if(badge){badge.className='fuel-tab-icon '+item.tone;badge.innerHTML='<span class="icon">'+icon(item.icon)+'</span>';}}
 const localHost=['localhost','127.0.0.1','[::1]'].includes(location.hostname);
@@ -111,7 +111,7 @@ function setMobileSearchOpen(open,{focus=true}={}){
  else if(wasOpen){++state.searchGeneration;if(mobileSearchCandidates)mobileSearchCandidates.hidden=true;}
  syncMobileSearchIndicator();
 }
-function mobileMapMenuPopoverOpen(){return mobileSearchOpen()||$('fuel-tabs')?.classList.contains('mobile-open')||$('extra-filters')?.hidden===false;}
+function mobileMapMenuPopoverOpen(){return !$('map-brand-options').hidden||mobileSearchOpen()||$('fuel-tabs')?.classList.contains('mobile-open')||$('extra-filters')?.hidden===false;}
 function scheduleMobileMapMenuCollapse(){
  clearTimeout(mobileMapMenuTimer);
  mobileMapMenuTimer=setTimeout(()=>{if(mobileMapMenuPopoverOpen()){scheduleMobileMapMenuCollapse();return;}setMobileMapMenuExpanded(false,{restartTimer:false});},MOBILE_MAP_MENU_AUTO_COLLAPSE_MS);
@@ -568,8 +568,26 @@ $('focus-fuel-toggle')?.addEventListener('click',()=>{const tabs=$('focus-fuel-t
 document.querySelectorAll('[data-focus-fuel]').forEach(button=>button.addEventListener('click',()=>{document.querySelector(`[data-fuel="${button.dataset.focusFuel}"]`)?.click();$('focus-fuel-tabs').hidden=true;$('focus-fuel-toggle').setAttribute('aria-expanded','false');}));
 $('voice-search').addEventListener('click',()=>{const Recognition=globalThis.SpeechRecognition||globalThis.webkitSpeechRecognition;if(!Recognition){toast('이 브라우저에서는 음성 검색을 지원하지 않습니다.');return;}const recognition=new Recognition();recognition.lang='ko-KR';recognition.interimResults=false;recognition.maxAlternatives=1;const button=$('voice-search');button.classList.add('is-listening');button.setAttribute('aria-label','음성 듣는 중');recognition.onresult=event=>{const value=event.results?.[0]?.[0]?.transcript?.trim();if(value){$('query').value=value;state.query=value;syncMobileSearchIndicator();render();toast(`“${value}”로 검색했습니다.`);}};recognition.onerror=()=>toast('음성을 인식하지 못했습니다. 다시 시도해 주세요.');recognition.onend=()=>{button.classList.remove('is-listening');button.setAttribute('aria-label','음성 검색');};try{recognition.start();}catch{button.classList.remove('is-listening');}});
 document.addEventListener('click',e=>{if(!e.target.closest('#mobile-fuel-toggle,#fuel-tabs')){$('fuel-tabs')?.classList.remove('mobile-open');$('mobile-fuel-toggle')?.setAttribute('aria-expanded','false');}if(!e.target.closest('#focus-fuel-toggle,#focus-fuel-tabs')){if($('focus-fuel-tabs'))$('focus-fuel-tabs').hidden=true;$('focus-fuel-toggle')?.setAttribute('aria-expanded','false');}});
-$('brand-filter').addEventListener('change',()=>{state.brand=$('brand-filter').value;if($('mobile-brand-filter'))$('mobile-brand-filter').value=state.brand;if(state.view==='route'&&routeMode.state.response){routeMode.invalidate();routeSimulation.set(null);if(state.mapReady)map.clearRoute();toast('정유사 조건이 바뀌었습니다. 다시 탐색해 주세요.');}render();});
-$('mobile-brand-filter')?.addEventListener('change',()=>{state.brand=$('mobile-brand-filter').value;$('brand-filter').value=state.brand;if(state.view==='route'&&routeMode.state.response){routeMode.invalidate();routeSimulation.set(null);if(state.mapReady)map.clearRoute();toast('브랜드 조건이 바뀌었습니다. 다시 탐색해 주세요.');}render();});
+const brandPanel=$('map-brand-options'), brandTriggers=[...document.querySelectorAll('[data-brand-picker]')];
+let brandAnchor=null;
+function closeBrandPicker(){brandPanel.hidden=true;brandTriggers.forEach(b=>b.setAttribute('aria-expanded','false'));brandAnchor=null;}
+function syncBrands(){
+ const selected=state.brand||[];
+ brandTriggers.forEach(b=>{b.textContent=selected.length?'브랜드 '+selected.length+' ▾':'브랜드 ▾';b.setAttribute('aria-label','브랜드 선택: '+(selected.length?selected.map(k=>BRANDS[k]).join(', '):'전체'));});
+ brandPanel.querySelectorAll('[data-brand-option]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.brandOption?selected.includes(b.dataset.brandOption):!selected.length)));
+}
+function placeBrands(){if(!brandAnchor)return;const r=brandAnchor.getBoundingClientRect(),p=brandPanel.getBoundingClientRect();brandPanel.style.left=Math.max(8,Math.min(innerWidth-p.width-8,r.left))+'px';brandPanel.style.top=Math.max(8,Math.min(innerHeight-p.height-8,r.bottom+5))+'px';}
+for(const [code,name] of [['','전체 선택'],...Object.entries(BRANDS)]){
+ const b=document.createElement('button');b.type='button';b.dataset.brandOption=code;
+ const v=brandVisual(code,name);if(code){const badge=document.createElement('span');badge.className='brand-badge';if(v.image){badge.classList.add('has-logo');badge.dataset.brand=code;const img=document.createElement('img');img.src=v.image;img.alt='';badge.append(img);}else{badge.textContent=v.short;badge.style.background=v.color;badge.style.color=v.ink;}b.append(badge);}
+ b.append(document.createTextNode(name));b.onclick=()=>{const chosen=new Set(state.brand||[]);if(!code)chosen.clear();else if(!chosen.delete(code))chosen.add(code);
+ state.brand=chosen.size===Object.keys(BRANDS).length?[]:[...chosen];syncBrands();mobileComparisonRefreshRequested=true;
+ if(state.view==='route'&&routeMode.state.response){routeMode.invalidate();routeSimulation.set(null);if(state.mapReady)map.clearRoute();toast('브랜드 조건이 바뀌었습니다. 다시 탐색해 주세요.');}render();};brandPanel.querySelector('div').append(b);
+}
+brandTriggers.forEach(b=>b.onclick=()=>{if(brandAnchor===b){closeBrandPicker();return;}closeBrandPicker();brandAnchor=b;b.setAttribute('aria-expanded','true');brandPanel.hidden=false;placeBrands();});
+document.addEventListener('click',e=>{if(!e.target.closest('[data-brand-picker],#map-brand-options'))closeBrandPicker();});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&brandAnchor){const b=brandAnchor;closeBrandPicker();b.focus();}});
+window.addEventListener('resize',closeBrandPicker);syncBrands();
 $('self-only').addEventListener('change',()=>{state.self=$('self-only').checked;if(state.view==='route'&&routeMode.state.response){routeMode.invalidate();routeSimulation.set(null);if(state.mapReady)map.clearRoute();toast('셀프 조건이 바뀌었습니다. 다시 탐색해 주세요.');}render();});
 $('fresh-only').addEventListener('change',()=>{state.freshOnly=$('fresh-only').checked;render();});
 $('sort').addEventListener('change',()=>{state.sort=$('sort').value;render();});
@@ -615,7 +633,7 @@ function updateDrivingHud(){
  if(!state.driving.active||!state.driving.hud||!state.driving.point||!Number.isFinite(state.driving.heading))return;
  const now=Date.now(),stations=[];
  for(const station of state.all){
-  if(!hasMapCoordinates(station)||(state.brand&&station.brand!==state.brand)||(state.self&&station.facilities?.self!==true))continue;
+  if(!hasMapCoordinates(station)||!matchesBrand(station.brand,state.brand)||(state.self&&station.facilities?.self!==true))continue;
   const price=getFuelPrice(station,state.fuel);if(!price?.price)continue;
   const confidence=freshness(price.priceUpdatedAt,price.fetchedAt,now,price.priceTimeStatus,price.sourceDate);if(state.freshOnly&&!confidence.eligible)continue;
   const distance=distanceMeters(state.driving.point,station),brand=brandVisual(station.brand,BRANDS[station.brand]||station.brand);
@@ -689,7 +707,7 @@ $('locate').addEventListener('click',async()=>{const b=$('locate');b.disabled=tr
 for(const id of ['open-info','footer-info'])$(id).addEventListener('click',()=>showDialog('info-dialog'));
 document.querySelectorAll('[data-close]').forEach(b=>b.addEventListener('click',()=>{if(b.dataset.close==='detail-dialog'&&mobileMapView.isMobile())mobileMapView.closeDetail();else closeDialog(b.dataset.close);}));
 document.querySelectorAll('dialog').forEach(d=>d.addEventListener('click',e=>{if(e.target!==d)return;const r=d.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)d.close();}));
-document.addEventListener('click',async e=>{const b=e.target.closest('[data-action]');if(!b)return;const action=b.dataset.action,id=b.dataset.id;if(action==='load-more'){state.listLimit+=60;render();}else if(action==='detail')selectStation(id);else if(action==='save')toggleFavorite(id);else if(action==='route-nav')openRouteNavigation(id);else if(action==='show-list')openFocusList();else if(action==='copy-address'){const st=state.all.find(s=>s.id===id);if(st){try{await navigator.clipboard.writeText(st.roadAddress||st.address||'');toast('주소를 복사했습니다.');}catch{toast('주소 복사를 사용할 수 없습니다.');}}}else if(action==='share')shareStation(id);else if(action==='retry')loadData();else if(action==='show-old'){state.freshOnly=false;$('fresh-only').checked=false;render();}else if(action==='zone'){const zone=state.envelope?.coverage?.zones?.find(z=>z.id===b.dataset.zone);if(zone?.center){state.center=zone.center;if(state.mapReady)map.setCenter(zone.center);}}else if(action==='reset-filters'){state.query='';state.brand='';state.self=false;state.freshOnly=false;$('fresh-only').checked=false;$('query').value='';$('brand-filter').value='';$('self-only').checked=false;syncMobileSearchIndicator();render();}});
+document.addEventListener('click',async e=>{const b=e.target.closest('[data-action]');if(!b)return;const action=b.dataset.action,id=b.dataset.id;if(action==='load-more'){state.listLimit+=60;render();}else if(action==='detail')selectStation(id);else if(action==='save')toggleFavorite(id);else if(action==='route-nav')openRouteNavigation(id);else if(action==='show-list')openFocusList();else if(action==='copy-address'){const st=state.all.find(s=>s.id===id);if(st){try{await navigator.clipboard.writeText(st.roadAddress||st.address||'');toast('주소를 복사했습니다.');}catch{toast('주소 복사를 사용할 수 없습니다.');}}}else if(action==='share')shareStation(id);else if(action==='retry')loadData();else if(action==='show-old'){state.freshOnly=false;$('fresh-only').checked=false;render();}else if(action==='zone'){const zone=state.envelope?.coverage?.zones?.find(z=>z.id===b.dataset.zone);if(zone?.center){state.center=zone.center;if(state.mapReady)map.setCenter(zone.center);}}else if(action==='reset-filters'){state.query='';state.brand=[];state.self=false;state.freshOnly=false;$('fresh-only').checked=false;$('query').value='';syncBrands();mobileComparisonRefreshRequested=true;$('self-only').checked=false;syncMobileSearchIndicator();render();}});
 document.addEventListener('visibilitychange',()=>{if(!document.hidden){showMobileMapMenu();render();if(Date.now()-lastDataCheckAt>=DATA_REFRESH_MS)loadData();}});
 window.addEventListener('online',loadData);
 window.addEventListener('beforeunload',()=>{if(map.isDriving())map.stopDriving({keepMarker:false});});
