@@ -703,17 +703,20 @@ async function initializeMapViewport(startupDataPromise){
   map.setCenter(state.center);
  }else{
   mapLoading.stage('location');
-  try{
+  const locationReady=(async()=>{
    const position=await map.locate();
    lastLocatedPoint={lat:position.lat,lng:position.lng,accuracy:Number(position.accuracy)||null,timestamp:Date.now()};
    state.center={lat:position.lat,lng:position.lng};
    if(mobileMapView.isMobile())map.setZoom(APP_CONFIG.mobileDefaultZoom||14);
-  }catch{
-   map.setCenter(state.center);
-  }
+   mobileComparisonRefreshRequested=true;
+   updateViewport({center:map.getCenter(),bounds:map.getBounds()});
+  })().catch(()=>{});
+  // GPS may still complete after startup; locate() ignores superseded navigation.
+  await Promise.race([locationReady,new Promise(resolve=>setTimeout(resolve,900))]);
  }
  mapLoading.stage('data');
  await startupDataPromise.catch(()=>{});
+ mobileComparisonRefreshRequested=true;
  updateViewport({center:map.getCenter(),bounds:map.getBounds()});
  mapLoading.stage('markers');
  await map.waitForMarkerRender({timeoutMs:5000});
