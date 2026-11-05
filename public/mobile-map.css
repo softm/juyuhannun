@@ -778,7 +778,7 @@ body.route-mode.route-results-ready .map-secondary-actions .route-results-toggle
 @media(max-width:1000px){
  body.mobile-map-browse .workspace>.sidebar>nav.view-tabs,
  body.mobile-map-expanded .workspace>.sidebar>nav.view-tabs{
-   top:calc(10px + env(safe-area-inset-top,0px));z-index:187
+   top:calc(10px + env(safe-area-inset-top,0px));right:calc(62px + env(safe-area-inset-right,0px));max-width:calc(100% - 80px - env(safe-area-inset-right,0px));z-index:187
  }
  body.mobile-map-browse .workspace>.sidebar>.search-block,
  body.mobile-map-expanded .workspace>.sidebar>.search-block{
