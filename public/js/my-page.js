@@ -17,8 +17,9 @@ export function setupMyPage({favoritesCount,showFavorites,destinations,removeDes
     status='계정 확인 중…';
     connecting=(async()=>{
       if(!account){
-        const {createAccountContext}=await import(platform+'site-account.mjs?v=20261030-menu-1');
+        const {createAccountContext,mountSiteAccount}=await import(platform+'site-account.mjs?v=20261030-menu-1');
         account=createAccountContext({siteId:'juyuhannun'});account.subscribe(renderAccount);
+        mountSiteAccount({siteId:'juyuhannun',name:'주유한눈',target:'.header-actions',account});
         window.SoftmAccounts ||= new Map();window.SoftmAccounts.set('juyuhannun',account);
         window.dispatchEvent(new CustomEvent('softm:account-ready',{detail:{siteId:'juyuhannun',account}}));
       }
@@ -40,6 +41,7 @@ export function setupMyPage({favoritesCount,showFavorites,destinations,removeDes
     if(byId('more-dialog').open)byId('more-dialog').close();
     renderRecords();renderAccount();page.showModal();void connect();
   });
+  void connect();
   byId('my-favorites').onclick=()=>{page.close();showFavorites();};
   byId('my-retry').onclick=connect;
   async function authenticate(mode){
