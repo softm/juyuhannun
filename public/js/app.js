@@ -1,3 +1,4 @@
+import {setupMyPage} from './my-page.js';
 import {APP_CONFIG} from '../config.js';
 import {MapController} from './map.js';
 import {pickListScrollStation,setupMobileMapView} from './mobile-map-view.js';
@@ -515,9 +516,21 @@ function showStationSearchResults(rows,query){
  rows.forEach(station=>{const address=station.roadAddress||station.address||[station.routeName,station.direction].filter(Boolean).join(' · '),button=document.createElement('button');button.type='button';button.setAttribute('role','option');button.setAttribute('aria-selected','false');button.setAttribute('aria-label',`${station.name} · ${address} · ${money(station.currentPrice?.price)}원`);button.innerHTML=`<strong><span class="search-address-kind station">주유소</span><span>${esc(station.name)}</span><b class="search-station-price">${money(station.currentPrice?.price)}원</b></strong><small>${esc(address)}${station.routeName?` · ${esc(station.routeName)}${station.direction?` ${esc(station.direction)} 방향`:''}`:''}</small>`;button.addEventListener('click',()=>{box.hidden=true;state.center={lat:station.lat,lng:station.lng};state.selected=station.id;state.query=query;$('query').value=query;setMobileSearchOpen(false,{focus:false});if(state.mapReady){map.setCenter(state.center);requestAnimationFrame(()=>map.focus(station,{preserveZoom:true}));}render();});box.appendChild(button);});
 }
 
-const RECENT_DESTINATIONS_KEY='juyu:route-destinations:v2';
-let recentDestinations=normalizeRouteHistory(readStorage(RECENT_DESTINATIONS_KEY,readStorage('juyu:route-destinations:v1',[])));
-saveStorage(RECENT_DESTINATIONS_KEY,recentDestinations);
+// The encrypted snapshot schema uses v1. Migrate the newer on-device list once;
+// subsequent reloads must respect v1, including an intentionally empty restore.
+const RECENT_DESTINATIONS_KEY='juyu:route-destinations:v1';
+function loadRecentDestinations(){
+  const deviceKey='juyu:route-destinations:v2';
+  const newer=readStorage(deviceKey,null);
+  if(!Array.isArray(newer))return normalizeRouteHistory(readStorage(RECENT_DESTINATIONS_KEY,[]));
+  const items=normalizeRouteHistory(newer);
+  try{
+    localStorage.setItem(RECENT_DESTINATIONS_KEY,JSON.stringify(items));
+    localStorage.removeItem(deviceKey);
+  }catch{/* Keep the original list available if storage is unavailable. */}
+  return items;
+}
+let recentDestinations=loadRecentDestinations();
 function renderRecentDestinations(){const wrap=$('route-recent-wrap'),select=$('route-recent');if(!wrap||!select)return;wrap.hidden=!recentDestinations.length;select.innerHTML='<option value="">선택해 주세요</option>'+recentDestinations.map((item,index)=>`<option value="${index}">${esc(item.label)}</option>`).join('');}
 function rememberDestination(){if(!routeMode.state.destination)return;const next={label:routeMode.state.destinationLabel||'최근 목적지',...routeMode.state.destination};recentDestinations=rememberRouteDestination(recentDestinations,next);saveStorage(RECENT_DESTINATIONS_KEY,recentDestinations);renderRecentDestinations();}
 function setRoutePoint(type,point,label){try{routeMode.setPoint(type,point,label);routeSimulation.set(null);routePickTarget=null;for(const id of ['route-origin-map','route-destination-map'])$(id)?.classList.remove('is-picking');if(state.mapReady)map.clearRoute();render();}catch(error){toast(error.message);}}
@@ -707,6 +720,12 @@ async function initializeMapViewport(startupDataPromise){
  mapLoading.complete();
  try{map.startDriving({autoDetect:true,routeActive:()=>state.view==='route'&&Boolean(routeMode?.state.response?.baseRoute),onUpdate:handleDrivingUpdate,onError:()=>{}});}catch{}
 }
+setupMyPage({
+  favoritesCount:()=>state.favorites.size,
+  showFavorites(){selectView('saved');if(mobileMapView.isMobile())openFocusList();},
+  destinations:()=>recentDestinations,
+  removeDestination(id){recentDestinations=recentDestinations.filter(item=>item.id!==id);saveStorage(RECENT_DESTINATIONS_KEY,recentDestinations);renderRecentDestinations();}
+});
 const startupDataPromise=loadData();
 mapLoading.stage('map');
 map.init().then(()=>initializeMapViewport(startupDataPromise)).catch(()=>{state.mapFailed=true;mapLoading.error('지도를 불러오지 못했습니다.');setMapNotice('지도를 불러오지 못했습니다. 지도 연결 후 화면 안의 주유소를 확인할 수 있습니다.');render();});
