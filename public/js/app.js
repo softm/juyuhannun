@@ -3,7 +3,7 @@ import {MapController} from './map.js';
 import {pickListScrollStation,setupMobileMapView} from './mobile-map-view.js';
 import {createMapLoadingController} from '../shared/map-loading.js';
 import {beginActionProgress} from '../shared/action-progress.js';
-import {mountBottomAd,mountStationDetailAd,mountStationListAds} from './adfit.js';
+import {mountBottomAd,mountStationDetailAd,mountStationListAds,setAdsSuppressed} from './adfit.js';
 import {loadStationData,loadStaticJSON,mergeStationData,reselectStationPrices} from './data-loader.js';
 import {FUEL_TYPES,BRANDS,escapeHTML as esc,money,finite,distanceMeters,getFuelPrice,freshness,formatTime,filterStations,searchStations,summarizeVisiblePrices,hasMapCoordinates,stationNavigationURL} from './core.js';
 import {createRouteModeController,selectRouteDisplayRows} from './route-mode.js';
@@ -66,6 +66,7 @@ let routePlannerOpen=false;
 let mobileComparisonRefreshRequested=true;
 let drivingHud=null;
 let nativeRadarActive=false;
+let nativeDrivingAdsSuppressed=false;
 const DATA_REFRESH_MS=5*60*1000;
 function collectionStats(){const now=Date.now(),minute=Math.floor(now/60000);if(recordStats?.source===state.all&&recordStats.fuel===state.fuel&&recordStats.minute===minute)return recordStats;let mapped=0,fresh=0;for(const station of state.all){if(!hasMapCoordinates(station))continue;mapped++;const p=getFuelPrice(station,state.fuel);if(p&&freshness(p.priceUpdatedAt,p.fetchedAt,now,p.priceTimeStatus,p.sourceDate).eligible)fresh++;}return recordStats={source:state.all,fuel:state.fuel,minute,mapped,fresh};}
 function refreshPriceSelection(now){const sources=state.envelope?.sourceSnapshots,minute=Math.floor(now/60000);if(!sources||(priceSelection?.sources===sources&&priceSelection.minute===minute))return;state.all=reselectStationPrices(state.all,sources,{now});priceSelection={sources,minute};}
@@ -293,8 +294,14 @@ function render(){
  syncFocusDockList(filtered.length);
  const total=state.envelope?.coverage?.totalPriceStations??state.all.length,mapped=collectionStats().mapped,summary=summarizeVisiblePrices(filtered);
  $('coverage-hint').textContent=state.driving.active?`주행방향 우선 ${filtered.length.toLocaleString('ko-KR')}곳 · 탐색 ${drivingStation?.name||'주유소 확인 중'} · 파랑=이동동선 · 초록 점선=예측동선`:`현재 지도 ${filtered.length.toLocaleString('ko-KR')}곳 · 최신 비교 ${summary.comparable.toLocaleString('ko-KR')}곳 · 좌표 ${mapped.toLocaleString('ko-KR')}/${total.toLocaleString('ko-KR')}곳 확보`;
- if(!filtered.length)renderEmpty();else{const shown=filtered.slice(0,state.listLimit);$('results').innerHTML=shown.map((s,i)=>card(s,i)+([5,11,17].includes(i)?`<div class="station-detail-ad" data-list-ad="${[5,11,17].indexOf(i)}" aria-label="광고"></div>`:'')).join('')+(filtered.length>state.listLimit?`<button class="load-more" data-action="load-more">${Math.min(60,filtered.length-state.listLimit)}곳 더 보기 · ${state.listLimit.toLocaleString('ko-KR')}/${filtered.length.toLocaleString('ko-KR')}곳</button>`:'');mountStationListAds($('results').querySelectorAll('[data-list-ad]'));}
- if(state.mapReady){const refreshComparison=!mobileMapView.isMobile()||mobileComparisonRefreshRequested;map.setStations(filtered,state.selected,state.fuel,{refreshComparison});if(refreshComparison)mobileComparisonRefreshRequested=false;}
+ if(!filtered.length)renderEmpty();else{const shown=filtered.slice(0,state.listLimit);$('results').innerHTML=shown.map((s,i)=>card(s,i)+(!state.driving.active&&[5,11,17].includes(i)?`<div class="station-detail-ad" data-list-ad="${[5,11,17].indexOf(i)}" aria-label="광고"></div>`:'')).join('')+(filtered.length>state.listLimit?`<button class="load-more" data-action="load-more">${Math.min(60,filtered.length-state.listLimit)}곳 더 보기 · ${state.listLimit.toLocaleString('ko-KR')}/${filtered.length.toLocaleString('ko-KR')}곳</button>`:'');if(!state.driving.active)mountStationListAds($('results').querySelectorAll('[data-list-ad]'));}
+ if(state.mapReady){
+  const refreshComparison=!mobileMapView.isMobile()||mobileComparisonRefreshRequested;
+  map.setStations(filtered,state.selected,state.fuel,{refreshComparison});
+  // 모바일 최초 렌더는 주유소 데이터가 도착하기 전에 빈 목록으로 실행될 수 있다.
+  // 실제 비교 대상이 생길 때까지 요청을 유지해야 첫 로드에도 순위가 표시된다.
+  if(refreshComparison&&filtered.length)mobileComparisonRefreshRequested=false;
+ }
  const cheapest=summary.lowest;
  $('lowest-price-label').textContent='비교 가능한 최저가';$('lowest-price').textContent=money(cheapest);$('summary-area').textContent='현재 지도 영역 · 검색 조건 기준';
  $('summary-caption').textContent=cheapest?`${FUEL_TYPES.find(f=>f.code===state.fuel).name} · 최신 비교 ${summary.comparable}곳${summary.reference?` · 참고 가격 ${summary.reference}곳 제외`:''}${state.envelope?.coverage?.complete===false?' · 일부 자료':''}`:filtered.length?`표시된 ${filtered.length}곳은 참고 가격입니다 · 최저가 비교 제외`:'현재 지도에서 비교 가능한 가격이 없습니다';
@@ -576,7 +583,8 @@ function syncDrivingButton(){
  button.title=active?'주행 추적 종료':'주행 추적 시작';
  document.body.classList.toggle('driving-mode',active);
  document.body.classList.toggle('driving-hud-mode',active&&state.driving.hud);
- bottomAd?.setSuppressed(active);
+ setAdsSuppressed(active);
+ if(androidApp&&nativeDrivingAdsSuppressed!==active){nativeDrivingAdsSuppressed=active;location.href=`juyuhannun://driving?active=${active?'1':'0'}`;}
  const hudActive=androidApp?nativeRadarActive:active&&state.driving.hud,hudButton=$('drive-hud-mode');if(hudButton){hudButton.setAttribute('aria-pressed',String(hudActive));hudButton.setAttribute('aria-label',androidApp?(hudActive?'투명 레이더 종료':'투명 레이더 시작'):(hudActive?'2.5D 주행 HUD 종료':'2.5D 주행 HUD 시작'));hudButton.title=androidApp?(hudActive?'투명 레이더 끄기':'다른 앱 위 투명 레이더'):(hudActive?'2.5D HUD 끄기':'2.5D 주행 HUD');}
  drivingHud?.setActive(active&&state.driving.hud);
  const scale=$('drive-scale');if(scale)scale.hidden=!active;

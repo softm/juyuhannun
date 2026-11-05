@@ -4,6 +4,7 @@ const nodes=new Map();
 let sdkReady;
 let serial=0;
 let bottomController;
+let adsSuppressed=false;
 export const BOTTOM_AD_STORAGE_KEY='juyuhannun:ad-bottom:expanded:v1';
 
 function isProduction(){
@@ -31,7 +32,7 @@ function createAdNode(slot,{onState=()=>{}}={}){
   let attempted=false,queued=false,visible=false,timeout;
   const setState=state=>{node.dataset.state=state;onState(state);};
   const stop=()=>{clearTimeout(timeout);body.replaceChildren();body.style.minHeight='';node.hidden=true;setState('empty');};
-  const eligible=()=>ADFIT_CONFIG.enabled&&isProduction()&&visible&&!document.hidden&&node.isConnected&&body.clientWidth>=slot.width;
+  const eligible=()=>!adsSuppressed&&ADFIT_CONFIG.enabled&&isProduction()&&visible&&!document.hidden&&node.isConnected&&body.clientWidth>=slot.width;
   function start(ready,abort){
     attempted=true;queued=false;observer.disconnect();document.removeEventListener('visibilitychange',request);
     node.hidden=false;body.style.minHeight=`${slot.height}px`;setState('requested');
@@ -55,12 +56,25 @@ function createAdNode(slot,{onState=()=>{}}={}){
   }
   const observer=new IntersectionObserver(entries=>{visible=entries.some(entry=>entry.isIntersecting);if(visible)request();});
   observer.observe(node);document.addEventListener('visibilitychange',request);
+  node.setAdSuppressed=value=>{
+    if(value){
+      clearTimeout(timeout);queued=false;attempted=false;body.replaceChildren();body.style.minHeight='';node.hidden=true;setState('suppressed');
+      return;
+    }
+    if(node.dataset.state==='suppressed'){setState('idle');request();}
+  };
   return node;
+}
+
+export function setAdsSuppressed(value){
+  adsSuppressed=Boolean(value);
+  for(const node of nodes.values())node.setAdSuppressed?.(adsSuppressed);
+  bottomController?.setSuppressed(adsSuppressed);
 }
 
 export function mountStationDetailAd(host){
   if(!host)return;
-  if(NATIVE_ADS||!ADFIT_CONFIG.enabled||!isProduction()){host.hidden=true;return;}
+  if(adsSuppressed||NATIVE_ADS||!ADFIT_CONFIG.enabled||!isProduction()){host.hidden=true;return;}
   const slot=matchMedia('(min-width:1001px)').matches?ADFIT_CONFIG.detail.desktop:ADFIT_CONFIG.detail.mobile;
   if(host.clientWidth<slot.width){host.hidden=true;return;}
   const key=slot.unit;
@@ -71,7 +85,7 @@ export function mountStationDetailAd(host){
 }
 
 export function mountStationListAds(hosts){
-  if(NATIVE_ADS||!ADFIT_CONFIG.enabled||!isProduction())return;
+  if(adsSuppressed||NATIVE_ADS||!ADFIT_CONFIG.enabled||!isProduction())return;
   [...hosts].forEach((host,index)=>{
     const slot=ADFIT_CONFIG.list?.[index];if(!slot||host.clientWidth<slot.width)return;
     const key=`list-${index}`;if(!nodes.has(key))nodes.set(key,createAdNode(slot));
@@ -101,7 +115,7 @@ export function mountBottomAd({win=window,doc=document}={}){
   const onPointerEnd=event=>{if(!dragging)return;button.releasePointerCapture?.(event.pointerId);const collapse=dragDistance>=36;resetDrag();if(collapse)setExpanded(false);};
   button.addEventListener('click',toggle);button.addEventListener('pointerdown',onPointerDown);button.addEventListener('pointermove',onPointerMove);button.addEventListener('pointerup',onPointerEnd);button.addEventListener('pointercancel',onPointerEnd);
   resizeObserver=win.ResizeObserver?new win.ResizeObserver(syncSpace):null;resizeObserver?.observe(shell);sync();
-  const setSuppressed=value=>{shell.classList.toggle('is-driving-suppressed',Boolean(value));syncSpace();};
+  const setSuppressed=value=>{shell.classList.toggle('is-driving-suppressed',Boolean(value));shell.hidden=Boolean(value);syncSpace();};
   bottomController={setExpanded,setSuppressed,destroy(){resizeObserver?.disconnect();button.removeEventListener('click',toggle);button.removeEventListener('pointerdown',onPointerDown);button.removeEventListener('pointermove',onPointerMove);button.removeEventListener('pointerup',onPointerEnd);button.removeEventListener('pointercancel',onPointerEnd);shell.remove();doc.body.style.setProperty('--juyu-bottom-ad-space','0px');doc.body.classList.remove('juyu-bottom-ad-active');bottomController=null;}};
   return bottomController;
 }
