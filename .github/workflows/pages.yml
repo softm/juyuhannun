@@ -10,6 +10,8 @@ on:
     # KST 08:17, 14:17, 20:17 — nationwide file + general API comparison/enrichment.
     # GitHub Actions schedules can be delayed; source timestamps remain authoritative.
     - cron: '17 23,5,11 * * *'
+    # Hourly national-file retry checks; API jobs stay on their original cadence.
+    - cron: '47 * * * *'
 
 permissions:
   contents: read
@@ -50,10 +52,9 @@ jobs:
             public/data/highway.json
             public/data/comparisons.json
             public/data/nationwide
-          key: fuel-data-v2-${{ github.run_id }}-${{ github.run_attempt }}
+          key: fuel-data-v3-${{ github.run_id }}-${{ github.run_attempt }}
           restore-keys: |
-            fuel-data-v2-
-            opinet-data-v1-
+            fuel-data-v3-
       - name: Restore shared daily call ledger
         if: github.event_name != 'pull_request'
         uses: actions/cache/restore@v6
@@ -66,7 +67,7 @@ jobs:
             fuel-quota-v2-
             opinet-quota-v1-
       - name: Collect official prices or preserve explicit unavailable state
-        if: github.event_name != 'pull_request'
+        if: github.event_name != 'pull_request' && github.event.schedule != '47 * * * *'
         id: collect
         continue-on-error: true
         env:
@@ -74,7 +75,7 @@ jobs:
           OPINET_DIAGNOSTICS: '1'
         run: node scripts/collect.mjs --output public/data/stations.json --ledger .cache/opinet-quota.json
       - name: Collect regional averages and highway fuel data
-        if: github.event_name != 'pull_request'
+        if: github.event_name != 'pull_request' && github.event.schedule != '47 * * * *'
         continue-on-error: true
         env:
           OPINET_API_KEY: ${{ secrets.OPINET_API_KEY }}
@@ -82,13 +83,13 @@ jobs:
           EX_API_KEY: ${{ secrets.EX_API_KEY }}
         run: npm run collect:energy
       - name: Collect nationwide lowest-price comparison samples
-        if: github.event_name != 'pull_request'
+        if: github.event_name != 'pull_request' && github.event.schedule != '47 * * * *'
         continue-on-error: true
         env:
           OPINET_API_KEY: ${{ secrets.OPINET_API_KEY }}
         run: npm run collect:comparisons
       - name: Enrich missing station coordinates within the shared daily quota
-        if: github.event_name != 'pull_request'
+        if: github.event_name != 'pull_request' && github.event.schedule != '47 * * * *'
         continue-on-error: true
         env:
           OPINET_API_KEY: ${{ secrets.OPINET_API_KEY }}
@@ -102,7 +103,7 @@ jobs:
           NATIONWIDE_FORCE_REFRESH: ${{ github.event_name == 'workflow_dispatch' && '1' || '0' }}
         run: npm run collect:nationwide
       - name: Geocode business addresses missing coordinates
-        if: github.event_name != 'pull_request'
+        if: github.event_name != 'pull_request' && github.event.schedule != '47 * * * *'
         continue-on-error: true
         env:
           NAVER_MAPS_API_KEY_ID: ${{ secrets.NAVER_MAPS_API_KEY_ID }}
@@ -116,6 +117,14 @@ jobs:
         env:
           DATA_GO_KR_SERVICE_KEY: ${{ secrets.DATA_GO_KR_SERVICE_KEY }}
         run: npm run collect:nationwide
+      - name: Preserve failed CSV and page diagnostics
+        if: always() && github.event_name != 'pull_request'
+        uses: actions/upload-artifact@v4
+        with:
+          name: opinet-download-diagnostics-${{ github.run_id }}-${{ github.run_attempt }}
+          path: .cache/opinet-download-failures
+          if-no-files-found: ignore
+          retention-days: 7
       - name: Save consumed quota even after collection failure
         if: always() && github.event_name != 'pull_request'
         uses: actions/cache/save@v6
@@ -134,7 +143,7 @@ jobs:
             public/data/highway.json
             public/data/comparisons.json
             public/data/nationwide
-          key: fuel-data-v2-${{ github.run_id }}-${{ github.run_attempt }}
+          key: fuel-data-v3-${{ github.run_id }}-${{ github.run_attempt }}
       - name: Validate deployable assets and data
         run: npm run check
       - name: Verify actual map availability and price freshness
@@ -161,7 +170,7 @@ jobs:
           const d=JSON.parse(await readFile('dist/data/status.json','utf8'));
           const time=value=>value?new Intl.DateTimeFormat('ko-KR',{timeZone:'Asia/Seoul',dateStyle:'short',timeStyle:'short',hour12:false}).format(new Date(value)):'미확인';
           let report='## 주유한눈 데이터 상태\n\n[수집 현황 페이지](https://softm.github.io/juyuhannun/data-status.html) · 모든 시각은 한국시간\n\n';
-          report+=`**수집 예정 08:17 · 14:17 · 20:17 KST (하루 3회)**\n\n**마지막 성공 수집 ${time(d.nationwide.fetchedAt)} · 실제 가격 기준일 ${d.nationwide.priceDate??'미확인'}**\n\n`;
+          report+=`**전체 수집 08:17 · 14:17 · 20:17 KST · 전국 CSV 재시도 확인 매시 47분(실패 후 2시간 간격)**\n\n**마지막 성공 수집 ${time(d.nationwide.fetchedAt)} · 실제 가격 기준일 ${d.nationwide.priceDate??'미확인'}**\n\n`;
           report+='| 자료 | 상태 | 건수 | 마지막 성공 수집 | 이전 자료 보존 |\n|---|---|---:|---|---|\n';
           for(const row of d.collections)report+=`| ${row.name} | ${row.status} | ${row.count} | ${time(row.fetchedAt)} | ${row.retained?'예':'아니요'} |\n`;
           const c=d.nationwide;
@@ -194,3 +203,21 @@ jobs:
         with:
           artifact_name: ${{ needs.build.outputs.pages_artifact }}
 
+
+  collection-health:
+    if: github.event_name != 'pull_request'
+    needs: deploy
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check deployed national price freshness separately from deployment
+        run: |
+          curl --fail --retry 3 'https://softm.github.io/juyuhannun/data/nationwide/manifest.json?run=${{ github.run_id }}' -o manifest.json
+          node --input-type=module <<'JS'
+          import {readFile} from 'node:fs/promises';
+          const manifest=JSON.parse(await readFile('manifest.json','utf8'));
+          const c=manifest.collection;
+          if(!c?.eligible||!c?.expectedDateAvailable||c?.lastDownloadStatus==='error'||manifest.lpg?.status!=='ready'){
+            console.error('::error::사이트 배포와 별개로 전국 최신 가격 수집이 미완료입니다. 기준일='+manifest.priceDate);
+            process.exitCode=1;
+          }
+          JS
