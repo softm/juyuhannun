@@ -843,3 +843,33 @@ body:is(.mobile-map-browse,.mobile-map-expanded) .search-block #mobile-search-to
 body:is(.mobile-map-browse,.mobile-map-expanded) .search-block #mobile-fuel-toggle{min-width:0!important;padding:0 4px!important;gap:2px}
 body:is(.mobile-map-browse,.mobile-map-expanded) .search-block #mobile-fuel-toggle .fuel-tab-icon{width:24px;height:24px}
 }
+
+/* Keep the comparison list high in the normal sidebar, outside map overlays. */
+body:not(.energy-page):not(.mobile-map-mode):not(.mobile-map-fullscreen) .app-header{height:56px;padding-inline:16px}
+body:not(.energy-page):not(.mobile-map-mode):not(.mobile-map-fullscreen) .brand{font-size:20px;gap:8px}
+body:not(.energy-page):not(.mobile-map-mode):not(.mobile-map-fullscreen) .brand img{width:36px;height:36px}
+body:not(.energy-page):not(.mobile-map-mode):not(.mobile-map-fullscreen) .brand small{display:none}
+body:not(.energy-page):not(.mobile-map-mode):not(.mobile-map-fullscreen) .workspace{height:calc(100dvh - 56px);min-height:0}
+body:not(.mobile-map-mode):not(.mobile-map-fullscreen) .workspace .view-tabs{padding-inline:10px}
+body:not(.mobile-map-mode):not(.mobile-map-fullscreen) .workspace .view-tab{min-height:48px;padding:6px 2px}
+body:not(.mobile-map-mode):not(.mobile-map-fullscreen) .workspace .search-block{display:grid;grid-template-columns:minmax(0,1fr) 48px;gap:6px;padding:8px 10px}
+body:not(.mobile-map-mode):not(.mobile-map-fullscreen) .search-block .search-box{grid-column:1;grid-row:1;min-width:0;height:48px;padding-left:10px}
+body:not(.mobile-map-mode):not(.mobile-map-fullscreen) .search-box .search-submit{min-width:44px;min-height:44px;padding:10px}
+body:not(.mobile-map-mode):not(.mobile-map-fullscreen) .search-block .filter-line{grid-column:2;grid-row:1;margin:0}
+body:not(.mobile-map-mode):not(.mobile-map-fullscreen) .search-block .filter-button{width:48px;height:48px;padding:3px;flex-direction:column;justify-content:center;gap:2px;font-size:10px}
+body:not(.mobile-map-mode):not(.mobile-map-fullscreen) .search-block .filter-button .icon svg{width:18px;height:18px}
+body:not(.mobile-map-mode):not(.mobile-map-fullscreen) .map-fuel-brand-row{grid-column:1 / -1;display:flex;gap:6px;min-width:0}
+body:not(.mobile-map-mode):not(.mobile-map-fullscreen) .workspace .fuel-tabs{margin:0;padding:0;gap:2px;min-width:0}
+body:not(.mobile-map-mode):not(.mobile-map-fullscreen) .workspace .fuel-tabs button{min-height:48px;min-width:44px;padding:4px;gap:4px;font-size:11px}
+body:not(.mobile-map-mode):not(.mobile-map-fullscreen) .fuel-tab-icon{width:20px;height:20px}
+body:not(.mobile-map-mode):not(.mobile-map-fullscreen) .fuel-tab-icon .icon svg{width:13px;height:13px}
+body:not(.mobile-map-mode):not(.mobile-map-fullscreen) .fuel-tabs button.active .fuel-tab-icon{box-shadow:none}
+body:not(.mobile-map-mode):not(.mobile-map-fullscreen) .search-block .brand-picker-trigger{min-height:48px;padding:0 8px;border-radius:10px;font-size:12px}
+body:not(.mobile-map-mode):not(.mobile-map-fullscreen) .search-block .extra-filters,
+body:not(.mobile-map-mode):not(.mobile-map-fullscreen) .search-block .search-candidates{grid-column:1 / -1;margin:0}
+body:not(.mobile-map-mode):not(.mobile-map-fullscreen) .coverage-hint{padding:5px 12px;line-height:1.5}
+body:not(.mobile-map-mode):not(.mobile-map-fullscreen) .workspace .results-header{min-height:48px;padding:0 12px}
+body:not(.mobile-map-mode):not(.mobile-map-fullscreen) .results-header select{min-height:48px}
+@media(max-width:380px){
+ body:not(.mobile-map-mode):not(.mobile-map-fullscreen) .map-fuel-brand-row .fuel-tab-icon{display:none}
+}
