@@ -123,6 +123,7 @@ jobs:
         with:
           name: opinet-download-diagnostics-${{ github.run_id }}-${{ github.run_attempt }}
           path: .cache/opinet-download-failures
+          include-hidden-files: true
           if-no-files-found: ignore
           retention-days: 7
       - name: Save consumed quota even after collection failure
