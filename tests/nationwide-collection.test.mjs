@@ -38,7 +38,7 @@ test('collect, reuse and failed refresh preserve observations and visible failur
  const searchable=JSON.parse(await readFile(join(dir,'search.json'),'utf8'));assert.equal(searchable.stations.length,2);assert.equal(searchable.stations[1].lat,null);assert.equal(searchable.stations[1].prices.B027.price,1730);
  const reused=await collectNationwide({...options,clock:()=>now+10000,downloadClient:{dailyPrices:()=>{throw new Error('must reuse');}}});
  assert.equal(reused.count,1);assert.equal(reused.fetchedAt,fetchedAt);assert.equal(reused.priceSource,'cache');
- assert.equal(reused.collection.usedPreviousDate,true);assert.equal(reused.collection.lastDownloadStatus,'fallback');assert.equal(reused.collection.downloadCalls,0);assert.equal(reused.collection.nextRetryAt,'2026-10-20T11:37:00.000Z');
+ assert.equal(reused.collection.usedPreviousDate,true);assert.equal(reused.collection.lastDownloadStatus,'ready');assert.equal(reused.collection.downloadCalls,0);assert.equal(reused.collection.nextRetryAt,'2026-10-20T11:37:00.000Z');
  const stored=JSON.parse(await readFile(join(dir,'latest.json'),'utf8'));assert.equal(stored.stations[0].prices.B027.priceUpdatedAt,null);assert.equal(stored.stations[0].prices.B027.sourceDate,'2026-10-19');
  await assert.rejects(collectNationwide({...options,forceRefresh:true,downloadClient:{dailyPrices:async()=>{throw new ServiceError('OPINET_DOWNLOAD_FAILED','공개 가격 다운로드 실패');}}}),{code:'OPINET_DOWNLOAD_FAILED'});
  const failed=JSON.parse(await readFile(join(dir,'latest.json'),'utf8'));
@@ -64,7 +64,7 @@ test('nationwide public download merges automotive LPG prices without using the 
  assert.equal(lpg.prices.K015.price,1123);assert.equal(lpg.kind,'lpg');
  const manifest=JSON.parse(await readFile(join(dir,'manifest.json'),'utf8'));
  assert.equal(manifest.lpg.status,'ready');assert.equal(manifest.lpg.priceCount,1);assert.equal(manifest.lpg.businessInfo.count,1);
- assert.deepEqual(calls,[['lpg-business'],['lpg-price','20261030']]);
+ assert.deepEqual(calls,[['lpg-business'],['lpg-price','20261029']]);
 });
 test('status distinguishes total prices, mapped records, quota and a failed source from a successful build',()=>{
  const d=summarizeData({manifest:{priceStationCount:10238,priceDate:'2026-10-19'},nationwide:{status:'partial',stations:[{id:'A1',...station,prices:{B027:{price:1750}}}],coverage:{serviceReady:true,complete:false}},regional:{status:'partial',quota:{used:300,limit:300,remaining:0},lastAttempt:{status:'error'},error:{code:'OPINET_DAILY_QUOTA_EXCEEDED',message:'한도 소진'}}});
@@ -127,7 +127,7 @@ test('official ID coordinate enrichment adds map coverage without changing price
  const next=await collectNationwide({...options,clock:()=>start+120000,downloadClient:{dailyPrices:async()=>{throw new Error('coordinate refresh cannot renew price');}}});
  assert.equal(next.count,2);assert.equal(next.fetchedAt,first.fetchedAt);
  const saved=JSON.parse(await readFile(join(options.outputDirectory,'latest.json'),'utf8')).stations.find(s=>s.id==='A2');
- assert.equal(saved.lat,36.78);assert.equal(saved.coordinateSource,'opinet-detail-by-id');assert.equal(saved.coordinateVerifiedAt,verifiedAt);assert.equal(saved.prices.B027.fetchedAt,first.fetchedAt);assert.equal(saved.prices.B027.sourceDate,'2026-10-21');
+ assert.equal(saved.lat,36.78);assert.equal(saved.coordinateSource,'opinet-detail-by-id');assert.equal(saved.coordinateVerifiedAt,verifiedAt);assert.equal(saved.prices.B027.fetchedAt,first.fetchedAt);assert.equal(saved.prices.B027.sourceDate,'2026-10-20');
 });
 test('a mismatched or future source date cannot overwrite the last successful nationwide file',async t=>{
  const start=Date.parse('2026-10-21T10:00:00+09:00'),options=await collectionFixture(t,start);
@@ -146,7 +146,24 @@ test('new official coordinates are published even when both price download dates
  const manifest=JSON.parse(await readFile(join(options.outputDirectory,'manifest.json'),'utf8'));
  assert.equal(latest.stations.length,2);assert.equal(manifest.mappedPriceStationCount,2);
  const enriched=latest.stations.find(s=>s.id==='A2');
- assert.equal(enriched.coordinateSource,'opinet-detail-by-id');assert.equal(enriched.prices.B027.price,1700);assert.equal(enriched.prices.B027.sourceDate,'2026-10-21');
+ assert.equal(enriched.coordinateSource,'opinet-detail-by-id');assert.equal(enriched.prices.B027.price,1700);assert.equal(enriched.prices.B027.sourceDate,'2026-10-20');
  assert.equal(enriched.prices.B027.fetchedAt,first.fetchedAt);assert.equal(latest.fetchedAt,first.fetchedAt);assert.equal(latest.collection.lastDownloadStatus,'error');assert.equal(latest.lastAttempt.status,'error');assert.equal(latest.cache.stale,true);
 });
 
+
+test('morning collection requests the expected previous date first, then its preceding day',async t=>{
+ const options=await collectionFixture(t,Date.parse('2026-11-09T11:00:00+09:00')),calls=[];
+ await collectNationwide({...options,downloadClient:{dailyPrices:async({targetDate})=>{calls.push(targetDate);if(calls.length===1)throw new ServiceError('OPINET_DOWNLOAD_EMPTY','empty');return dailyRows(targetDate);}}});
+ assert.deepEqual(calls,['20261108','20261107']);
+ const manifest=JSON.parse(await readFile(join(options.outputDirectory,'manifest.json'),'utf8'));
+ assert.equal(manifest.collection.eligible,false);
+ assert.equal(manifest.collection.lastDownloadError,null);
+});
+test('failed LPG collection is retried after backoff even when gasoline is current',async t=>{
+ const start=Date.parse('2026-11-09T21:00:00+09:00'),options=await collectionFixture(t,start);
+ const client={dailyPrices:async({targetDate})=>dailyRows(targetDate),dailyLpgPrices:async()=>{throw new ServiceError('OPINET_DOWNLOAD_EMPTY','LPG missing');}};
+ await collectNationwide({...options,downloadClient:client});
+ let calls=0;
+ await collectNationwide({...options,clock:()=>start+2*60*60*1000,downloadClient:{...client,dailyPrices:async({targetDate})=>{calls++;return dailyRows(targetDate);}}});
+ assert.equal(calls,1);
+});
