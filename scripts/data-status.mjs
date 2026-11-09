@@ -54,7 +54,7 @@ export function summarizeData({manifest={},nationwide={},searchable={},regional=
  };
  const collection=manifest.collection??nationwide.collection??null;
  const collections=[
-  summary('nationwide','전국 주유소 일일가격',nationwide,nationwide.stations,'매일 08:17 · 14:17 · 20:17 · 한국시간'),
+  summary('nationwide','전국 주유소 일일가격',nationwide,nationwide.stations,'매일 08:17 · 14:17 · 20:17 · CSV 재시도 확인 매시 47분 · 한국시간'),
   summary('searchable','전국 가격 원본 · 좌표 미확보 포함',searchable,searchable.stations,'전국 수집 결과 보관 · 지도에는 좌표 확보 자료 표시'),
   summary('regional','지역 API 보완',regional,regional.stations,'매일 08:17 · 14:17 · 20:17'),
   summary('averages','전국·시도 평균유가',averages,averages.benchmarks,'매일 08:17 · 14:17 · 20:17'),

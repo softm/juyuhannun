@@ -1,7 +1,7 @@
 import { readFile, readdir, unlink } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { OpinetBrowserDownloadClient, kstDate, previousKstDate } from '../server/opinet-browser-download.mjs';
+import { OpinetBrowserDownloadClient, kstDate } from '../server/opinet-browser-download.mjs';
 import { fetchStandardStations, fetchStandardStationsPublic } from '../server/data-go-stations.mjs';
 import { atomicWriteJson, seoulDay } from '../server/quota.mjs';
 import { publicError, ServiceError } from '../server/errors.mjs';
@@ -121,7 +121,7 @@ async function collectNationwideSnapshot({outputDirectory=resolve(ROOT,'public/d
  const previousCollection=previousManifest?.collection??{};
  const previousAttemptAt=previousCollection.lastDownloadAttemptAt??(previousManifest?.lastAttempt?.status==='error'?previousManifest.lastAttempt.at:previousManifest?.fetchedAt)??null;
  const previousDownloadStatus=previousCollection.lastDownloadStatus??(previousManifest?.lastAttempt?.status==='error'?'error':reused?'ready':null);
- const plan=planNationwideCollection({now:started,hasPrices:Boolean(reused),sourceDate:reused?.sourceDate,fetchedAt:reused?.fetchedAt,lastDownloadAttemptAt:previousAttemptAt,lastDownloadStatus:previousDownloadStatus,forceRefresh});
+ const plan=planNationwideCollection({now:started,hasPrices:Boolean(reused),sourceDate:reused?.sourceDate,fetchedAt:reused?.fetchedAt,lastDownloadAttemptAt:previousAttemptAt,lastDownloadStatus:previousManifest?.lpg?.status==='error'?'error':previousDownloadStatus,forceRefresh});
  let fetchedAt=reused?.fetchedAt??null,targetDate=reused?.sourceDate?.replaceAll('-','')??kstDate(started),downloadBytes=reused?.downloadBytes??0,all=reused?.stations??null,priceSource='cache';
  let downloadCalls=0,downloadAttempts=[],downloadError=null,downloadFailure=null,lpgDownloadError=previousManifest?.lpg?.error??null,lpgDownloadStatus=previousManifest?.lpg?.status??'unavailable',lpgDownloadBytes=previousManifest?.lpg?.bytes??0,lpgPriceCount=previousManifest?.lpg?.priceCount??0;
  let businessStations=[],businessStatus='unavailable',businessFetchedAt=null,businessBytes=0,businessError=null;
@@ -168,7 +168,8 @@ async function collectNationwideSnapshot({outputDirectory=resolve(ROOT,'public/d
  }
  businessStations=mergeStationsById(businessStations,lpgBusinessStations);
  if(plan.due){
-  const dates=[kstDate(started),previousKstDate(started)];let gasPrice=null;
+  const firstDate=plan.expectedDate.replaceAll('-','');
+  const dates=[firstDate,kstDate(Date.parse(`${plan.expectedDate}T00:00:00+09:00`)-86400000)];let gasPrice=null;
   lastDownloadAttemptAt=attemptedAt;
   for(const requestedDate of dates){
    downloadCalls++;
@@ -195,7 +196,7 @@ async function collectNationwideSnapshot({outputDirectory=resolve(ROOT,'public/d
     }
     all=mergeStationsById(businessStations,rows,lpgRows);
     targetDate=requestedDate;fetchedAt=attemptedAt;downloadBytes=(result.bytes??0)+lpgDownloadBytes;priceSource='download';
-    lastDownloadedAt=new Date(clock()).toISOString();lastDownloadStatus=downloadCalls>1?'fallback':'ready';
+    downloadError=null;lastDownloadedAt=new Date(clock()).toISOString();lastDownloadStatus=downloadCalls>1?'fallback':'ready';
     downloadAttempts.push({...attempt,status:'ready',completedAt:lastDownloadedAt});
     break;
    }catch(error){
@@ -212,7 +213,7 @@ async function collectNationwideSnapshot({outputDirectory=resolve(ROOT,'public/d
  }else {
   console.info(JSON.stringify({event:'opinet_daily_price_reuse',date:targetDate,rows:all?.length??0,reason:plan.reason,nextRetryAt:plan.nextRetryAt}));
  }
- const afterPlan=planNationwideCollection({now:clock(),hasPrices:Boolean(all?.length),sourceDate:targetDate,fetchedAt,lastDownloadAttemptAt,lastDownloadStatus});
+ const afterPlan=planNationwideCollection({now:clock(),hasPrices:Boolean(all?.length),sourceDate:targetDate,fetchedAt,lastDownloadAttemptAt,lastDownloadStatus:lpgDownloadStatus==='error'?'error':lastDownloadStatus});
  const collection={...previousCollection,checkedAt:attemptedAt,lastDownloadAttemptAt,lastDownloadedAt,lastDownloadStatus,lastDownloadError:plan.due?downloadError:(previousCollection.lastDownloadError??previousManifest?.lastAttempt?.error??null),lastDownloadCalls:plan.due?downloadCalls:previousCollection.lastDownloadCalls??0,downloadCalls,downloadAttempts:plan.due?downloadAttempts:previousCollection.downloadAttempts??[],sourceDate:normalizePriceDate(targetDate),expectedDate:afterPlan.expectedDate,usedPreviousDate:afterPlan.usedPreviousDate,eligible:afterPlan.eligible,expectedDateAvailable:afterPlan.expectedDateAvailable,nextRetryAt:afterPlan.nextRetryAt,decisionReason:plan.reason,pendingReason:afterPlan.pendingReason??null};
  if(!all){
   for(const name of ['latest','search','manifest']){const previous=await readJson(resolve(outputDirectory,`${name}.json`));if(previous)await atomicWriteJson(resolve(outputDirectory,`${name}.json`),{...previous,collection});}
