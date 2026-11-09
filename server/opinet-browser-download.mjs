@@ -1,4 +1,5 @@
-import { access, mkdir, readFile, rm } from 'node:fs/promises';
+import { access, mkdir, readFile, rm, writeFile, cp } from 'node:fs/promises';
+import { resolve } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { chromium } from 'playwright-core';
 import { ServiceError } from './errors.mjs';
@@ -28,6 +29,19 @@ function safeFilename(value){
   return name||'opinet-daily.csv';
 }
 
+// Keep downloaded evidence out of the public website; CI uploads it separately.
+async function preserveFailure({page,downloadDir,stage,error,businessType,targetDate}){
+  const directory=resolve(process.env.OPINET_DIAGNOSTICS_DIR||'.cache/opinet-download-failures',`${Date.now()}-${businessType}-${targetDate||'business'}-${randomUUID()}`);
+  try{
+    await mkdir(directory,{recursive:true});
+    await cp(downloadDir,resolve(directory,'downloads'),{recursive:true});
+    const state=page?await page.evaluate(()=>({title:document.title,text:document.body?.innerText?.slice(0,12000)})).catch(()=>null):null;
+    await writeFile(resolve(directory,'failure.json'),JSON.stringify({stage,businessType,targetDate,errorType:error.name,errorCode:error.code??null,state},null,2));
+    if(page)await page.screenshot({path:resolve(directory,'page.png'),timeout:5000}).catch(()=>{});
+    console.info(JSON.stringify({event:'opinet_download_diagnostics',directory}));
+  }catch{console.warn('opinet_download_diagnostics_failed');}
+}
+
 export class OpinetBrowserDownloadClient{
   constructor({clock=Date.now,pageReadyTimeoutMs=180000,downloadTimeoutMs=240000}={}){
     this.clock=clock;
@@ -39,12 +53,12 @@ export class OpinetBrowserDownloadClient{
     const chrome=await executablePath();
     const downloadDir=`/tmp/juyuhannun-opinet-basic-${randomUUID()}`;
     await mkdir(downloadDir,{recursive:true});
-    let browser;let stage='launch';
+    let browser;let page;let stage='launch';
     const report=(value,extra={})=>console.info(JSON.stringify({event:'opinet_business_download',stage:value,businessType,...extra}));
     try{
       browser=await chromium.launch({executablePath:chrome,headless:true,args:['--no-sandbox','--disable-dev-shm-usage','--disable-gpu','--no-zygote','--disable-extensions','--disable-background-networking']});
       const context=await browser.newContext({userAgent:'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36',locale:'ko-KR',acceptDownloads:true});
-      const page=await context.newPage();
+      page=await context.newPage();
       page.on('dialog',dialog=>{report(`dialog_${dialog.type()}`);dialog.accept().catch(()=>{});});
       stage='goto';report(stage);
       await page.goto(OPINET_DOWNLOAD_URL,{waitUntil:'domcontentloaded',timeout:120000});
@@ -55,7 +69,7 @@ export class OpinetBrowserDownloadClient{
       await page.evaluate(({businessType})=>{
         const fire=el=>{el.dispatchEvent(new Event('input',{bubbles:true}));el.dispatchEvent(new Event('change',{bubbles:true}));};
         const choose=(name,value)=>{const el=document.querySelector(`input[name="${name}"][value="${value}"]`);if(!el)return false;el.checked=true;fire(el);return true;};
-        choose('rdo3',businessType==='station'?'A':'B');
+        choose('rdo1',businessType==='station'?'A':'B');
       },{businessType});
       stage='invoke_business_csv';report(stage);
       const downloadPromise=page.waitForEvent('download',{timeout:this.downloadTimeoutMs});
@@ -77,7 +91,8 @@ export class OpinetBrowserDownloadClient{
       report('ready',{rows:rows.length,bytes:bytes.byteLength});
       return {rows,bytes:bytes.byteLength,suggestedFilename};
     }catch(error){
-      report('failed',{failedAt:stage});
+      await preserveFailure({page,downloadDir,stage,error,businessType,targetDate:typeof targetDate==='undefined'?null:targetDate});
+      report('failed',{failedAt:stage,errorType:error.name,errorCode:error.code??null});
       if(error instanceof ServiceError)throw error;
       throw new ServiceError('OPINET_BUSINESS_BROWSER_DOWNLOAD_ERROR',`오피넷 사업자 기본정보 CSV 다운로드에 실패했습니다. 단계: ${stage}`);
     }finally{
@@ -95,7 +110,7 @@ export class OpinetBrowserDownloadClient{
     const chrome=await executablePath();
     const downloadDir=`/tmp/juyuhannun-opinet-${randomUUID()}`;
     await mkdir(downloadDir,{recursive:true});
-    let browser;
+    let browser;let page;
     let stage='launch';
     const report=(value,extra={})=>console.info(JSON.stringify({event:'opinet_public_download',stage:value,businessType,targetDate,...extra}));
 
@@ -111,7 +126,7 @@ export class OpinetBrowserDownloadClient{
         locale:'ko-KR',
         acceptDownloads:true,
       });
-      const page=await context.newPage();
+      page=await context.newPage();
       page.on('dialog',dialog=>{
         report(`dialog_${dialog.type()}`);
         dialog.accept().catch(()=>{});
@@ -166,7 +181,7 @@ export class OpinetBrowserDownloadClient{
       stage='parse_file';report(stage);
       const text=decodeKoreanCsv(bytes);
       if(/^\s*</.test(text.slice(0,200)))throw new ServiceError('OPINET_DOWNLOAD_HTML_RESPONSE','CSV 대신 웹 페이지가 반환되었습니다.');
-      const rows=parseDailyPriceCsv(text);
+      const rows=parseDailyPriceCsv(text,{businessType});
       if(rows.length<1000)throw new ServiceError('OPINET_DOWNLOAD_EMPTY','오피넷 전국 일일가격 CSV의 데이터 행이 충분하지 않습니다.');
       const dates=[...new Set(rows.map(row=>row['기준일자']).filter(Boolean))];
       if(dates.length!==1)throw new ServiceError('OPINET_DOWNLOAD_DATE_MIXED','오피넷 일일가격 CSV의 기준일이 하나로 확인되지 않습니다.');
@@ -175,7 +190,8 @@ export class OpinetBrowserDownloadClient{
       report('ready',{rows:rows.length,bytes:bytes.byteLength});
       return {rows,bytes:bytes.byteLength,suggestedFilename,sourceDate:dates[0]};
     }catch(error){
-      report('failed',{failedAt:stage});
+      await preserveFailure({page,downloadDir,stage,error,businessType,targetDate:typeof targetDate==='undefined'?null:targetDate});
+      report('failed',{failedAt:stage,errorType:error.name,errorCode:error.code??null});
       if(error instanceof ServiceError)throw error;
       throw new ServiceError('OPINET_BROWSER_DOWNLOAD_ERROR',`오피넷 공개 전국 일일가격 CSV 다운로드에 실패했습니다. 단계: ${stage}`);
     }finally{
