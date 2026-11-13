@@ -68,7 +68,7 @@ function render(d){
   ['현재 처리 대기', n(geoQueue.pendingCount)+'곳'],
   ['실행당 최대', n(geoPolicy.maxCallsPerRun??geoAttempt.maxCalls)+'회']
  ].map(([label,value])=>`<div><span>${esc(label)}</span><strong>${esc(value)}</strong></div>`).join('');
- $('address-geocoding-schedule').textContent=`실행 계획: ${geoPolicy.trigger||'사업자 기본정보 수집 직후'} · 정기 확인 ${(geoPolicy.scheduleKst||['08:17','14:17','20:17']).join(' · ')} KST · 성공 좌표 캐시 ${geoPolicy.cacheSuccessfulResults===false?'사용 안 함':'사용'}. 주소 미발견은 ${n(geoPolicy.notFoundRetryDays??7)}일 후, 일시 오류는 ${geoPolicy.transientRetry||'1시간부터 지수 백오프 · 최대 24시간'}로 다시 시도합니다.`;
+ $('address-geocoding-schedule').textContent=`실행 계획: ${geoPolicy.trigger||'사업자 기본정보 수집 직후'} · 정기 확인 ${(geoPolicy.scheduleKst||['09:17','16:17','19:17']).join(' · ')} KST · 성공 좌표 캐시 ${geoPolicy.cacheSuccessfulResults===false?'사용 안 함':'사용'}. 주소 미발견은 ${n(geoPolicy.notFoundRetryDays??7)}일 후, 일시 오류는 ${geoPolicy.transientRetry||'1시간부터 지수 백오프 · 최대 24시간'}로 다시 시도합니다.`;
  $('address-geocoding-note').textContent=geo.status==='ready'||geo.status==='partial'
   ? '주소 지오코딩 누적 '+n(geoQueue.enrichedCount)+'곳 · 최근 실행 신규 '+n(geoAttempt.added)+'곳 · 캐시 재사용 '+n(geoAttempt.reused)+'곳 · 실패 '+n(geoAttempt.failed)+'곳. 현재 지도 가능 '+n(c.mappedPriceStations)+'곳 / 전국 가격 '+n(c.totalPriceStations)+'곳이며, 남은 좌표 미확보는 '+n(c.unmappedPriceStations)+'곳입니다. 주소 지오코딩 수치는 네이버 주소 기반 확보분이고, 전체 지도 가능 수는 공공데이터·오피넷 상세 좌표까지 합친 값입니다.'
   : geo.status==='awaiting_credentials'
