@@ -1,5 +1,5 @@
 import { APP_CONFIG } from '../config.js';
-import { escapeHTML, getFuelPrice, freshness, FUEL_TYPES, BRANDS } from './core.js';
+import { escapeHTML, getFuelPrice, freshness, FUEL_TYPES, BRANDS, priceBandsForStations } from './core.js';
 import { markerScale, labelBudget, markerDensityLimit, visibleStations, labelCandidates } from './marker-display.js';
 import { mergeLocationSearchResults, normalizeAddressSearchResults, normalizePlaceSearchResults } from './address-search.js';
 import {createDrivingMotionState,drivingZoomForSpeed,updateDrivingMotion} from './driving-controller.js';
@@ -162,23 +162,6 @@ function searchVWorldPlaces(query, timeout = 10000) {
     script.onerror = () => finish(new Error('장소 검색 연결에 실패했습니다. 잠시 후 다시 시도해 주세요.'));
     document.head.appendChild(script);
   });
-}
-
-function markerPriceBands(stations, fuel, now = Date.now()) {
-  const prices = [];
-  for (const station of Array.isArray(stations) ? stations : []) {
-    const info = getFuelPrice(station, fuel);
-    if (!info || !Number.isFinite(Number(info.price))) continue;
-    const status = freshness(info.priceUpdatedAt, info.fetchedAt, now, info.priceTimeStatus, info.sourceDate);
-    if (status.eligible) prices.push(Number(info.price));
-  }
-  prices.sort((a,b)=>a-b);
-  if (!prices.length) return { count:0, min:null, low:null, high:null };
-  if (prices.length === 1) return { count:1, min:prices[0], low:prices[0], high:prices[0] };
-  const last = prices.length - 1;
-  const lowIndex = Math.max(0, Math.floor(last / 3));
-  const highIndex = Math.min(last, Math.ceil(last * 2 / 3));
-  return { count:prices.length, min:prices[0], low:prices[lowIndex], high:prices[highIndex] };
 }
 
 function markerTopPriceRanks(stations, fuel, now = Date.now(), limit = 5) {
@@ -696,14 +679,16 @@ export class MapController {
     });
   }
 
-  setStations(stations, selectedId = null, fuel = 'B027',{refreshComparison=true}={}) {
+  setStations(stations, selectedId = null, fuel = 'B027',{refreshComparison=true,priceBands=null}={}) {
     const fuelChanged=this._fuel!==fuel;
     this._stations = Array.isArray(stations) ? stations : [];
     this._selectedId = selectedId == null ? null : String(selectedId);
     this._fuel = fuel;
     const now = Date.now();
-    if(refreshComparison){this._priceBands = markerPriceBands(this._stations, this._fuel, now);this._priceRanks = markerTopPriceRanks(this._stations, this._fuel, now, 5);}
+    if(refreshComparison){this._priceBands = priceBands ?? priceBandsForStations(this._stations, this._fuel, now);this._priceRanks = markerTopPriceRanks(this._stations, this._fuel, now, 5);}
     else if(fuelChanged){this._priceBands=null;this._priceRanks=new Map();}
+    // Keep marker colors fixed to the unfiltered price distribution on every toggle.
+    if(priceBands)this._priceBands=priceBands;
     this._scheduleMarkers();
   }
 
