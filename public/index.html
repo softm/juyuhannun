@@ -38,17 +38,28 @@
         </div>
         <button type="button" class="brand-picker-trigger" data-brand-picker aria-expanded="false" aria-controls="map-brand-options">브랜드 ▾</button>
         </div>
-        <div class="filter-line"><button id="toggle-filters" class="filter-button" aria-expanded="false" aria-controls="extra-filters"><span class="icon" data-icon="sliders"></span>필터</button></div>
+        <div class="filter-line"><button id="toggle-filters" class="filter-button" aria-expanded="false" aria-controls="extra-filters"><span class="icon" data-icon="sliders"></span>필터<span id="price-level-indicator" class="price-level-indicator" aria-hidden="true" hidden></span></button></div>
         <button type="button" id="mobile-search-toggle" class="mobile-search-toggle" aria-expanded="false" aria-controls="search-form" aria-label="검색 열기" title="검색 열기"><span class="icon" data-icon="search"></span><span id="mobile-search-label">검색</span><span id="mobile-search-indicator" class="mobile-search-indicator" aria-hidden="true" hidden></span></button>
         <div id="extra-filters" class="extra-filters filter-popover" hidden>
           <div class="filter-popover-head"><strong>추가 필터</strong><span>선택하면 지도와 목록에 바로 적용됩니다.</span></div>
           <label class="filter-option"><input id="self-only" type="checkbox"><span><strong>셀프 주유소만 보기</strong><small>셀프 주유가 가능한 주유소만 표시합니다.</small></span></label>
           <label class="filter-option"><input id="fresh-only" type="checkbox"><span><strong>최신 가격만 보기</strong><small>현재 가격 비교에 사용할 수 있는 최신 자료만 표시합니다.</small></span></label>
-          <div class="marker-color-guide" aria-label="지도 마커 색상 안내">
-            <strong>마커 색상 = 현재 유종의 가격 수준</strong>
-            <div><span><i class="marker-guide-dot low"></i>저렴</span><span><i class="marker-guide-dot mid"></i>보통</span><span><i class="marker-guide-dot high"></i>비쌈</span><span><i class="marker-guide-dot stale"></i>참고·미확인</span></div>
+          <div class="price-level-filter" role="group" aria-label="가격 수준 복수 선택">
+            <div class="price-level-filter-heading"><strong>가격 수준</strong><small>여러 개 선택 가능</small></div>
+            <div class="price-level-options">
+              <button type="button" class="price-level-chip price-level-low" data-price-level="low" aria-pressed="false" title="저렴한 주유소 선택">
+                <span class="price-level-icon"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 7h16M7 11l5 5 5-5M12 11v9"/></svg></span><span>저렴</span>
+              </button>
+              <button type="button" class="price-level-chip price-level-mid" data-price-level="mid" aria-pressed="false" title="보통 가격 주유소 선택">
+                <span class="price-level-icon"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 12h16M7 8h10M7 16h10"/></svg></span><span>보통</span>
+              </button>
+              <button type="button" class="price-level-chip price-level-high" data-price-level="high" aria-pressed="false" title="비싼 주유소 선택">
+                <span class="price-level-icon"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 17h16M7 13l5-5 5 5M12 8v9"/></svg></span><span>비쌈</span>
+              </button>
+            </div>
+            <p id="price-level-help" class="price-level-help" role="status">선택하지 않으면 전체 주유소를 표시합니다.</p>
+            <span class="price-level-reference"><i class="marker-guide-dot stale"></i>참고·미확인 가격은 선택 시 제외됩니다.</span>
           </div>
-          <p>가격이 오래됐거나 기준시각을 확인할 수 없는 주유소는 회색으로 표시하고 최저가 판단에서는 제외합니다.</p>
         </div>
       </div>
       <section id="route-panel" class="route-panel" aria-labelledby="route-heading" hidden>
