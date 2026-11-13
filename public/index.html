@@ -42,8 +42,6 @@
         <button type="button" id="mobile-search-toggle" class="mobile-search-toggle" aria-expanded="false" aria-controls="search-form" aria-label="검색 열기" title="검색 열기"><span class="icon" data-icon="search"></span><span id="mobile-search-label">검색</span><span id="mobile-search-indicator" class="mobile-search-indicator" aria-hidden="true" hidden></span></button>
         <div id="extra-filters" class="extra-filters filter-popover" hidden>
           <div class="filter-popover-head"><strong>추가 필터</strong><span>선택하면 지도와 목록에 바로 적용됩니다.</span></div>
-          <label class="filter-option"><input id="self-only" type="checkbox"><span><strong>셀프 주유소만 보기</strong><small>셀프 주유가 가능한 주유소만 표시합니다.</small></span></label>
-          <label class="filter-option"><input id="fresh-only" type="checkbox"><span><strong>최신 가격만 보기</strong><small>현재 가격 비교에 사용할 수 있는 최신 자료만 표시합니다.</small></span></label>
           <div class="price-level-filter" role="group" aria-label="가격 수준 복수 선택">
             <div class="price-level-filter-heading"><strong>가격 수준</strong><small>여러 개 선택 가능</small></div>
             <div class="price-level-options">
@@ -60,6 +58,8 @@
             <p id="price-level-help" class="price-level-help" role="status">선택하지 않으면 전체 주유소를 표시합니다.</p>
             <span class="price-level-reference"><i class="marker-guide-dot stale"></i>참고·미확인 가격은 선택 시 제외됩니다.</span>
           </div>
+          <label class="filter-option"><input id="self-only" type="checkbox"><span><strong>셀프 주유소만 보기</strong><small>셀프 주유가 가능한 주유소만 표시합니다.</small></span></label>
+          <label class="filter-option"><input id="fresh-only" type="checkbox"><span><strong>최신 가격만 보기</strong><small>현재 가격 비교에 사용할 수 있는 최신 자료만 표시합니다.</small></span></label>
         </div>
       </div>
       <section id="route-panel" class="route-panel" aria-labelledby="route-heading" hidden>
