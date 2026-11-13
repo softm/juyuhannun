@@ -75,7 +75,7 @@ test('mobile view, fuel and filter controls fold into a menu after ten seconds',
   assert.match(app, /refreshComparison=!mobileMapView\.isMobile\(\)\|\|mobileComparisonRefreshRequested/);
   assert.match(app, /if\(refreshComparison&&filtered\.length\)mobileComparisonRefreshRequested=false/);
   assert.match(app, /focus-rescan'[\s\S]*mobileComparisonRefreshRequested=true;[\s\S]*가격 순위를 다시 확인했습니다/);
-  assert.match(map, /setStations\(stations, selectedId = null, fuel = 'B027',\{refreshComparison=true\}=\{\}\)/);
+  assert.match(map, /setStations\(stations, selectedId = null, fuel = 'B027',\{refreshComparison=true,priceBands=null\}=\{\}\)/);
 });
 
 test('mobile search closes on focus exit and keeps fuel and filter popovers mutually exclusive', () => {
@@ -172,7 +172,7 @@ test('detail sheet handle is interactive and snaps focus modes', () => {
 
 
 test('approved focus design renders price-level marker tones, selected price pin and station callout', () => {
-  assert.match(map, /markerPriceBands\(/);
+  assert.match(map, /priceBandsForStations\(/);
   assert.match(map, /markerTone\(/);
   assert.match(map, /selected-station-callout/);
   assert.match(map, /tone-green/);
@@ -355,7 +355,11 @@ test('expanded mobile fuel selector exposes every fuel choice instead of hiding 
 test('filter popover explains each checkbox and marker color meaning clearly', () => {
   assert.match(html, /셀프 주유소만 보기/);
   assert.match(html, /최신 가격만 보기/);
-  assert.match(html, /마커 색상 = 현재 유종의 가격 수준/);
+  assert.match(html, /가격 수준 복수 선택/);
+  for(const level of ['low','mid','high'])
+    assert.match(html,new RegExp('data-price-level="'+level+'" aria-pressed="false"'));
+  assert.match(html,/참고·미확인 가격은 선택 시 제외됩니다/);
+  assert.match(styles,/\.price-level-options button\.price-level-chip/);
   assert.match(styles, /\.filter-option strong\{[^}]*font-size:14px/);
   assert.match(styles, /\.filter-option input\{[^}]*width:22px/);
 });
