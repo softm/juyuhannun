@@ -68,12 +68,18 @@ export function setupMyPage({favoritesCount,showFavorites,destinations,removeDes
     byId('my-signup').hidden=!!user;
     byId('my-logout').hidden=!user;
     byId('my-login').disabled=busy;
-    byId('my-signup').disabled=busy;
+    byId('my-signup').disabled=busy || providers?.registrationLocked===true;
     byId('my-logout').disabled=busy;
     byId('my-retry').hidden=!error || busy;
     byId('my-account-manage').hidden=!user;
     byId('my-cloud').hidden=true;
     if(user)selector.hidden=true;
+    const mobileEntry=document.querySelector('.more-menu [data-my-page]');
+    if(mobileEntry){
+      const label=mobileEntry.querySelector('strong'),summary=mobileEntry.querySelector('small');
+      if(label)label.textContent=user?'마이페이지':'로그인·회원가입';
+      if(summary)summary.textContent=user?'로그인 상태·기기 자료 확인':'한눈 공통 계정으로 계속하기';
+    }
     accountAvatar();
   }
   function providerButton(provider,label,mark){
@@ -120,6 +126,7 @@ export function setupMyPage({favoritesCount,showFavorites,destinations,removeDes
     return checking;
   }
   function showProviders(nextMode){
+    if(nextMode==='signup' && providers?.registrationLocked===true){error='현재 신규 회원가입을 받을 수 없습니다.';render();return;}
     mode=nextMode;
     selector.hidden=false;
     renderProviders();
