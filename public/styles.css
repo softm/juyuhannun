@@ -310,3 +310,42 @@ body.route-mode .results-header>label{display:none}
 #my-page [hidden]{display:none!important}#my-page button:disabled{opacity:.55}
 
 .drive-hud-station::after{content:"";position:absolute;bottom:-9px;left:calc(50% - 7px);width:14px;height:14px;transform:rotate(45deg);background:#149d73;border-right:3px solid #fff;border-bottom:3px solid #fff}.drive-hud-brand{background:#fff}.drive-hud-direction{color:#fff}
+
+
+/* Cloudflare common account: compact signed-out icon and signed-in avatar. */
+.app-header .header-actions [data-my-page].cf-account-trigger{
+  box-sizing:border-box;display:inline-grid;place-items:center;flex:none;width:42px;height:42px;
+  min-width:42px;min-height:42px;padding:3px;border:1px solid #cbdcd5;border-radius:50%;
+  background:#fff;color:#195846;box-shadow:0 2px 8px rgba(10,51,39,.08);
+}
+.app-header .cf-account-trigger svg{width:23px;height:23px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.app-header .cf-account-trigger .cf-account-avatar{width:34px;height:34px;display:grid;place-items:center;overflow:hidden;border-radius:50%;background:#e1f2e9;color:#14543f;font-weight:800;font-size:15px}
+.app-header .cf-account-trigger .cf-account-avatar img{width:100%;height:100%;object-fit:cover}
+.app-header .cf-account-trigger:focus-visible{outline:3px solid #228b63;outline-offset:3px}
+.app-header .cf-account-trigger[aria-busy=true]{opacity:.65;cursor:progress}
+#my-page .cf-account-note{font-size:12px;color:#586f64}
+#my-page .cf-provider-options{margin:12px 0;display:grid;gap:8px}
+#my-page .cf-provider-options[hidden]{display:none!important}
+#my-page .cf-provider-options p{margin:0 0 5px;color:#51695e}
+#my-page .cf-provider-options small{font-size:12px;color:#7c6451}
+#my-page button.cf-provider{
+  box-sizing:border-box;width:100%;min-height:48px;display:flex;align-items:center;
+  justify-content:center;gap:11px;font-size:14px;font-weight:700;border-radius:12px;
+  transition:filter .15s ease;
+}
+#my-page button.cf-provider-google{color:#202124;background:#fff;border:1px solid #dadce0}
+#my-page button.cf-provider-kakao{color:#191919;background:#fee500;border:1px solid #fee500}
+#my-page button.cf-provider-naver{color:white;background:#03c75a;border:1px solid #03c75a}
+#my-page .cf-provider-mark{display:inline-grid;place-items:center;width:23px;height:23px;font:bold 19px Arial,sans-serif}
+#my-page .cf-provider-google .cf-provider-mark{
+  background:conic-gradient(#4285f4 0 28%,#34a853 28% 48%,#fbbc05 48% 68%,#ea4335 68% 85%,#4285f4 85%);
+  background-clip:text;-webkit-background-clip:text;color:transparent
+}
+#my-page .cf-provider-kakao .cf-provider-mark{color:#191919}
+#my-page .cf-provider-naver .cf-provider-mark{color:#fff}
+#my-page button.cf-provider:not(:disabled):hover{filter:brightness(.97)}
+#my-page button.cf-provider:disabled{opacity:.55;cursor:not-allowed}
+@media(max-width:560px){
+  .app-header .header-actions [data-my-page].cf-account-trigger{width:38px;height:38px;min-width:38px;min-height:38px}
+  .app-header .cf-account-trigger .cf-account-avatar{width:30px;height:30px}
+}
