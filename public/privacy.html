@@ -14,12 +14,12 @@
   </style>
 </head>
 <body>
-<section aria-labelledby="common-vault-privacy" style="margin:20px 0;padding:16px;border:1px solid #94b7a0;border-radius:12px"><h2 id="common-vault-privacy">선택 공통 계정·암호화 보관소</h2><p>이하 기기 전용 저장 설명은 공통 보관소를 사용하지 않는 기본 이용에 적용됩니다. 마이페이지에서 SNS 로그인 후 ‘백업·복원 관리’에서 저장을 누르거나 현재 창의 자동 저장을 켜면 찜한 주유소·유종·직접 저장한 최근 목적지와 개인 메모를 기기에서 암호화해 사이트별 Firestore 보관소에 저장합니다. 암호는 서버에 보내거나 기기에 보관하지 않습니다. 최근 저장본 5개를 유지하며 원격 저장본 삭제와 로그아웃을 제공합니다. 기존 별도 계정 기록은 자동 병합하지 않습니다. <a href="https://softm.github.io/account/privacy.html" target="_blank" rel="noopener noreferrer">공통 계정 개인정보 안내</a></p></section>
+<section aria-labelledby="common-account-privacy" style="margin:20px auto;padding:16px;border:1px solid #94b7a0;border-radius:12px;max-width:780px"><h2 id="common-account-privacy">Cloudflare 공통 계정 로그인</h2><p>선택적으로 Google·카카오·네이버로 로그인할 수 있습니다. 공통 계정은 Cloudflare Worker 및 D1에서 회원 식별자, SNS 연결 정보, 필수 동의 기록과 인증 세션을 처리합니다. 주유한눈은 서비스 범위가 제한된 로그인 세션만 받습니다. 찜 목록·유종·최근 목적지는 현재 기기에만 저장되며, 이 버전에서는 로그인만으로 서버에 자동 저장·동기화되지 않습니다. 이전 Firebase 공통 보관소 자료는 새 Cloudflare 계정으로 자동 이관되지 않습니다. <a href="https://softm-hannun-account.softm.workers.dev/account" target="_blank" rel="noopener noreferrer">Cloudflare 공통 계정 관리</a></p></section>
 
 <main>
   <div class="card">
     <h1>주유한눈 개인정보처리방침</h1>
-    <p class="muted">시행일: 2026-11-05</p>
+    <p class="muted">시행일: 2026-11-13</p>
     <p>주유한눈은 가까운 주유소와 가격 정보를 지도에서 확인하기 위한 서비스입니다.</p>
     <h2>1. 처리할 수 있는 정보</h2>
     <p>사용자가 위치 권한을 허용한 경우 현재 위치 표시, 출발지 설정, 주행 상태 감지와 직접 켠 투명 레이더의 주유소 방향·거리 표시를 위해 위치 정보를 처리합니다. 선택 유종, 찜한 주유소 식별자와 최근 목적지의 이름·좌표는 기기 또는 WebView 저장소에 저장될 수 있습니다. 웹 호스팅, 지도, 데이터 제공 또는 서버 운영 과정에서 IP 주소, 요청 시각, 브라우저·기기 정보 등 일반적인 접속 로그가 처리될 수 있습니다.</p>
@@ -31,7 +31,7 @@
     <h2>4. 외부 서비스 및 공개 데이터</h2>
     <p>주유한눈은 한국석유공사 오피넷 등 공개·공식 데이터, 네이버 지도·경로 서비스, VWorld 장소검색, 웹의 카카오 AdFit 광고와 Android 앱의 Google AdMob 광고를 사용할 수 있습니다. 사용자가 목적지 검색을 실행하면 입력한 장소명 또는 주소가 검색 결과 제공을 위해 VWorld와 지도 제공업체에 전달될 수 있습니다. 광고 SDK는 광고 제공·측정과 부정 이용 방지를 위해 광고 요청·노출·클릭 정보, IP 주소, 브라우저·기기 정보, 쿠키 또는 광고 식별자 등 온라인 식별정보를 처리할 수 있습니다. Android 앱은 Google UMP를 통해 필요한 지역에서 동의 또는 개인정보 옵션을 제공합니다. 운영자가 사용자의 GPS 좌표를 광고 요청 항목으로 직접 전달하지 않으며, Android 앱에서는 웹 AdFit 광고와 네이티브 AdMob 광고를 중복 요청하지 않습니다. 외부 서비스의 데이터 처리에는 해당 제공자의 정책이 적용될 수 있습니다. <a href="https://privacy.kakao.com/main" rel="noopener noreferrer">카카오 개인정보 보호 안내</a> · <a href="https://policies.google.com/privacy" rel="noopener noreferrer">Google 개인정보처리방침</a></p>
     <h2>5. 보관 및 삭제</h2>
-    <p>기본 지도·가격 비교는 회원가입 없이 이용할 수 있습니다. 선택 기능인 공통 계정·계정 백업을 이용한 경우에는 <a href="./delete-account.html">계정 및 데이터 삭제 안내</a>에서 원격 저장본 삭제와 공통 계정 회원탈퇴 방법을 확인할 수 있습니다. 최근 목적지는 앱의 더보기 메뉴에서 삭제할 수 있고, 기기에 저장된 찜·설정 정보는 앱 데이터 삭제 또는 앱 제거로 삭제할 수 있습니다. 앱 제거만으로 공통 계정이나 원격 저장본이 삭제되지는 않습니다. 이동 궤적과 경로선은 기기에 히스토리로 저장하지 않습니다. 서버 로그가 운영상 생성되는 경우 보안·장애 대응 목적에 필요한 기간만 보관하도록 관리합니다.</p>
+    <p>기본 지도·가격 비교는 회원가입 없이 이용할 수 있습니다. 공통 계정을 이용한 경우에는 <a href="./delete-account.html">계정 및 데이터 삭제 안내</a>에서 로그아웃과 회원정보 삭제 요청 방법을 확인할 수 있습니다. 최근 목적지는 앱의 더보기 메뉴에서 삭제할 수 있고, 기기에 저장된 찜·설정 정보는 앱 데이터 삭제 또는 앱 제거로 삭제할 수 있습니다. 앱 제거만으로 공통 계정이나 이전 버전에서 별도 저장한 자료가 삭제되지는 않습니다. 이동 궤적과 경로선은 기기에 히스토리로 저장하지 않습니다. 서버 로그가 운영상 생성되는 경우 보안·장애 대응 목적에 필요한 기간만 보관하도록 관리합니다.</p>
     <h2>6. 아동</h2>
     <p>주유한눈은 아동을 주 사용자층으로 설계한 서비스가 아닙니다.</p>
     <h2>7. 문의</h2>
