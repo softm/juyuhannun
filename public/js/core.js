@@ -99,6 +99,48 @@ export function searchStations(stations,{query='',fuel,center,brand='',self=fals
       return {...station,currentPrice,confidence,distance:distanceMeters(center,station),searchRank:rank};
     }).filter(Boolean).sort((a,b)=>a.searchRank-b.searchRank||a.distance-b.distance||a.currentPrice.price-b.currentPrice.price).slice(0,Math.max(1,limit));
 }
+
+/**
+ * Price thirds used by both the map marker colors and the interactive filters.
+ * Only prices eligible for comparison contribute to the thresholds.
+ * Levels must be computed BEFORE applying a price-level filter, otherwise the
+ * visible stations would be recolored after every selection.
+ */
+export function priceBandsForStations(stations, fuel, now=Date.now()) {
+  const prices=[];
+  for(const station of Array.isArray(stations)?stations:[]){
+    const p=getFuelPrice(station,fuel);
+    if(!p||!Number.isFinite(Number(p.price)))continue;
+    if(freshness(p.priceUpdatedAt,p.fetchedAt,now,p.priceTimeStatus,p.sourceDate).eligible)
+      prices.push(Number(p.price));
+  }
+  prices.sort((a,b)=>a-b);
+  if(!prices.length)return {count:0,min:null,low:null,high:null};
+  if(prices.length===1)return {count:1,min:prices[0],low:prices[0],high:prices[0]};
+  const last=prices.length-1;
+  return {
+    count:prices.length,min:prices[0],
+    low:prices[Math.max(0,Math.floor(last/3))],
+    high:prices[Math.min(last,Math.ceil(last*2/3))]
+  };
+}
+export function priceLevelForStation(station, fuel, bands, now=Date.now()){
+  const p=getFuelPrice(station,fuel);
+  if(!p||!freshness(p.priceUpdatedAt,p.fetchedAt,now,p.priceTimeStatus,p.sourceDate).eligible)
+    return 'reference';
+  if(!bands||bands.count<2)return 'mid';
+  const price=Number(p.price);
+  if(price<=bands.low)return 'low';
+  if(price>=bands.high)return 'high';
+  return 'mid';
+}
+/** Empty selection means all including reference prices. Otherwise OR match. */
+export function filterPriceLevelRows(rows, levels, bands, fuel, now=Date.now()){
+  if(!Array.isArray(levels)||!levels.length)return rows;
+  const selected=new Set(levels.filter(level=>['low','mid','high'].includes(level)));
+  return rows.filter(row=>selected.has(priceLevelForStation(row,fuel,bands,now)));
+}
+
 export function summarizeVisiblePrices(stations) {
   const comparable = stations.filter(s=>s.confidence?.eligible && finite(s.currentPrice?.price) && s.currentPrice.price>0);
   return {total:stations.length,comparable:comparable.length,reference:stations.length-comparable.length,lowest:comparable.length?Math.min(...comparable.map(s=>s.currentPrice.price)):null};

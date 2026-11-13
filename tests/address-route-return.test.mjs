@@ -136,7 +136,7 @@ test('route results switch between the top recommendations and all stations from
   assert.match(app, /routeResultScope:'recommended'/);
   assert.match(app, /selectRouteDisplayRows\(allRows,state\.routeResultScope\)/);
   assert.match(app, /\$\('route-results-toggle'\)\.addEventListener\('click'/);
-  assert.match(app, /map\.setStations\(mapRows,rows\.length\?state\.selected:null,state\.fuel\)/);
+  assert.match(app, /map\.setStations\(mapRows,rows\.length\?state\.selected:null,state\.fuel,\{priceBands:rows\.length\?priceBands:null\}\)/);
   assert.match(styles, /\.route-results-toggle\[aria-pressed="true"\]/);
   assert.match(mobileCss, /body\.route-mode\.route-results-ready \.map-secondary-actions \.route-results-toggle\[aria-pressed="false"\]/);
 });
