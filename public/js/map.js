@@ -4,6 +4,7 @@ import { markerScale, labelBudget, markerDensityLimit, visibleStations, labelCan
 import { mergeLocationSearchResults, normalizeAddressSearchResults, normalizePlaceSearchResults } from './address-search.js';
 import {createDrivingMotionState,drivingZoomForSpeed,updateDrivingMotion} from './driving-controller.js';
 import {brandVisual} from './brand-visuals.js';
+import {angleDelta,forwardCandidate} from './driving-approach.js';
 import '../shared/care-location.js';
 import '../shared/care-popup-geometry.js';
 import '../shared/map-marker-placement.js';
@@ -261,6 +262,7 @@ function installMarkerStyles() {
     '.map-you{display:block;position:relative;width:18px;height:18px;border:3px solid #fff;border-radius:50%;background:#2674db;box-shadow:0 0 0 7px #2674db30,0 2px 8px #193a6040}',
     '.map-you.is-driving{width:30px;height:30px;border-width:4px;background:#1769d7;box-shadow:0 0 0 9px #2674db26,0 4px 14px #193a6050}',
     '.map-you.is-driving:before{content:"";position:absolute;left:50%;top:-15px;width:0;height:0;border-left:7px solid transparent;border-right:7px solid transparent;border-bottom:15px solid #1769d7;transform:translateX(-50%) rotate(var(--drive-heading,0deg));transform-origin:50% 30px;filter:drop-shadow(0 1px 1px #fff)}',
+    '.driving-side-badge{position:absolute;bottom:calc(100% + 3px);left:50%;transform:translateX(-50%);white-space:nowrap;border-radius:12px;background:#0f766e;color:white;border:2px solid white;padding:3px 7px;font:800 11px/1.3 system-ui,sans-serif;box-shadow:0 2px 8px #0003;pointer-events:none;z-index:3}',
     '.route-endpoint{display:flex;align-items:center;justify-content:center;width:36px;height:36px;border:3px solid #fff;border-radius:50%;color:#fff;box-shadow:0 4px 13px #183a3445;font:900 12px/1 system-ui,sans-serif}',
     '.route-endpoint-start{background:#1d4ed8}.route-endpoint-destination{background:#111827}',
     '.route-simulation-car{display:flex;align-items:center;justify-content:center;width:42px;height:42px;border:3px solid #fff;border-radius:50%;background:#0f6b57;color:#fff;box-shadow:0 0 0 7px #0f6b5726,0 6px 18px #173a3150;font:24px/1 system-ui,sans-serif}',
@@ -713,7 +715,11 @@ export class MapController {
 
   _renderMarkers(revision) {
     if (revision !== this._renderRevision || !this.ready || this._destroyed) return;
-    const rows = visibleStations(this._stations, this.getBounds(), this._selectedId);
+    const rows = visibleStations(this._stations, this.getBounds(), this._selectedId).filter(row => {
+      if (!this.isDriving() || !this._drivePoint || !Number.isFinite(this._driveHeading)) return true;
+      if (this._driveSpeed < 2.5) return true;
+      return forwardCandidate({vehicle:this._drivePoint,station:pointFor(row),heading:this._driveHeading,tolerance:85}) !== false;
+    });
     const ids = new Set(rows.map(row => String(row.id)));
     const scale = markerScale(this.map.getZoom());
     this.canvas.classList.toggle('dense-markers', scale === 'dot' && rows.length > markerDensityLimit(this.canvas.clientWidth, this.canvas.clientHeight));
@@ -766,7 +772,13 @@ export class MapController {
     const presentationRank=Number(presentation?.rank);
     const priceRank=Number.isInteger(presentationRank)&&presentationRank>=1&&presentationRank<=5?presentationRank:!presentation&&!stale?(this._priceRanks?.get(id)??null):null;
     const isTopPrice=Number.isInteger(priceRank)&&priceRank>=1&&priceRank<=5;
-    const sourceKey = JSON.stringify([point, row.name, row.brand, row.facilities?.self, row.roadAddress, row.address, this._fuel, selected, priceRank, info, presentation, tone, this._priceBands, Math.floor(now / 60000)]);
+    const drivingSide = this.isDriving() && validPoint(this._drivePoint) && Number.isFinite(this._driveHeading) && point ? (() => {
+      const bearing=geoBearing(this._drivePoint,point);
+      if(bearing==null)return null;
+      const delta=angleDelta(bearing,this._driveHeading);
+      return Math.abs(delta)<12?'전방 방향':delta>0?'우측 방향':'좌측 방향';
+    })() : null;
+    const sourceKey = JSON.stringify([drivingSide, point, row.name, row.brand, row.facilities?.self, row.roadAddress, row.address, this._fuel, selected, priceRank, info, presentation, tone, this._priceBands, Math.floor(now / 60000)]);
     if (cached && previous?.sourceKey === sourceKey) return false;
     const price = presentation ? String(presentation.value ?? '미확인') : Number.isFinite(numericPrice) && numericPrice > 0 ? markerPriceFormat.format(numericPrice) : '미확인';
     const numericPresentation=Number(presentation?.value);
@@ -782,10 +794,11 @@ export class MapController {
     const callout=selected?'<button type="button" class="selected-station-callout" data-station-id="'+escapeHTML(id)+'" aria-label="'+escapeHTML((row.name||'주유소')+' 상세 보기')+'"><strong>'+escapeHTML(row.name||'주유소')+'</strong><b aria-hidden="true">›</b></button>':'';
     const rankLabel=presentation?.badgeLabel&&priceRank?String(presentation.badgeLabel).replace('{rank}',String(priceRank)):priceRank===1?'최저':priceRank?priceRank+'위':'';
     const rankDelay=priceRank?((priceRank-1)*0.12).toFixed(2)+'s':'0s';
+    const sideBadge=drivingSide?'<span class="driving-side-badge" title="GPS 기준 상대 방향이며 진입 가능 여부는 확인되지 않았습니다">'+escapeHTML(drivingSide)+'</span>':'';
     const lowestBadge=isTopPrice&&!selected?'<button type="button" class="lowest-price-badge rank-'+priceRank+'" style="--rank-delay:'+rankDelay+'" data-station-id="'+escapeHTML(id)+'" aria-label="'+escapeHTML((row.name||'주유소')+' '+rankLabel+' '+visiblePrice+'원 상세 보기')+'" title="'+escapeHTML((row.name||'주유소')+' 상세 보기')+'">'+pinBrandBadge+'<span class="lowest-tag">'+escapeHTML(rankLabel)+'</span><strong>'+escapeHTML(visiblePrice)+'원</strong></button>':'';
     const selectedRankChip=isTopPrice&&selected?'<span class="selected-rank-chip rank-'+priceRank+'">'+escapeHTML(rankLabel)+'</span>':'';
     const detailLabel=selected?'':'<span class="price-pin-name"><span class="price-label-title">'+escapeHTML(row.name || '주유소')+'</span><span class="price-label-value">'+escapeHTML(visiblePrice+(visiblePrice!=='—'?unit:''))+'</span><span class="price-label-detail">'+escapeHTML(facts)+'</span></span>';
-    const content = '<div class="station-marker tone-' + tone + (selected ? ' is-selected' : '') + (isTopPrice ? ' is-lowest rank-'+priceRank : '') + (hasVisiblePrice ? ' has-visible-price' : '') + '">'+lowestBadge+callout+'<button type="button" class="price-pin' + (selected ? ' selected' : '') +
+    const content = '<div class="station-marker tone-' + tone + (selected ? ' is-selected' : '') + (isTopPrice ? ' is-lowest rank-'+priceRank : '') + (hasVisiblePrice ? ' has-visible-price' : '') + '">'+sideBadge+lowestBadge+callout+'<button type="button" class="price-pin' + (selected ? ' selected' : '') +
       (stale ? ' is-stale' : '') + '" data-station-id="' + escapeHTML(id) +
       '" aria-label="' + escapeHTML(label) + '" aria-pressed="' + selected + '" title="' + escapeHTML(label) +
       '">'+pinBrandBadge+selectedRankChip+'<span class="price-pin-glyph" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="12" height="17" rx="2"/><path d="M6 7h6v4H6ZM1 21h16m-2-8h2v5a2 2 0 0 0 4 0V8l-4-4m3 3v4h1"/></svg></span><span class="price-pin-value">' + escapeHTML(visiblePrice) +
