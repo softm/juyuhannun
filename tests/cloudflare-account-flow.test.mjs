@@ -11,16 +11,19 @@ test('common account starts at SNS selection with no extra login or signup step'
   assert.ok(account.includes('처음 이용한다면 SNS 인증 후 회원가입 동의'));
   assert.ok(!account.includes('id="my-login"'));
   assert.ok(!account.includes('id="my-signup"'));
-  assert.ok(!account.includes('my-favorites'));
+  assert.ok(account.includes('id="my-favorites-sync"'));
+  assert.ok(account.includes('id="my-favorites-delete"'));
   assert.ok(!account.includes('my-destinations'));
 });
 
-test('saved device records are separate from login',()=>{
+test('favorites sync with login while destinations remain device-only',()=>{
   const local=html.split('<dialog id="device-page"')[1]?.split('</dialog>')[0]||'';
   assert.ok(html.includes('data-device-records'));
   assert.ok(local.includes('id="my-favorites"'));
   assert.ok(local.includes('id="my-destinations"'));
   assert.ok(ui.includes("account.login(provider)"));
+  assert.ok(ui.includes("account.exchangeFavorites('GET')"));
+  assert.ok(ui.includes("account.exchangeFavorites('DELETE')"));
   assert.ok(ui.includes('getAvailableProviders()'));
   assert.ok(!ui.includes('firebase'));
 });
