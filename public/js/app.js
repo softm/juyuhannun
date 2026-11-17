@@ -177,13 +177,13 @@ function drivingStationScore(station){
  return distance*(1+Math.min(2,delta/70));
 }
 function drivingMapStations(rows){
- if(!state.driving.active||!state.driving.point||!Number.isFinite(state.driving.heading))return rows;
+ if(!state.driving.active||!state.driving.point||!Number.isFinite(state.driving.heading)||$('drive-forward-only')?.checked===false)return rows;
  const here=state.driving.point,heading=state.driving.heading;
  return rows.filter(station=>{
    if(station.id===state.selected)return true;
    if(!hasMapCoordinates(station))return false;
    const distance=distanceMeters(here,station);
-   if(distance<=450)return true;
+   if(distance<=35)return true;
    const cone=state.driving.speed>=16?78:state.driving.speed>=7?92:110;
    const limit=state.driving.speed>=16?10000:state.driving.speed>=7?7000:4500;
    return distance<=limit&&angleDelta(bearingDegrees(here,station),heading)<=cone;
@@ -689,9 +689,11 @@ function handleDrivingUpdate({point,heading,speed,accuracy,phase='active'}){
  if(point&&Number.isFinite(point.lat)&&Number.isFinite(point.lng))lastDrivingPoint={...point};
  state.driving={...state.driving,active,phase,point,heading:reliableHeading,speed,accuracy};lastLocatedPoint={...point,accuracy,timestamp:Date.now()};state.center={...point};syncDrivingButton();if(active){refreshDrivingRoadPrediction(point,reliableHeading,speed);updateDrivingHud();render();}
 }
+$('drive-forward-only')?.addEventListener('change',()=>{map.setDrivingForwardOnly($('drive-forward-only').checked);render();});
 function startDrivingMode({hud=false}={}){
  if(!state.mapReady){toast('지도가 준비된 뒤 주행 추적을 시작해 주세요.');return;}
  try{
+   $('drive-forward-control').hidden=false;map.setDrivingForwardOnly($('drive-forward-only').checked);
    state.driving.active=true;state.driving.hud=hud;state.driving.point=lastDrivingPoint||lastLocatedPoint||state.driving.point;state.driving.heading=lastDrivingHeading;syncDrivingButton();syncDrivingStationStatus();updateDrivingHud();
    map.startDriving({
      onUpdate:({point,heading,speed,accuracy})=>{
