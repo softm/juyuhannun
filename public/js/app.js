@@ -503,7 +503,7 @@ function renderDetail(){
  const navigationAction=routeNavigation?`<button type="button" class="focus-route-button" data-action="route-nav" data-id="${esc(station.id)}">${icon('route')}경유 길안내</button>`:`<a class="focus-route-button" href="${nav}" target="_blank" rel="noopener noreferrer">${icon('route')}길안내</a>`;
  $('detail-content').innerHTML=`<div class="station-focus-detail">
    <p class="focus-breadcrumb">${esc(stationRegion(station))} <span>·</span> 주유소 <span>·</span> ${esc(brand)}</p>
-   <h2>${esc(station.name)}</h2>
+   <div class="detail-title-row"><h2>${esc(station.name)}</h2><button type="button" class="detail-favorite" data-action="save" data-id="${esc(station.id)}" aria-label="${esc(station.name)} ${state.favorites.has(station.id)?'찜 해제':'찜하기'}" title="${state.favorites.has(station.id)?'찜 해제':'찜하기'}" aria-pressed="${state.favorites.has(station.id)}">${icon('heart')}</button></div>
    <div class="focus-brand-badge">${detailBrandLogo}<span>${esc(brand)}${f.self===true?' · 셀프':''}</span></div>
    <div class="focus-primary-actions">
      <button type="button" class="other-stations-button" data-action="show-list">다른 주유소 <strong>${others}</strong><span aria-hidden="true">→</span></button>
