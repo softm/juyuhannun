@@ -822,7 +822,7 @@ favoritesSyncController=setupMyPage({
   destinations:()=>recentDestinations,
   removeDestination(id){recentDestinations=recentDestinations.filter(item=>item.id!==id);saveStorage(RECENT_DESTINATIONS_KEY,recentDestinations);renderRecentDestinations();}
   ,favoritesSnapshot:()=>favoriteSnapshot
-  ,applyFavoritesSnapshot
+  ,applyFavoritesSnapshot:applyFavoriteSnapshot
 });
 const startupDataPromise=loadData();
 mapLoading.stage('map');
