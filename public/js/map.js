@@ -330,6 +330,7 @@ export class MapController {
     this._drivePrediction = null;
     this._driveRoadPredictionCoords = [];
     this._drivePoint = null;
+    this._driveForwardOnly = true;
     this._driveSpeed = 0;
     this._driveMotion = createDrivingMotionState();
     this._driveForceActive = false;
@@ -716,7 +717,7 @@ export class MapController {
   _renderMarkers(revision) {
     if (revision !== this._renderRevision || !this.ready || this._destroyed) return;
     const rows = visibleStations(this._stations, this.getBounds(), this._selectedId).filter(row => {
-      if (!this.isDriving() || !this._drivePoint || !Number.isFinite(this._driveHeading)) return true;
+      if (!this.isDriving() || !this._driveForwardOnly || !this._drivePoint || !Number.isFinite(this._driveHeading)) return true;
       if (this._driveSpeed < 2.5) return true;
       return forwardCandidate({vehicle:this._drivePoint,station:pointFor(row),heading:this._driveHeading,tolerance:85}) !== false;
     });
@@ -986,6 +987,8 @@ export class MapController {
     const leadMeters = Math.max(180, Math.min(1800, visibleMeters * (0.16 + speedFactor * 0.08)));
     return projectPoint(point, heading, leadMeters) || { ...point };
   }
+
+  setDrivingForwardOnly(enabled) { this._driveForwardOnly=Boolean(enabled); this._scheduleMarkers(); }
 
   isDriving() {
     return this._driveWatchId != null && ['active','paused'].includes(this._driveMotion?.phase);
