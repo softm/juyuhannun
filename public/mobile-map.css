@@ -849,7 +849,7 @@ body:not(.energy-page):not(.mobile-map-mode):not(.mobile-map-fullscreen) .app-he
 body:not(.energy-page):not(.mobile-map-mode):not(.mobile-map-fullscreen) .brand{font-size:20px;gap:8px}
 body:not(.energy-page):not(.mobile-map-mode):not(.mobile-map-fullscreen) .brand img{width:36px;height:36px}
 body:not(.energy-page):not(.mobile-map-mode):not(.mobile-map-fullscreen) .brand small{display:none}
-body:not(.energy-page):not(.mobile-map-mode):not(.mobile-map-fullscreen) .workspace{height:calc(100dvh - 56px);min-height:0}
+body:not(.energy-page):not(.mobile-map-mode):not(.mobile-map-fullscreen) .workspace{height:calc(100dvh - 56px - var(--juyu-bottom-ad-space,0px));min-height:0}
 body:not(.mobile-map-mode):not(.mobile-map-fullscreen) .workspace .view-tabs{padding-inline:10px}
 body:not(.mobile-map-mode):not(.mobile-map-fullscreen) .workspace .view-tab{min-height:48px;padding:6px 2px}
 body:not(.mobile-map-mode):not(.mobile-map-fullscreen) .workspace .search-block{display:grid;grid-template-columns:minmax(0,1fr) 48px;gap:6px;padding:8px 10px}
