@@ -622,6 +622,11 @@ function syncPriceLevelButtons(){
   b.classList.toggle('is-selected',active);
   b.setAttribute('aria-pressed',String(active));
  }
+ document.querySelectorAll('[data-price-picker]').forEach(button=>{
+  button.classList.toggle('has-selection',Boolean(selected.length));
+  button.textContent='가격수준'+(selected.length?' '+selected.length:'')+' ▾';
+  button.setAttribute('aria-label','가격수준: '+(selected.length?selected.map(v=>labels[v]).join('·'):'전체'));
+ });
  const indicator=$('price-level-indicator');
  if(indicator){indicator.hidden=!selected.length;indicator.textContent=selected.length||'';}
  $('toggle-filters').classList.toggle('has-price-level-filter',Boolean(selected.length));
@@ -639,6 +644,19 @@ document.querySelectorAll('[data-price-level]').forEach(button=>button.addEventL
  render();
 }));
 syncPriceLevelButtons();
+const pricePanel=$('quick-price-options');
+let priceAnchor=null;
+function closePricePicker(){pricePanel.hidden=true;document.querySelectorAll('[data-price-picker]').forEach(b=>b.setAttribute('aria-expanded','false'));priceAnchor=null;}
+document.querySelectorAll('[data-price-picker]').forEach(button=>button.addEventListener('click',()=>{
+ const wasOpen=priceAnchor===button;closePricePicker();if(wasOpen)return;
+ closeBrandPicker();priceAnchor=button;button.setAttribute('aria-expanded','true');pricePanel.hidden=false;
+ const r=button.getBoundingClientRect(),p=pricePanel.getBoundingClientRect();
+ pricePanel.style.left=Math.max(8,Math.min(innerWidth-p.width-8,r.left))+'px';
+ pricePanel.style.top=Math.max(8,Math.min(innerHeight-p.height-8,r.bottom+5))+'px';
+}));
+document.addEventListener('click',e=>{if(!e.target.closest('[data-price-picker],#quick-price-options'))closePricePicker();});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&priceAnchor){const button=priceAnchor;closePricePicker();button.focus();}});
+window.addEventListener('resize',closePricePicker);
 $('fresh-only').addEventListener('change',()=>{state.freshOnly=$('fresh-only').checked;render();});
 $('sort').addEventListener('change',()=>{state.sort=$('sort').value;render();});
 $('toggle-filters').addEventListener('click',()=>{const open=$('extra-filters').hidden;$('extra-filters').hidden=!open;$('toggle-filters').setAttribute('aria-expanded',String(open));if(open){setMobileSearchOpen(false,{focus:false});$('fuel-tabs').classList.remove('mobile-open');$('mobile-fuel-toggle').setAttribute('aria-expanded','false');}});
