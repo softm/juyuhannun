@@ -132,7 +132,7 @@ Pages의 가는 길 주유는 `https://asia-northeast3-softm-hannun-api.cloudfun
 - /health 응답의 provider 활성 상태에 따라 Google·카카오·네이버 로그인 버튼을 표시합니다. 미설정·승인 대기 제공자는 비활성화합니다.
 - 최초 SNS 가입자는 Cloudflare Worker의 약관·개인정보 동의 절차를 거쳐 가입하며, 기존 가입자는 공통 UID로 로그인합니다. 계정 관리: [Cloudflare 공통 계정](https://softm-hannun-account.softm.workers.dev/account).
 - 사이트 범위 1시간 토큰은 sessionStorage에만 저장합니다. 인증 팝업의 출처·요청 ID 및 PKCE 코드를 검증하고 로그아웃 시 앱 토큰을 폐기합니다.
-- 기존 찜, 유종, 최근 목적지는 로그인과 별개로 로컬에 유지되며, **주유한눈 전용 D1 개인화 저장/동기화는 현재 연결하지 않았습니다**. 과거 Firebase 공통 보관소 원격 기록을 새 Cloudflare UID로 자동 이전하지 않습니다.
+- 기존 찜은 로그인하면 `juyuhannun-api`를 통해 전용 D1 `juyuhannun-db`에 사용자별 암호문으로 자동 보관하고 같은 계정의 기기와 병합합니다. 유종과 최근 목적지는 로컬에 유지하며, 과거 Firebase 공통 보관소 원격 기록은 새 Cloudflare UID로 자동 이전하지 않습니다.
 - 주유한눈 Android(WebView)에서 Google 등 SNS 인증의 실제 완료 여부는 실기기 시스템 브라우저 연동 검증 전까지 보장하지 않습니다. Android 전용 PKCE/App Link 인증 복귀를 별도 구현해야 할 수 있습니다.
 - 테스트: `node --test tests/cloudflare-account.test.mjs`, `npm test`, `npm run check`. GitHub CI 통과는 실제 SNS 실계정 로그인 검증을 대체하지 않습니다.
 
