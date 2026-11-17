@@ -91,6 +91,25 @@ const mobileSearchCandidates=$('search-candidates');
 const MOBILE_MAP_MENU_AUTO_COLLAPSE_MS=10_000;
 let mobileMapMenuTimer=0;
 function mobileSearchOpen(){return document.body.classList.contains('mobile-map-search-open');}
+
+// Keep the search field above Android's soft keyboard and suspend the map/list sheet while typing.
+const mobileKeyboardBaseline={height:0};
+function syncMobileSearchKeyboard(){
+ const viewport=window.visualViewport;
+ const visibleHeight=viewport?.height||window.innerHeight;
+ const offsetTop=viewport?.offsetTop||0;
+ if(!mobileKeyboardBaseline.height||visibleHeight>mobileKeyboardBaseline.height)mobileKeyboardBaseline.height=visibleHeight;
+ const keyboardOpen=mobileSearchOpen()&&document.activeElement===$('query')&&mobileKeyboardBaseline.height-visibleHeight>110;
+ document.body.classList.toggle('mobile-search-keyboard-visible',keyboardOpen);
+ document.documentElement.style.setProperty('--mobile-search-viewport-top',Math.max(0,offsetTop)+'px');
+ document.documentElement.style.setProperty('--mobile-search-visible-height',Math.max(200,visibleHeight)+'px');
+}
+window.visualViewport?.addEventListener('resize',syncMobileSearchKeyboard);
+window.visualViewport?.addEventListener('scroll',syncMobileSearchKeyboard);
+window.addEventListener('resize',syncMobileSearchKeyboard);
+$('query')?.addEventListener('focus',()=>{if(mobileMapView.isMobile())setMobileSearchOpen(true,{focus:false});requestAnimationFrame(syncMobileSearchKeyboard);});
+$('query')?.addEventListener('blur',()=>requestAnimationFrame(syncMobileSearchKeyboard));
+
 function currentMobileSearchTerm(){return $('query')?.value.trim()||'';}
 function syncMobileSearchIndicator(){
  const term=currentMobileSearchTerm(),active=Boolean(term),searchAction=mobileSearchOpen()?'검색 닫기':'검색 열기',menuExpanded=mobileMapMenuToggle?.getAttribute('aria-expanded')==='true',menuAction=menuExpanded?'지도 메뉴 닫기':'지도 메뉴 펼치기';
@@ -110,6 +129,7 @@ function setMobileSearchOpen(open,{focus=true}={}){
  if(open){$('fuel-tabs')?.classList.remove('mobile-open');$('mobile-fuel-toggle')?.setAttribute('aria-expanded','false');if($('extra-filters'))$('extra-filters').hidden=true;$('toggle-filters')?.setAttribute('aria-expanded','false');if(focus)requestAnimationFrame(()=>$('query')?.focus({preventScroll:true}));}
  else if(wasOpen){++state.searchGeneration;if(mobileSearchCandidates)mobileSearchCandidates.hidden=true;}
  syncMobileSearchIndicator();
+ requestAnimationFrame(syncMobileSearchKeyboard);
 }
 function mobileMapMenuPopoverOpen(){return !$('map-brand-options').hidden||mobileSearchOpen()||$('fuel-tabs')?.classList.contains('mobile-open')||$('extra-filters')?.hidden===false;}
 function scheduleMobileMapMenuCollapse(){
