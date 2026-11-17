@@ -1,4 +1,4 @@
-// Cloudflare common identity only. Favorites and route history remain local to this device.
+// Cloudflare common identity plus account-scoped favorite station synchronization.
 // Never use Firebase credentials, persistent localStorage or a third-party OAuth WebView.
 export const ACCOUNT_ORIGIN='https://softm-hannun-account.softm.workers.dev';
 export const ACCOUNT_SITE='juyuhannun';
@@ -131,5 +131,15 @@ export function createCloudflareAccount(){
       }catch{/* Local session is cleared even if the network is unavailable. */}
     }
   }
-  return Object.freeze({login,logout,get currentUser(){return currentUser();}});
+  async function exchangeFavorites(method='GET',body){
+    if(!auth?.token||auth.expiresAt<=Date.now())throw Error('로그인이 필요합니다.');
+    const response=await fetch('https://juyuhannun-api.softm.workers.dev/api/apps/juyuhannun/favorites',{
+      method,headers:{Authorization:'Bearer '+auth.token,...(body?{'Content-Type':'application/json'}:{})},
+      body:body?JSON.stringify(body):undefined,cache:'no-store',signal:AbortSignal.timeout(15000)
+    });
+    const value=await response.json().catch(()=>({}));
+    if(!response.ok){const error=Error(value.message||value.error||'찜한 주유소를 동기화하지 못했습니다.');error.code=value.error;throw error;}
+    return value;
+  }
+  return Object.freeze({login,logout,exchangeFavorites,get currentUser(){return currentUser();}});
 }

@@ -1,8 +1,9 @@
-// Cloudflare authentication only. Device bookmarks and destinations are managed separately.
+// Cloudflare authentication and encrypted favorite-station synchronization.
 // The common Worker decides whether the verified SNS user must complete member signup.
 import {ACCOUNT_ORIGIN,createCloudflareAccount,getAvailableProviders} from './cloudflare-account.js';
+import {mergeFavoriteSnapshots} from './favorite-sync.js';
 
-export function setupMyPage({favoritesCount,showFavorites,destinations,removeDestination}){
+export function setupMyPage({favoritesCount,showFavorites,destinations,removeDestination,favoritesSnapshot,applyFavoritesSnapshot}){
   const byId=id=>document.getElementById(id);
   const dialog=byId('my-page');
   const deviceDialog=byId('device-page');
@@ -13,6 +14,8 @@ export function setupMyPage({favoritesCount,showFavorites,destinations,removeDes
   const status=byId('my-identity');
   const retry=byId('my-retry');
   const logoutButton=byId('my-logout');
+  const syncButton=byId('my-favorites-sync');
+  const deleteButton=byId('my-favorites-delete');
   const headerEntry=document.querySelector('.app-header [data-my-page]');
   const mobileEntry=document.querySelector('.more-menu [data-my-page]');
   const icons=['google','kakao','naver'];
@@ -21,6 +24,9 @@ export function setupMyPage({favoritesCount,showFavorites,destinations,removeDes
   let checking=null;
   let busy=false;
   let error='';
+  let syncBusy=false,syncTimer=0;
+  const syncKey=uid=>'juyu:cloud-favorites:v1:'+uid;
+  const shouldSync=user=>Boolean(user&&localStorage.getItem(syncKey(user.uid))!=='disabled');
 
   const svgNS='http://www.w3.org/2000/svg';
   function appendPersonIcon(target){
@@ -110,8 +116,33 @@ export function setupMyPage({favoritesCount,showFavorites,destinations,removeDes
     status.textContent=error;
     retry.hidden=!error||Boolean(user)||busy;
     logoutButton.disabled=busy;
+    syncButton.disabled=busy||syncBusy;
+    deleteButton.disabled=busy||syncBusy;
+    syncButton.textContent=shouldSync(user)?(syncBusy?'찜 동기화 중…':'찜한 곳 지금 동기화'):'찜 클라우드 동기화 다시 켜기';
     renderEntry();
     renderProviders();
+  }
+  async function synchronizeFavorites(){
+    const user=account.currentUser;
+    if(!shouldSync(user)||syncBusy)return;
+    syncBusy=true;error='';render();
+    try{
+      for(let attempt=0;attempt<3;attempt++){
+        const remote=await account.exchangeFavorites('GET');
+        const local=favoritesSnapshot();
+        const merged=mergeFavoriteSnapshots(local,remote.favorites);
+        applyFavoritesSnapshot(merged);
+        if(JSON.stringify(remote.favorites)===JSON.stringify(merged)){error='찜한 곳이 동기화되었습니다.';return;}
+        try{await account.exchangeFavorites('POST',{expectedRevision:remote.revision,favorites:merged});error='찜한 곳을 Cloudflare에 안전하게 보관했습니다.';return;}
+        catch(e){if(e.code!=='revision-conflict')throw e;}
+      }
+      throw Error('다른 기기의 변경과 겹쳤습니다. 잠시 후 다시 시도해 주세요.');
+    }catch(e){error=e?.message||'찜한 곳을 동기화하지 못했습니다. 이 기기의 찜은 유지됩니다.';}
+    finally{syncBusy=false;render();}
+  }
+  function scheduleFavoritesSync(){
+    if(!shouldSync(account.currentUser))return;
+    clearTimeout(syncTimer);syncTimer=setTimeout(()=>void synchronizeFavorites(),700);
   }
   async function refreshProviders(){
     if(checking)return checking;
@@ -128,7 +159,7 @@ export function setupMyPage({favoritesCount,showFavorites,destinations,removeDes
     try{
       // login opens a popup synchronously from the provider button click.
       await account.login(provider);
-      if(account.currentUser)dialog.close();
+      if(account.currentUser){void synchronizeFavorites();dialog.close();}
     }catch(e){error=e?.message||'SNS 로그인을 완료하지 못했습니다.';}
     finally{busy=false;render();}
   }
@@ -180,7 +211,21 @@ export function setupMyPage({favoritesCount,showFavorites,destinations,removeDes
     catch(e){error=e?.message||'로그아웃하지 못했습니다.';}
     finally{busy=false;render();}
   });
+  syncButton.addEventListener('click',()=>{
+    const user=account.currentUser;if(!user)return;
+    localStorage.removeItem(syncKey(user.uid));void synchronizeFavorites();
+  });
+  deleteButton.addEventListener('click',async()=>{
+    const user=account.currentUser;if(!user||syncBusy)return;
+    if(!window.confirm('Cloudflare에 보관된 찜한 주유소를 모두 삭제할까요?\n\n이 기기의 찜은 유지되며 자동 동기화는 꺼집니다.'))return;
+    syncBusy=true;error='찜 보관소를 삭제하고 있습니다.';render();
+    try{await account.exchangeFavorites('DELETE');localStorage.setItem(syncKey(user.uid),'disabled');error='Cloudflare 찜 보관소를 삭제하고 자동 동기화를 껐습니다.';}
+    catch(e){error=e?.message||'찜 보관소를 삭제하지 못했습니다.';}
+    finally{syncBusy=false;render();}
+  });
   byId('my-account-manage').href=ACCOUNT_ORIGIN+'/account';
   render();
   void refreshProviders();
+  if(account.currentUser&&shouldSync(account.currentUser))void synchronizeFavorites();
+  return Object.freeze({scheduleFavoritesSync,synchronizeFavorites});
 }

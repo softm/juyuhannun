@@ -13,6 +13,7 @@ import {addressSearchPresentation} from './address-search.js';
 import {normalizeRouteHistory,rememberRouteDestination} from './route-history.js';
 import {brandVisual} from './brand-visuals.js';
 import {createDrivingHud} from './driving-hud.js';
+import {favoriteIds,normalizeFavoriteSnapshot,toggleFavoriteSnapshot} from './favorite-sync.js';
 
 const $=(id)=>document.getElementById(id);
 const bottomAd=mountBottomAd();
@@ -35,10 +36,12 @@ document.querySelectorAll('[data-icon]').forEach(el=>el.innerHTML=icon(el.datase
 function readStorage(key,fallback){try{return JSON.parse(localStorage.getItem(key))??fallback;}catch{return fallback;}}
 function saveStorage(key,value){try{localStorage.setItem(key,JSON.stringify(value));}catch{}}
 const storedFavorites=readStorage('juyu:favorites:v1',[]);
+let favoriteSnapshot=normalizeFavoriteSnapshot(readStorage('juyu:favorites:v2',null),storedFavorites);
 const storedFuel=readStorage('juyu:fuel:v1','B027');
 const params=new URLSearchParams(location.search);
 const requestedFuel=params.get('fuel')||storedFuel;
-const state={fuel:FUEL_TYPES.some(f=>f.code===requestedFuel)?requestedFuel:'B027',view:'nearby',bounds:null,listLimit:60,center:{...APP_CONFIG.defaultCenter},envelope:null,all:[],visible:[],selected:null,query:'',brand:[],self:false,freshOnly:false,priceLevels:[],sort:'price',routeSort:'recommended',routeResultScope:'recommended',favorites:new Set(Array.isArray(storedFavorites)?storedFavorites.filter(v=>typeof v==='string'&&/^[\w-]{1,50}$/.test(v)).slice(0,500):[]),generation:0,controller:null,mapReady:false,mapFailed:false,searchGeneration:0,loading:false,driving:{active:false,hud:false,phase:'off',point:null,heading:null,speed:0,accuracy:null,zoomMode:'auto'}};
+const state={fuel:FUEL_TYPES.some(f=>f.code===requestedFuel)?requestedFuel:'B027',view:'nearby',bounds:null,listLimit:60,center:{...APP_CONFIG.defaultCenter},envelope:null,all:[],visible:[],selected:null,query:'',brand:[],self:false,freshOnly:false,priceLevels:[],sort:'price',routeSort:'recommended',routeResultScope:'recommended',favorites:new Set(favoriteIds(favoriteSnapshot)),generation:0,controller:null,mapReady:false,mapFailed:false,searchGeneration:0,loading:false,driving:{active:false,hud:false,phase:'off',point:null,heading:null,speed:0,accuracy:null,zoomMode:'auto'}};
+saveStorage('juyu:favorites:v2',favoriteSnapshot);
 const FUEL_VISUAL={B027:{label:'휘발유',icon:'droplet',tone:'gasoline'},D047:{label:'경유',icon:'pump',tone:'diesel'},B034:{label:'고급휘발유',icon:'star',tone:'premium'},K015:{label:'LPG',icon:'flame',tone:'lpg'}};
 function syncMobileFuelToggle(){const item=FUEL_VISUAL[state.fuel]||FUEL_VISUAL.B027;const button=$('mobile-fuel-toggle'),label=$('mobile-fuel-label'),focusButton=$('focus-fuel-toggle'),focusLabel=$('focus-fuel-label');if(focusButton){focusButton.setAttribute('aria-label',`유종 선택, 현재 ${item.label}`);const focusBadge=focusButton.querySelector('.fuel-tab-icon');if(focusBadge){focusBadge.className='fuel-tab-icon '+item.tone;focusBadge.innerHTML='<span class="icon">'+icon(item.icon)+'</span>';}}if(focusLabel)focusLabel.textContent=item.label;document.querySelectorAll('[data-focus-fuel]').forEach(x=>{const active=x.dataset.focusFuel===state.fuel;x.classList.toggle('active',active);x.setAttribute('aria-selected',String(active));x.setAttribute('aria-pressed',String(active));});if(!button||!label)return;button.setAttribute('aria-label',`유종 선택, 현재 ${item.label}`);label.textContent=item.label;const badge=button.querySelector('.fuel-tab-icon');if(badge){badge.className='fuel-tab-icon '+item.tone;badge.innerHTML='<span class="icon">'+icon(item.icon)+'</span>';}}
 const localHost=['localhost','127.0.0.1','[::1]'].includes(location.hostname);
@@ -370,7 +373,9 @@ function renderEmpty(){
  else if(e.coverage?.kind==='sample_zones'){title='아직 가격이 수집되지 않은 지역이에요';desc='현재는 지정한 지역의 일부 자료를 제공합니다.<br>지도 중심을 수집 지역으로 이동해 보세요.';const zones=(e.coverage.zones||[]).filter((z,i,a)=>a.findIndex(x=>x.id===z.id)===i).slice(0,5);buttons=zones.map(z=>`<button class="small-button" data-action="zone" data-zone="${esc(z.id)}">${esc(z.name||z.id)}</button>`).join('')||'<a class="small-button" href="https://www.opinet.co.kr/" target="_blank" rel="noopener noreferrer">오피넷에서 확인 ↗</a>';}
  $('results').innerHTML=`<div class="empty-state"><div class="empty-icon">${icon(state.view==='saved'?'heart':'pump')}</div><h3>${title}</h3><p>${desc}</p><div class="empty-actions">${buttons}</div>${e?.status==='awaiting_credentials'?'<p class="note">가격 기준시각이 확인되는 자료만 비교합니다.</p>':''}</div>`;
 }
-function toggleFavorite(id){if(state.favorites.has(id))state.favorites.delete(id);else state.favorites.add(id);saveStorage('juyu:favorites:v1',[...state.favorites].slice(-500));render();if($('detail-dialog').open)renderDetail();}
+let favoritesSyncController=null;
+function applyFavoriteSnapshot(value){favoriteSnapshot=normalizeFavoriteSnapshot(value);const ids=favoriteIds(favoriteSnapshot);state.favorites=new Set(ids);saveStorage('juyu:favorites:v2',favoriteSnapshot);saveStorage('juyu:favorites:v1',ids);render();if($('detail-dialog').open)renderDetail();}
+function toggleFavorite(id){applyFavoriteSnapshot(toggleFavoriteSnapshot(favoriteSnapshot,id));favoritesSyncController?.scheduleFavoritesSync();}
 function useBaseRouteSimulation(response=routeMode.state.response){
  const base=response?.baseRoute;
  if(!base?.path?.length){routeSimulation.set(null);return;}
@@ -811,11 +816,13 @@ async function initializeMapViewport(startupDataPromise){
  mapLoading.complete();
  try{map.startDriving({autoDetect:true,routeActive:()=>state.view==='route'&&Boolean(routeMode?.state.response?.baseRoute),onUpdate:handleDrivingUpdate,onError:()=>{}});}catch{}
 }
-setupMyPage({
+favoritesSyncController=setupMyPage({
   favoritesCount:()=>state.favorites.size,
   showFavorites(){selectView('saved');if(mobileMapView.isMobile())openFocusList();},
   destinations:()=>recentDestinations,
   removeDestination(id){recentDestinations=recentDestinations.filter(item=>item.id!==id);saveStorage(RECENT_DESTINATIONS_KEY,recentDestinations);renderRecentDestinations();}
+  ,favoritesSnapshot:()=>favoriteSnapshot
+  ,applyFavoritesSnapshot
 });
 const startupDataPromise=loadData();
 mapLoading.stage('map');
