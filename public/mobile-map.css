@@ -948,3 +948,12 @@ body:not(.mobile-map-mode):not(.mobile-map-fullscreen) .results-header select{mi
  body:is(.mobile-map-browse,.mobile-map-expanded) .search-block #mobile-fuel-toggle .fuel-toggle-chevron{display:none!important}
  body:is(.mobile-map-browse,.mobile-map-expanded) .search-block #mobile-fuel-label{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:10px}
 }
+
+/* Keep favorite action beside the station title, including compact sheets. */
+.detail-dialog .detail-title-row{display:flex;align-items:center;gap:12px;margin-bottom:10px}
+.detail-dialog .detail-title-row h2{flex:1;min-width:0;margin:0;overflow-wrap:anywhere}
+.detail-dialog .detail-favorite{display:flex;align-items:center;justify-content:center;flex:0 0 48px;width:48px;height:48px;border:1px solid #d9b9bf;border-radius:50%;background:#fff3f5;color:#b43852;cursor:pointer}
+.detail-dialog .detail-favorite svg{width:25px;height:25px;fill:none;stroke:currentColor;stroke-width:2}
+.detail-dialog .detail-favorite[aria-pressed="true"]{background:#b43852;border-color:#b43852;color:white}
+.detail-dialog .detail-favorite[aria-pressed="true"] svg{fill:currentColor}
+.detail-dialog .detail-favorite:focus-visible{outline:3px solid #277dc0;outline-offset:3px}
