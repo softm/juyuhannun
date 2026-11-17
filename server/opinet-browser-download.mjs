@@ -29,6 +29,22 @@ function safeFilename(value){
   return name||'opinet-daily.csv';
 }
 
+export async function retryTransientDownload(operation,{attempts=3,delaysMs=[5000,15000],delayImpl=ms=>new Promise(resolve=>setTimeout(resolve,ms)),onRetry=()=>{}}={}){
+  let lastError;
+  for(let attempt=1;attempt<=attempts;attempt++){
+    try{return await operation(attempt);}
+    catch(error){
+      lastError=error;
+      const transient=['OPINET_BROWSER_DOWNLOAD_ERROR','OPINET_DOWNLOAD_FAILED','OPINET_DOWNLOAD_NETWORK_ERROR'].includes(error?.code);
+      if(!transient||attempt>=attempts)throw error;
+      const delayMs=delaysMs[Math.min(attempt-1,delaysMs.length-1)]??0;
+      onRetry({attempt,nextAttempt:attempt+1,delayMs,errorCode:error?.code??null});
+      if(delayMs>0)await delayImpl(delayMs);
+    }
+  }
+  throw lastError;
+}
+
 // Keep downloaded evidence out of the public website; CI uploads it separately.
 async function preserveFailure({page,downloadDir,stage,error,businessType,targetDate}){
   const directory=resolve(process.env.OPINET_DIAGNOSTICS_DIR||'.cache/opinet-download-failures',`${Date.now()}-${businessType}-${targetDate||'business'}-${randomUUID()}`);
@@ -103,7 +119,15 @@ export class OpinetBrowserDownloadClient{
   async businessLpgInfo(){
     return this.businessInfo({businessType:'lpg'});
   }
-  async dailyPrices({businessType='station',targetDate=kstDate(this.clock())}={}){
+  async dailyPrices(options={}){
+    const businessType=options.businessType??'station';
+    const targetDate=options.targetDate??kstDate(this.clock());
+    return retryTransientDownload(
+      ()=>this.dailyPricesOnce({businessType,targetDate}),
+      {onRetry:details=>console.warn(JSON.stringify({event:'opinet_public_download_retry',businessType,targetDate,...details}))},
+    );
+  }
+  async dailyPricesOnce({businessType='station',targetDate=kstDate(this.clock())}={}){
     if(!['station','lpg'].includes(businessType))throw new ServiceError('OPINET_DOWNLOAD_REQUEST_INVALID','전국 일일가격 다운로드 업종을 확인해 주세요.',400);
     if(!/^\d{8}$/.test(String(targetDate)))throw new ServiceError('OPINET_DOWNLOAD_DATE_INVALID','오피넷 일일가격 기준일을 확인해 주세요.',400);
 
