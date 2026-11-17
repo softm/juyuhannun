@@ -873,3 +873,28 @@ body:not(.mobile-map-mode):not(.mobile-map-fullscreen) .results-header select{mi
 @media(max-width:380px){
  body:not(.mobile-map-mode):not(.mobile-map-fullscreen) .map-fuel-brand-row .fuel-tab-icon{display:none}
 }
+
+/* Mobile keyboard-safe station search: search takes precedence over the map/list sheet. */
+@media (max-width:1000px){
+ body.mobile-map-search-open:has(#query:focus) .workspace>.sidebar>.search-block{
+   position:fixed!important;
+   top:calc(var(--mobile-search-viewport-top,0px) + env(safe-area-inset-top,0px) + 8px)!important;
+   left:10px!important;right:10px!important;width:auto!important;
+   z-index:10020!important;
+ }
+ body.mobile-map-search-open:has(#query:focus) .workspace>.sidebar>.search-block .search-box{
+   display:flex!important;position:relative!important;top:auto!important;left:auto!important;right:auto!important;
+   grid-column:1/-1!important;grid-row:1!important;width:100%!important;min-width:0;
+ }
+ body.mobile-map-search-open:has(#query:focus) .workspace>.sidebar>.search-block>:not(.search-box):not(#search-candidates){display:none!important}
+ body.mobile-map-search-open:has(#query:focus) #search-candidates:not([hidden]){
+   display:block!important;position:absolute!important;
+   top:calc(100% + 5px)!important;left:0!important;right:0!important;
+   max-height:max(100px,calc(var(--mobile-search-visible-height,100dvh) - 105px))!important;
+   overflow-y:auto!important;overscroll-behavior:contain;z-index:10021!important;
+ }
+ body.mobile-search-keyboard-visible .workspace>.sidebar>.results,
+ body.mobile-search-keyboard-visible .workspace>.sidebar>.view-tabs,
+ body.mobile-search-keyboard-visible .mobile-focus-dock,
+ body.mobile-search-keyboard-visible .map-bottom{visibility:hidden!important;pointer-events:none!important}
+}
