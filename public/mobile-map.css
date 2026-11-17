@@ -908,10 +908,10 @@ body:not(.mobile-map-mode):not(.mobile-map-fullscreen) .results-header select{mi
 #quick-price-options .price-level-chip{min-height:48px}
 @media(max-width:1000px){
  .search-block .price-picker-trigger{grid-row:1;grid-column:3}
- body:is(.mobile-map-browse,.mobile-map-expanded):not(.mobile-map-menu-collapsed) .workspace>.sidebar>.search-block{grid-template-columns:max-content max-content 1fr!important}
- body:is(.mobile-map-browse,.mobile-map-expanded) .workspace>.sidebar>.search-block>.filter-line{grid-row:2;grid-column:1}
- body:is(.mobile-map-browse,.mobile-map-expanded) .workspace>.sidebar>.search-block>#mobile-search-toggle{grid-row:2;grid-column:2}
- body:is(.mobile-map-browse,.mobile-map-expanded) .workspace>.sidebar>.search-block>#mobile-map-menu-toggle{grid-row:2;grid-column:3}
+ body:is(.mobile-map-browse,.mobile-map-expanded):not(.mobile-map-menu-collapsed) .workspace>.sidebar>.search-block{grid-template-columns:minmax(48px,1fr) 48px 62px repeat(3,44px)!important;column-gap:2px}
+ body:is(.mobile-map-browse,.mobile-map-expanded) .workspace>.sidebar>.search-block>.filter-line{grid-row:1;grid-column:4}
+ body:is(.mobile-map-browse,.mobile-map-expanded) .workspace>.sidebar>.search-block>#mobile-search-toggle{grid-row:1;grid-column:5}
+ body:is(.mobile-map-browse,.mobile-map-expanded) .workspace>.sidebar>.search-block>#mobile-map-menu-toggle{grid-row:1;grid-column:6}
  .focus-collapsed-fuel .price-picker-trigger{padding:0 5px;font-size:11px}
 }
 @media(min-width:1001px){.map-fuel-brand-row .fuel-tab{padding-inline:3px}.map-fuel-brand-row .fuel-tab-icon{display:none}}
@@ -925,3 +925,26 @@ body:not(.mobile-map-mode):not(.mobile-map-fullscreen) .results-header select{mi
 #quick-price-options .price-level-icon{width:32px;height:32px;min-width:32px}
 #quick-price-options .price-level-icon svg{width:22px;height:22px}
 #quick-price-options .price-level-chip[aria-pressed="true"]::after{position:absolute;top:4px;right:6px}
+
+@media(max-width:1000px){
+ body:is(.mobile-map-browse,.mobile-map-expanded) .search-block .price-picker-trigger{width:62px;min-width:0;min-height:44px;padding:0 2px;font-size:10px;letter-spacing:-.5px}
+ body:is(.mobile-map-browse,.mobile-map-expanded) .search-block .brand-picker-trigger{min-width:0;padding:0 2px;font-size:11px}
+ body:is(.mobile-map-browse,.mobile-map-expanded) .search-block #mobile-fuel-toggle{width:100%;min-width:0!important;max-width:none;padding:0 3px!important;gap:2px;font-size:11px}
+ body:is(.mobile-map-browse,.mobile-map-expanded) .search-block #mobile-map-menu-toggle{width:44px;min-width:44px;height:44px;justify-self:end}
+}
+@media(max-width:380px){
+ body:is(.mobile-map-browse,.mobile-map-expanded) .search-block #mobile-fuel-toggle .fuel-tab-icon{display:none!important}
+}
+@media(max-width:1000px){
+ body:is(.mobile-map-browse,.mobile-map-expanded) .search-block :is(#mobile-fuel-toggle,#toggle-filters,#mobile-search-toggle){height:44px!important;min-height:44px!important}
+}
+@media(max-width:350px){
+ body:is(.mobile-map-browse,.mobile-map-expanded):not(.mobile-map-menu-collapsed) .workspace>.sidebar>.search-block{padding-inline:0!important}
+}
+@media(max-width:350px){
+ body:is(.mobile-map-browse,.mobile-map-expanded):not(.mobile-map-menu-collapsed) .workspace>.sidebar>.search-block{left:max(8px,env(safe-area-inset-left,0px))!important;right:max(8px,env(safe-area-inset-right,0px))!important;width:auto!important}
+}
+@media(max-width:350px){
+ body:is(.mobile-map-browse,.mobile-map-expanded) .search-block #mobile-fuel-toggle .fuel-toggle-chevron{display:none!important}
+ body:is(.mobile-map-browse,.mobile-map-expanded) .search-block #mobile-fuel-label{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:10px}
+}
