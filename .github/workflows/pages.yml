@@ -219,8 +219,10 @@ jobs:
           import {readFile} from 'node:fs/promises';
           const manifest=JSON.parse(await readFile('manifest.json','utf8'));
           const c=manifest.collection;
-          if(!c?.eligible||!c?.expectedDateAvailable||c?.lastDownloadStatus==='error'||manifest.lpg?.status!=='ready'){
+          if(!c?.eligible||!c?.expectedDateAvailable||c?.lastDownloadStatus==='error'){
             console.error('::error::사이트 배포와 별개로 전국 최신 가격 수집이 미완료입니다. 기준일='+manifest.priceDate);
             process.exitCode=1;
+          }else if(manifest.lpg?.status!=='ready'){
+            console.warn('::warning::휘발유·경유 최신 자료는 게시됐지만 LPG 전국 자료 수집은 실패했습니다. 기존/지역 LPG 자료를 유지하고 다음 시간별 실행에서 재시도합니다.');
           }
           JS
