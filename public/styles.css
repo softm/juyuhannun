@@ -403,7 +403,7 @@ body.route-mode .results-header>label{display:none}
   border-radius:10px;padding:11px;border:1px solid #d0ded7;background:#eef6f1;
   font-size:14px;font-weight:700;color:#195846
 }
-#my-page.account-dialog #my-logout{display:block;width:100%;margin-top:9px;font-size:14px}
+#my-page.account-dialog #my-logout,#my-page.account-dialog #my-favorites-sync,#my-page.account-dialog #my-favorites-delete{display:block;width:100%;margin-top:9px;font-size:14px}
 #my-page.account-dialog .account-status{margin:12px 0;color:#b04336;font-size:13px}
 #my-page.account-dialog #my-retry{font-size:13px}
 #my-page.account-dialog footer{

@@ -149,6 +149,8 @@
   <section id="account-user" class="account-user" hidden>
     <div class="account-user-row"><span id="my-avatar" class="cf-account-avatar-large" aria-hidden="true"></span><div><strong id="my-name">한눈 계정</strong><small>로그인됨</small></div></div>
     <a id="my-account-manage" class="account-manage-link" href="https://softm-hannun-account.softm.workers.dev/account" target="_blank" rel="noopener noreferrer">공통 계정 관리</a>
+    <button type="button" id="my-favorites-sync">찜한 곳 지금 동기화</button>
+    <button type="button" id="my-favorites-delete">Cloudflare 찜 보관소 삭제</button>
     <button type="button" id="my-logout">로그아웃</button>
   </section>
   <p id="my-identity" class="account-status" role="status" aria-live="polite" hidden></p>
@@ -157,7 +159,7 @@
 </dialog>
 <dialog id="device-page" class="device-records-dialog" aria-labelledby="device-page-title">
   <div class="my-page-head"><h2 id="device-page-title">이 기기에 저장한 자료</h2><button type="button" data-close="device-page" aria-label="기기 저장자료 닫기">닫기</button></div>
-  <p class="device-records-note">이 자료는 현재 기기에만 보관됩니다. 로그인해도 자동으로 서버에 저장되지 않습니다.</p>
+  <p class="device-records-note">찜한 주유소는 로그인하면 암호화해 Cloudflare에 자동 보관하고 같은 계정의 기기와 공유합니다. 최근 목적지는 이 기기에만 보관됩니다.</p>
   <section><h3>찜한 주유소</h3><button type="button" id="my-favorites">찜한 주유소 보기</button></section>
   <section><h3>최근 목적지</h3><ul id="my-destinations"></ul></section>
 </dialog>
