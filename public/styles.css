@@ -481,3 +481,20 @@ body.route-mode .results-header>label{display:none}
  .price-level-options button.price-level-chip[aria-pressed="true"]::after{font-size:10px}
 }
 @media(prefers-reduced-motion:reduce){.price-level-options button.price-level-chip{transition:none}}
+
+/* Keep desktop route actions visible above the reserved advertisement area. */
+@media(min-width:1001px){
+ body.route-planner-open .workspace{min-height:0}
+ body.route-planner-open .sidebar:has(.route-panel:not([hidden])){overflow:hidden}
+ body.route-planner-open .sidebar:has(.route-panel:not([hidden])) .route-panel{flex:1 1 0;min-height:0;max-height:none;overflow:hidden}
+ body.route-planner-open .sidebar>.coverage-hint,
+ body.route-planner-open .sidebar>.results-header,
+ body.route-planner-open .sidebar>.results,
+ body.route-planner-open .sidebar>.sidebar-footer{display:none}
+ body.route-planner-open .route-planner-scroll{padding:12px 16px;overflow-y:auto}
+ body.route-planner-open .route-action-zone{padding:10px 16px calc(10px + env(safe-area-inset-bottom,0px))}
+ body.route-planner-open .route-action-copy{flex-wrap:wrap}
+ body.route-planner-open .route-action-zone .route-simple-note{display:none}
+ body.route-planner-open .route-panel-exit{min-height:44px;margin-top:4px}
+ body.route-planner-open .route-panel-close{width:44px;height:44px;flex:none}
+}
