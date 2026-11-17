@@ -898,3 +898,24 @@ body:not(.mobile-map-mode):not(.mobile-map-fullscreen) .results-header select{mi
  body.mobile-search-keyboard-visible .mobile-focus-dock,
  body.mobile-search-keyboard-visible .map-bottom{visibility:hidden!important;pointer-events:none!important}
 }
+
+/* Price levels are available directly beside the brand picker in both layouts. */
+.price-picker-trigger{flex:none;min-height:48px;padding:0 7px;border:1px solid #ceded7;border-radius:18px;background:#fff;color:#154e40;font-size:12px;font-weight:750;white-space:nowrap}
+.price-picker-trigger.has-selection{background:#e1f4eb;border-color:#16735b}
+#quick-price-options{position:fixed;z-index:240;width:min(280px,calc(100vw - 16px));padding:12px;border:1px solid #c9ddd6;border-radius:16px;background:#fff;box-shadow:0 8px 24px #17362e2d;color:#174b40}
+#quick-price-options[hidden]{display:none}
+#quick-price-options p{margin:8px 0;font-size:12px;color:#60756b}
+#quick-price-options .price-level-chip{min-height:48px}
+@media(max-width:1000px){
+ .search-block .price-picker-trigger{grid-row:1;grid-column:3}
+ body:is(.mobile-map-browse,.mobile-map-expanded):not(.mobile-map-menu-collapsed) .workspace>.sidebar>.search-block{grid-template-columns:max-content max-content 1fr!important}
+ body:is(.mobile-map-browse,.mobile-map-expanded) .workspace>.sidebar>.search-block>.filter-line{grid-row:2;grid-column:1}
+ body:is(.mobile-map-browse,.mobile-map-expanded) .workspace>.sidebar>.search-block>#mobile-search-toggle{grid-row:2;grid-column:2}
+ body:is(.mobile-map-browse,.mobile-map-expanded) .workspace>.sidebar>.search-block>#mobile-map-menu-toggle{grid-row:2;grid-column:3}
+ .focus-collapsed-fuel .price-picker-trigger{padding:0 5px;font-size:11px}
+}
+@media(min-width:1001px){.map-fuel-brand-row .fuel-tab{padding-inline:3px}.map-fuel-brand-row .fuel-tab-icon{display:none}}
+@media(max-width:1000px){
+ body.mobile-map-menu-collapsed .focus-collapsed-fuel:not([hidden]){position:fixed;left:72px;right:auto;top:calc(10px + env(safe-area-inset-top,0px));z-index:193;pointer-events:auto}
+}
+@media(min-width:1001px){.map-fuel-brand-row .fuel-tabs button{padding-inline:3px}}

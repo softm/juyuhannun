@@ -37,6 +37,7 @@
           <button data-fuel="K015" role="option" aria-selected="false" aria-pressed="false"><span class="fuel-tab-icon lpg"><span class="icon" data-icon="flame"></span></span><span class="fuel-tab-label">LPG</span></button>
         </div>
         <button type="button" class="brand-picker-trigger" data-brand-picker aria-expanded="false" aria-controls="map-brand-options">브랜드 ▾</button>
+<button type="button" class="price-picker-trigger" data-price-picker aria-expanded="false" aria-controls="quick-price-options">가격수준 ▾</button>
         </div>
         <div class="filter-line"><button id="toggle-filters" class="filter-button" aria-expanded="false" aria-controls="extra-filters"><span class="icon" data-icon="sliders"></span>필터<span id="price-level-indicator" class="price-level-indicator" aria-hidden="true" hidden></span></button></div>
         <button type="button" id="mobile-search-toggle" class="mobile-search-toggle" aria-expanded="false" aria-controls="search-form" aria-label="검색 열기" title="검색 열기"><span class="icon" data-icon="search"></span><span id="mobile-search-label">검색</span><span id="mobile-search-indicator" class="mobile-search-indicator" aria-hidden="true" hidden></span></button>
@@ -122,6 +123,7 @@
         <div class="focus-collapsed-fuel">
           <button type="button" id="focus-fuel-toggle" aria-label="유종 선택, 현재 휘발유" aria-haspopup="listbox" aria-expanded="false" aria-controls="focus-fuel-tabs"><span class="fuel-tab-icon gasoline"><span class="icon" data-icon="droplet"></span></span><span id="focus-fuel-label">휘발유</span><span class="icon fuel-toggle-chevron" data-icon="chevron-down"></span></button>
           <button type="button" class="brand-picker-trigger" data-brand-picker aria-expanded="false" aria-controls="map-brand-options">브랜드 ▾</button>
+<button type="button" class="price-picker-trigger" data-price-picker aria-expanded="false" aria-controls="quick-price-options">가격수준 ▾</button>
           <div id="focus-fuel-tabs" class="focus-fuel-tabs" role="listbox" aria-label="유종 선택" hidden><button type="button" data-focus-fuel="B027" role="option" aria-selected="true"><span class="fuel-tab-icon gasoline"><span class="icon" data-icon="droplet"></span></span><span>휘발유</span></button><button type="button" data-focus-fuel="D047" role="option" aria-selected="false"><span class="fuel-tab-icon diesel"><span class="icon" data-icon="pump"></span></span><span>경유</span></button><button type="button" data-focus-fuel="B034" role="option" aria-selected="false"><span class="fuel-tab-icon premium"><span class="icon" data-icon="star"></span></span><span>고급휘발유</span></button><button type="button" data-focus-fuel="K015" role="option" aria-selected="false"><span class="fuel-tab-icon lpg"><span class="icon" data-icon="flame"></span></span><span>LPG</span></button></div>
         </div>
       </div>
@@ -159,6 +161,7 @@
   <section><h3>찜한 주유소</h3><button type="button" id="my-favorites">찜한 주유소 보기</button></section>
   <section><h3>최근 목적지</h3><ul id="my-destinations"></ul></section>
 </dialog>
+<section id="quick-price-options" aria-label="가격수준 선택" hidden><strong>가격수준</strong><p>여러 개 선택 · 선택 즉시 적용</p><div class="price-level-options"><button type="button" class="price-level-chip price-level-low" data-price-level="low" aria-pressed="false">저렴</button><button type="button" class="price-level-chip price-level-mid" data-price-level="mid" aria-pressed="false">보통</button><button type="button" class="price-level-chip price-level-high" data-price-level="high" aria-pressed="false">비쌈</button></div><p>다시 누르면 해제 · 미선택 시 전체<br>참고·미확인 가격은 선택 시 제외</p></section>
 <section id="map-brand-options" aria-label="브랜드 선택" hidden><strong>브랜드 선택</strong><small>여러 개 선택할 수 있어요</small><div class="brand-picker-grid"></div></section>
 </body>
 </html>
