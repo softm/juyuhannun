@@ -919,3 +919,9 @@ body:not(.mobile-map-mode):not(.mobile-map-fullscreen) .results-header select{mi
  body.mobile-map-menu-collapsed .focus-collapsed-fuel:not([hidden]){position:fixed;left:72px;right:auto;top:calc(10px + env(safe-area-inset-top,0px));z-index:193;pointer-events:auto}
 }
 @media(min-width:1001px){.map-fuel-brand-row .fuel-tabs button{padding-inline:3px}}
+
+/* Large, shape-distinct price icons with readable labels and selection marks. */
+#quick-price-options .price-level-chip{position:relative;flex-direction:column;gap:6px;min-height:80px;padding:10px 6px}
+#quick-price-options .price-level-icon{width:32px;height:32px;min-width:32px}
+#quick-price-options .price-level-icon svg{width:22px;height:22px}
+#quick-price-options .price-level-chip[aria-pressed="true"]::after{position:absolute;top:4px;right:6px}
