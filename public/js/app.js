@@ -90,7 +90,7 @@ function syncInstallUI(){
  const installed=standaloneWebApp||androidApp;
  for(const button of document.querySelectorAll('[data-install-app]')){
   button.hidden=installed;
-  if(!installed&&button.matches('.install-app-trigger'))button.textContent='홈 화면에 추가';
+  if(!installed&&button.matches('.install-app-trigger'))button.textContent='앱 설치';
  }
 }
 function renderInstallInstructions(){
@@ -98,7 +98,7 @@ function renderInstallInstructions(){
  if(deferredInstallPrompt){
   description.textContent='주유한눈을 홈 화면에 설치하면 주소창 없이 앱처럼 바로 실행할 수 있습니다.';
   steps.innerHTML='<li>아래 버튼을 누릅니다.</li><li>브라우저의 확인창에서 추가를 선택합니다.</li>';
-  action.hidden=false;action.textContent='홈 화면에 추가';
+  action.hidden=false;action.textContent='앱 설치';
  }else if(platform==='ios'){
   description.textContent='Safari의 공유 메뉴를 이용해 홈 화면 앱으로 추가할 수 있습니다.';
   steps.innerHTML='<li>이 페이지를 Safari에서 엽니다.</li><li>하단의 공유 버튼을 누릅니다.</li><li>홈 화면에 추가를 선택한 뒤 추가를 누릅니다.</li>';
