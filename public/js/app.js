@@ -16,6 +16,9 @@ import {createDrivingHud} from './driving-hud.js';
 import {favoriteIds,normalizeFavoriteSnapshot,toggleFavoriteSnapshot} from './favorite-sync.js';
 
 const $=(id)=>document.getElementById(id);
+let deferredInstallPrompt=null;
+const standaloneWebApp=window.matchMedia('(display-mode: standalone)').matches||navigator.standalone===true;
+window.addEventListener('beforeinstallprompt',event=>{event.preventDefault();deferredInstallPrompt=event;syncInstallUI();});
 const bottomAd=mountBottomAd();
 const iconPaths={pin:'<path d="M20 10c0 6-8 12-8 12S4 16 4 10a8 8 0 1 1 16 0Z"/><circle cx="12" cy="10" r="2.5"/>',route:'<circle cx="5" cy="6" r="2"/><circle cx="19" cy="18" r="2"/><path d="M7 6h9a4 4 0 0 1 0 8H8a4 4 0 0 0 0 8h9"/>',heart:'<path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1.1-1.1a5.5 5.5 0 0 0-7.8 7.8L12 21l8.8-8.6a5.5 5.5 0 0 0 0-7.8Z"/>',search:'<circle cx="10.5" cy="10.5" r="7"/><path d="m16 16 5 5"/>',arrow:'<path d="M4 12h16m-6-6 6 6-6 6"/>',calculator:'<rect x="5" y="2" width="14" height="20" rx="2"/><path d="M8 6h8M8 11h1m6 0h1m-8 4h1m6 0h1m-8 4h1m6 0h1"/>',info:'<circle cx="12" cy="12" r="9"/><path d="M12 11v6m0-10h.01"/>',sliders:'<path d="M4 7h16M4 17h16"/><circle cx="9" cy="7" r="2" fill="white"/><circle cx="15" cy="17" r="2" fill="white"/>',menu:'<path d="M4 7h16M4 12h16M4 17h16"/>',map:'<path d="m2 6 6-3 8 3 6-3v15l-6 3-8-3-6 3Zm6-3v15m8-12v15"/>',refresh:'<path d="M20 7v5h-5M4 17v-5h5"/><path d="M19 8a8 8 0 0 0-14-3M5 16a8 8 0 0 0 14 3"/>',locate:'<circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/><path d="M12 2v4m0 12v4M2 12h4m12 0h4"/>',home:'<path d="m3 10 9-7 9 7v11H3Zm6 11v-8h6v8"/>',list:'<path d="M8 5h13M8 12h13M8 19h13M3 5h.01M3 12h.01M3 19h.01"/>',close:'<path d="m6 6 12 12M6 18 18 6"/>',pump:'<rect x="3" y="3" width="12" height="17" rx="2"/><path d="M6 7h6v4H6ZM1 21h16m-2-8h2v5a2 2 0 0 0 4 0V8l-4-4m3 3v4h1"/>',share:'<circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.6 10.5 6.8-4m-6.8 7 6.8 4"/>',phone:'<path d="M6 3H3c0 10 8 18 18 18v-4l-5-2-2 3a17 17 0 0 1-8-8l3-2-3-5Z"/>',check:'<path d="m5 12 4 4L20 5"/>',clock:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>'};
 iconPaths.expand='<path d="M8 3H3v5M16 3h5v5M3 16v5h5M21 16v5h-5"/>';
@@ -77,6 +80,50 @@ function refreshPriceSelection(now){const sources=state.envelope?.sourceSnapshot
 function toast(message){$('toast').textContent=message;$('toast').hidden=false;clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('toast').hidden=true,4500);}
 function showDialog(id){const d=$(id);if(!d.open)d.showModal();}
 function closeDialog(id){$(id).close();}
+function installPlatform(){
+ const ua=navigator.userAgent;
+ if(/iphone|ipad|ipod/i.test(ua))return 'ios';
+ if(/android/i.test(ua))return 'android';
+ return 'desktop';
+}
+function syncInstallUI(){
+ const installed=standaloneWebApp||androidApp;
+ for(const button of document.querySelectorAll('[data-install-app]')){
+  button.hidden=installed;
+  if(!installed&&button.matches('.install-app-trigger'))button.textContent=deferredInstallPrompt?'앱 설치':'설치 안내';
+ }
+}
+function renderInstallInstructions(){
+ const platform=installPlatform(),steps=$('install-dialog-steps'),description=$('install-dialog-description'),action=$('install-dialog-action');
+ if(deferredInstallPrompt){
+  description.textContent='주유한눈을 홈 화면에 설치하면 주소창 없이 앱처럼 바로 실행할 수 있습니다.';
+  steps.innerHTML='<li>아래 앱 설치 버튼을 누릅니다.</li><li>브라우저의 설치 확인창에서 설치를 선택합니다.</li>';
+  action.hidden=false;action.textContent='주유한눈 앱 설치';
+ }else if(platform==='ios'){
+  description.textContent='Safari의 공유 메뉴를 이용해 홈 화면 앱으로 추가할 수 있습니다.';
+  steps.innerHTML='<li>이 페이지를 Safari에서 엽니다.</li><li>하단의 공유 버튼을 누릅니다.</li><li>홈 화면에 추가를 선택한 뒤 추가를 누릅니다.</li>';
+  action.hidden=true;
+ }else if(platform==='android'){
+  description.textContent='Chrome 또는 Samsung Internet 메뉴에서 홈 화면 앱이나 바로가기로 설치할 수 있습니다.';
+  steps.innerHTML='<li>브라우저 오른쪽 위 메뉴를 누릅니다.</li><li>앱 설치, 설치 및 바로가기 만들기 또는 홈 화면에 추가를 선택합니다.</li><li>이미 설치했다면 Android 설정의 앱 목록에서 주유한눈을 확인합니다.</li>';
+  action.hidden=true;
+ }else{
+  description.textContent='Chrome이나 Edge의 주소창 설치 아이콘 또는 브라우저 메뉴를 이용하세요.';
+  steps.innerHTML='<li>주소창 오른쪽의 설치 아이콘을 누릅니다.</li><li>아이콘이 없으면 브라우저 메뉴에서 앱 설치 또는 바로가기 만들기를 선택합니다.</li>';
+  action.hidden=true;
+ }
+}
+async function requestWebAppInstall(){
+ closeDialog('more-dialog');
+ if(standaloneWebApp){toast('이미 홈 화면 앱으로 실행 중입니다.');return;}
+ if(!deferredInstallPrompt){renderInstallInstructions();showDialog('install-dialog');return;}
+ const prompt=deferredInstallPrompt;deferredInstallPrompt=null;
+ await prompt.prompt();
+ const choice=await prompt.userChoice.catch(()=>({outcome:'dismissed'}));
+ if(choice.outcome==='accepted'){closeDialog('install-dialog');toast('주유한눈 설치를 시작했습니다.');}
+ else{renderInstallInstructions();showDialog('install-dialog');}
+ syncInstallUI();
+}
 function setMapNotice(message){$('map-notice').textContent=message;$('map-notice').hidden=!message;}
 function updateViewport({center,bounds}){state.center=state.driving.active&&state.driving.point?{...state.driving.point}:center;state.bounds=bounds;state.listLimit=60;render();}
 function handleMapState({provider,status,message}){const typeButton=$('map-type-toggle');typeButton.hidden=provider!=='naver';if(provider!=='naver'){typeButton.setAttribute('aria-pressed','false');typeButton.setAttribute('aria-label','지도 유형 전환 미지원');typeButton.title='지도 유형 전환 미지원';}else if(typeButton.getAttribute('aria-label')==='지도 유형 전환 미지원'){typeButton.setAttribute('aria-label','위성 지도 보기');typeButton.title='위성 지도 보기';}if(status==='error'||provider==='leaflet')setMapNotice(message||'대체 지도에서 확인하고 있습니다.');else if(status==='ready')setMapNotice('');}
@@ -778,6 +825,10 @@ $('more-favorites')?.addEventListener('click',()=>{closeDialog('more-dialog');se
 $('more-recent-clear')?.addEventListener('click',()=>{recentDestinations=[];saveStorage(RECENT_DESTINATIONS_KEY,recentDestinations);renderRecentDestinations();closeDialog('more-dialog');toast('최근 목적지를 모두 삭제했습니다.');});
 $('more-info')?.addEventListener('click',()=>{closeDialog('more-dialog');showDialog('info-dialog');});
 if($('more-app-exit')){$('more-app-exit').hidden=!androidApp;$('more-app-exit').addEventListener('click',()=>{closeDialog('more-dialog');location.href='juyuhannun://exit';});}
+document.querySelectorAll('[data-install-app]').forEach(button=>button.addEventListener('click',requestWebAppInstall));
+$('install-dialog-action')?.addEventListener('click',requestWebAppInstall);
+window.addEventListener('appinstalled',()=>{deferredInstallPrompt=null;syncInstallUI();closeDialog('install-dialog');toast('주유한눈이 홈 화면에 설치되었습니다.');});
+syncInstallUI();
 $('locate').addEventListener('click',async()=>{const b=$('locate');b.disabled=true;try{if(!state.mapReady)throw new Error('지도가 준비되는 중입니다.');const position=await map.locate();lastLocatedPoint={lat:position.lat,lng:position.lng};state.center={lat:position.lat,lng:position.lng};toast('현재 위치 주변으로 이동했습니다.');}catch(error){toast(error.message||'현재 위치를 확인하지 못했습니다. 위치 권한을 확인해 주세요.');}finally{b.disabled=false;}});
 for(const id of ['open-info','footer-info'])$(id).addEventListener('click',()=>showDialog('info-dialog'));
 document.querySelectorAll('[data-close]').forEach(b=>b.addEventListener('click',()=>{if(b.dataset.close==='detail-dialog'&&mobileMapView.isMobile())mobileMapView.closeDetail();else closeDialog(b.dataset.close);}));
@@ -786,6 +837,7 @@ document.addEventListener('click',async e=>{const b=e.target.closest('[data-acti
 document.addEventListener('visibilitychange',()=>{if(!document.hidden){showMobileMapMenu();render();if(Date.now()-lastDataCheckAt>=DATA_REFRESH_MS)loadData();}});
 window.addEventListener('online',loadData);
 window.addEventListener('beforeunload',()=>{if(map.isDriving())map.stopDriving({keepMarker:false});});
+if('serviceWorker' in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js',{scope:'./'}).catch(()=>{}));
 setInterval(()=>{if(!document.hidden){render();if($('detail-dialog').open)renderDetail();}},60000);
 setInterval(()=>{if(!document.hidden)loadData();},DATA_REFRESH_MS);
 
