@@ -498,3 +498,17 @@ body.route-mode .results-header>label{display:none}
  body.route-planner-open .route-panel-exit{min-height:44px;margin-top:4px}
  body.route-planner-open .route-panel-close{width:44px;height:44px;flex:none}
 }
+
+/* Installable web app entry points and cross-browser guidance. */
+.install-app-trigger{min-height:44px;padding:0 13px;border:1px solid #9ac9bb;border-radius:12px;background:#eaf6f2;color:#0c6b56;font-size:12px;font-weight:800;white-space:nowrap}
+.install-app-trigger:hover{background:#dff1eb}.install-app-trigger[hidden],[data-install-app][hidden]{display:none!important}
+.more-menu-icon.install{background:#e5f5ef;color:#08745e;font-size:23px;font-weight:900}
+.install-dialog{box-sizing:border-box;width:min(440px,calc(100vw - 28px));max-height:calc(100dvh - 28px);overflow:auto;padding:29px;border:0;border-radius:22px;background:#fff;color:#173f35;box-shadow:0 24px 70px #102d2540}
+.install-dialog::backdrop{background:#102d2566;backdrop-filter:blur(4px)}
+.install-dialog>img{display:block;margin:0 0 15px;border-radius:18px;box-shadow:0 8px 22px #124d4230}
+.install-dialog h2{margin-top:8px;padding-right:24px}.install-dialog>p{color:#60776e;font-size:13px;line-height:1.65}
+.install-dialog ol{margin:19px 0;padding:0;list-style:none;counter-reset:install-step;display:grid;gap:10px}
+.install-dialog li{counter-increment:install-step;position:relative;min-height:38px;padding:9px 10px 9px 46px;border-radius:12px;background:#f3f7f5;color:#31594e;font-size:13px;line-height:1.55}
+.install-dialog li::before{content:counter(install-step);position:absolute;left:10px;top:8px;display:grid;place-items:center;width:28px;height:28px;border-radius:50%;background:#14785a;color:#fff;font-weight:800}
+.install-dialog .primary-button{border:0;cursor:pointer}.install-dialog .install-dialog-note{margin:13px 0 0;color:#81928b;font-size:11px}
+@media(max-width:760px){.install-app-trigger{min-width:44px;padding:0 9px;font-size:10px}.install-dialog{padding:24px 20px}.install-dialog li{font-size:12px}}
