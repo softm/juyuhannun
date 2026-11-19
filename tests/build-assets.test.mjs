@@ -19,4 +19,8 @@ test('built HTML references only assets included in the immutable app directory'
  for(const path of ['js/app.js','js/adfit.js','adfit-config.js']){
   assert.ok((await stat(new URL(`../dist/_app/${revision}/${path}`,import.meta.url))).isFile(),`${path} must exist in the immutable app directory`);
  }
+ const worker=await readFile(new URL('../dist/sw.js',import.meta.url),'utf8');
+ assert.match(worker,new RegExp(`juyuhannun-shell-${revision}`),'the deployed worker cache must be revisioned');
+ assert.doesNotMatch(worker,/const BUILD_ASSETS=\[\];/,'the deployed worker must precache built CSS and JavaScript');
+ for(const path of paths)assert.ok(worker.includes(`./${path}`),`${path} must be included in the offline shell`);
 });

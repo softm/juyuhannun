@@ -10,6 +10,8 @@ test('PWA manifest and service worker expose an installable standalone web app',
  const worker=await readFile(new URL('sw.js',root),'utf8');
  assert.equal(manifest.display,'standalone');
  assert.equal(manifest.id,'./');
+ assert.equal(manifest.launch_handler.client_mode,'navigate-existing');
+ assert.equal(manifest.shortcuts.length,2);
  assert.ok(manifest.icons.some(icon=>icon.sizes==='192x192'));
  assert.ok(manifest.icons.some(icon=>icon.sizes==='512x512'));
  assert.ok(manifest.icons.some(icon=>icon.purpose.includes('maskable')));
@@ -17,6 +19,7 @@ test('PWA manifest and service worker expose an installable standalone web app',
  assert.match(app,/serviceWorker\.register\('\.\/sw\.js'/);
  assert.match(worker,/request\.mode==='navigate'/);
  assert.match(worker,/url\.pathname\.includes\('\/data\/'\)/);
+ assert.match(worker,/const BUILD_ASSETS=\[\];/);
 });
 
 test('the web UI offers install entry points and browser-specific guidance',async()=>{
@@ -24,4 +27,5 @@ test('the web UI offers install entry points and browser-specific guidance',asyn
  assert.ok((html.match(/data-install-app/g)||[]).length>=2);
  assert.match(html,/id="install-dialog"/);
  assert.match(html,/id="install-dialog-action"/);
+ assert.match(html,/apple-mobile-web-app-capable/);
 });
