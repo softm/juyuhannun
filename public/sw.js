@@ -1,5 +1,6 @@
-const CACHE_NAME='juyuhannun-shell-v1';
-const SHELL=['./','./manifest.webmanifest','./assets/icon.svg','./assets/icon-192.png','./assets/icon-512.png','./assets/apple-touch-icon.png'];
+const CACHE_NAME='juyuhannun-shell-source';
+const BUILD_ASSETS=[];
+const SHELL=[...new Set(['./','./?source=pwa','./manifest.webmanifest','./assets/icon.svg','./assets/icon-192.png','./assets/icon-512.png','./assets/apple-touch-icon.png',...BUILD_ASSETS])];
 
 self.addEventListener('install',event=>{
  event.waitUntil(caches.open(CACHE_NAME).then(cache=>cache.addAll(SHELL)).then(()=>self.skipWaiting()));
@@ -21,8 +22,12 @@ self.addEventListener('fetch',event=>{
   }).catch(()=>caches.match('./')));
   return;
  }
- event.respondWith(caches.match(request).then(cached=>cached||fetch(request).then(response=>{
-  if(response.ok)caches.open(CACHE_NAME).then(cache=>cache.put(request,response.clone()));
-  return response;
- })));
+ event.respondWith(caches.match(request).then(cached=>{
+  const refresh=fetch(request).then(response=>{
+   if(response.ok)caches.open(CACHE_NAME).then(cache=>cache.put(request,response.clone()));
+   return response;
+  });
+  if(cached){event.waitUntil(refresh.catch(()=>{}));return cached;}
+  return refresh;
+ }));
 });
