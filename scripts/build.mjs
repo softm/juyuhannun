@@ -42,5 +42,19 @@ for(const name of (await readdir(`${root}dist`)).filter(name=>name.endsWith('.ht
  html=html.replace(/(href|src)="\.\/((?:js\/[^\"]+\.js)|(?:[^\"/]+\.css))"/g,(_,attr,path)=>`${attr}="./_app/${revision}/${path}"`).replace('<html lang="ko">',`<html lang="ko" data-build="${revision}">`);
  await writeFile(`${root}dist/${name}`,html);
 }
+async function listFiles(directory,prefix=''){
+ const files=[];
+ for(const entry of await readdir(directory,{withFileTypes:true})){
+  const relative=`${prefix}${entry.name}`;
+  if(entry.isDirectory())files.push(...await listFiles(`${directory}/${entry.name}`,`${relative}/`));
+  else files.push(relative);
+ }
+ return files;
+}
+const buildAssets=(await listFiles(versionRoot)).sort().map(path=>`./_app/${revision}/${path}`);
+const workerPath=`${root}dist/sw.js`;
+let worker=await readFile(workerPath,'utf8');
+worker=worker.replace("const CACHE_NAME='juyuhannun-shell-source';",`const CACHE_NAME='juyuhannun-shell-${revision}';`).replace('const BUILD_ASSETS=[];',`const BUILD_ASSETS=${JSON.stringify(buildAssets)};`);
+await writeFile(workerPath,worker);
 await writeFile(`${root}dist/.nojekyll`,'');
 console.log(`Built static site in dist/; version ${revision} (publish its contents at the site root).`);
