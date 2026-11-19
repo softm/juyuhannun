@@ -90,15 +90,15 @@ function syncInstallUI(){
  const installed=standaloneWebApp||androidApp;
  for(const button of document.querySelectorAll('[data-install-app]')){
   button.hidden=installed;
-  if(!installed&&button.matches('.install-app-trigger'))button.textContent=deferredInstallPrompt?'앱 설치':'설치 안내';
+  if(!installed&&button.matches('.install-app-trigger'))button.textContent='홈 화면에 추가';
  }
 }
 function renderInstallInstructions(){
  const platform=installPlatform(),steps=$('install-dialog-steps'),description=$('install-dialog-description'),action=$('install-dialog-action');
  if(deferredInstallPrompt){
   description.textContent='주유한눈을 홈 화면에 설치하면 주소창 없이 앱처럼 바로 실행할 수 있습니다.';
-  steps.innerHTML='<li>아래 앱 설치 버튼을 누릅니다.</li><li>브라우저의 설치 확인창에서 설치를 선택합니다.</li>';
-  action.hidden=false;action.textContent='주유한눈 앱 설치';
+  steps.innerHTML='<li>아래 버튼을 누릅니다.</li><li>브라우저의 확인창에서 추가를 선택합니다.</li>';
+  action.hidden=false;action.textContent='홈 화면에 추가';
  }else if(platform==='ios'){
   description.textContent='Safari의 공유 메뉴를 이용해 홈 화면 앱으로 추가할 수 있습니다.';
   steps.innerHTML='<li>이 페이지를 Safari에서 엽니다.</li><li>하단의 공유 버튼을 누릅니다.</li><li>홈 화면에 추가를 선택한 뒤 추가를 누릅니다.</li>';
@@ -120,8 +120,7 @@ async function requestWebAppInstall(){
  const prompt=deferredInstallPrompt;deferredInstallPrompt=null;
  await prompt.prompt();
  const choice=await prompt.userChoice.catch(()=>({outcome:'dismissed'}));
- if(choice.outcome==='accepted'){closeDialog('install-dialog');toast('주유한눈 설치를 시작했습니다.');}
- else{renderInstallInstructions();showDialog('install-dialog');}
+ if(choice.outcome==='accepted')toast('주유한눈을 홈 화면에 추가합니다.');
  syncInstallUI();
 }
 function setMapNotice(message){$('map-notice').textContent=message;$('map-notice').hidden=!message;}
