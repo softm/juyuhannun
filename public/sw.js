@@ -27,7 +27,7 @@ self.addEventListener('fetch',event=>{
    if(response.ok)caches.open(CACHE_NAME).then(cache=>cache.put(request,response.clone()));
    return response;
   });
-  if(cached){event.waitUntil(refresh.catch(()=>{}));return cached;}
+  if(cached){refresh.catch(()=>{});return cached;}
   return refresh;
  }));
 });
