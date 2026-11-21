@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {createDrivingMotionState,drivingRefreshDue,drivingUiTransition,drivingZoomForSpeed,smoothHeading,updateDrivingMotion} from '../public/js/driving-controller.js';
+import {createDrivingMotionState,drivingPredictionDistance,drivingRefreshDue,drivingUiTransition,drivingZoomForSpeed,smoothHeading,updateDrivingMotion} from '../public/js/driving-controller.js';
 
 test('heading smoothing crosses north without jumping south',()=>{
  const value=smoothHeading(359,1,.5);assert.ok(value<2||value>358);
@@ -24,7 +24,9 @@ test('automatic driving requires sustained movement and pauses after a sustained
  assert.equal(state.phase,'paused');assert.ok(Math.abs(state.reliableHeading-90)<1);
 });
 
-test('driving zoom keeps a wider view across speed bands',()=>{assert.equal(drivingZoomForSpeed(0),14);assert.equal(drivingZoomForSpeed(5),13);assert.equal(drivingZoomForSpeed(15),12);assert.equal(drivingZoomForSpeed(30),11);});
+test('driving zoom keeps the approved scale across speed bands',()=>{assert.equal(drivingZoomForSpeed(0),15);assert.equal(drivingZoomForSpeed(5),14);assert.equal(drivingZoomForSpeed(15),13);assert.equal(drivingZoomForSpeed(30),12);});
+
+test('driving direction guide stays long and grows with speed',()=>{assert.equal(drivingPredictionDistance(0),3000);assert.equal(drivingPredictionDistance(5),3000);assert.equal(drivingPredictionDistance(20),3600);assert.equal(drivingPredictionDistance(40),6000);});
 
 test('driving UI enters once and remains active while paused',()=>{
  assert.deepEqual(drivingUiTransition(false,'candidate'),{active:false,enter:false});

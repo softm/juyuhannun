@@ -441,6 +441,8 @@ test('driving mode keeps map overlays upright and shows actual plus predicted tr
   assert.match(app,/파랑=이동동선/);
   assert.match(app,/refreshDrivingRoadPrediction/);
   assert.match(app,/\/route\/predict/);
+  assert.match(app,/distance=drivingPredictionDistance\(speed\)/);
+  assert.match(map,/horizon = drivingPredictionDistance\(speed\)/);
   assert.match(map,/setDrivingPredictionPath/);
 });
 
