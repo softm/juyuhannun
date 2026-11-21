@@ -39,8 +39,8 @@ function harness(provider = 'naver') {
   return { controller, counts, step, flush, zoom: value => { zoom=value; }, bounds: value => { bounds=value; } };
 }
 
-test('주유한눈 14·16·18 scale boundaries keep wide mobile views light and show prices from neighborhood zoom', () => {
-  for (const [zoom,scale] of [[7,'dot'],[13.99,'dot'],[14,'pin'],[15.99,'pin'],[16,'name'],[17.99,'name'],[18,'detail'],[19,'detail']]) assert.equal(markerScale(zoom),scale);
+test('주유한눈 14·15·18 scale boundaries show station names at the approved mobile scale', () => {
+  for (const [zoom,scale] of [[7,'dot'],[13.99,'dot'],[14,'pin'],[14.99,'pin'],[15,'name'],[17.99,'name'],[18,'detail'],[19,'detail']]) assert.equal(markerScale(zoom),scale);
   const budgets = [7,12,14,16,18].map(zoom=>labelBudget(zoom,390,600));
   assert.ok(budgets.every((b,i)=>b>0 && (!i || b>=budgets[i-1])));
   assert.equal(labelBudget(13,0,600),0);
