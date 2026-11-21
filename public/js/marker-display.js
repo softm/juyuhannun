@@ -1,7 +1,9 @@
 // Adapted from 돌봄한눈 CareMarkerLabels (cadd491): scale, area budget and stable priority.
 // Keep wider city/province views lightweight. Show fuel-price pins only once the
 // user zooms into a neighborhood-scale view so mobile maps do not become saturated.
-export const markerScale = zoom => zoom < 14 ? 'dot' : zoom < 16 ? 'pin' : zoom < 18 ? 'name' : 'detail';
+// Zoom 15 is the approved driving/default reference scale: keep the station name
+// visible together with its price from this level onward.
+export const markerScale = zoom => zoom < 14 ? 'dot' : zoom < 15 ? 'pin' : zoom < 18 ? 'name' : 'detail';
 export function labelBudget(zoom, width, height) {
   const area = Math.max(0, width) * Math.max(0, height);
   if (!area) return 0;
