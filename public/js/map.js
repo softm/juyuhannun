@@ -247,8 +247,15 @@ function installMarkerStyles() {
     '.selected-station-callout .callout-pump{display:flex;align-items:center;justify-content:center;width:29px;height:29px;border-radius:50%;background:var(--pin,#347ee8);color:#fff;flex:none}',
     '.selected-station-callout .callout-pump svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:2}',
     '.selected-station-callout strong{max-width:168px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.selected-station-callout b{font-size:18px;font-weight:500;color:#42675d}',
-    '.price-pin-name{display:none!important}',
-    '.map-surface[data-marker-scale="name"] .price-pin-name,.map-surface[data-marker-scale="detail"] .price-pin-name{display:block!important}',
+    '.price-pin-name{display:none!important;position:absolute;left:50%;bottom:52px;z-index:9;width:max-content;max-width:160px;padding:5px 8px;border:1px solid #b8cec5;border-radius:8px;background:#fff;color:#173e34;box-shadow:0 3px 10px #163f2c2e;font:800 11px/1.35 system-ui,sans-serif;text-align:center;white-space:normal;overflow-wrap:anywhere;pointer-events:none}',
+    '.station-marker.is-lowest>.price-pin-name{bottom:94px}',
+    '.map-surface[data-marker-scale="name"] .station-marker:is(.label-visible,.label-measure)>.price-pin-name,.map-surface[data-marker-scale="detail"] .station-marker:is(.label-visible,.label-measure)>.price-pin-name{display:block!important}',
+    '.station-marker.label-measure>.price-pin-name{visibility:hidden}',
+    '.price-label-title{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden}',
+    '.price-label-value,.price-label-detail{display:none}',
+    '.map-surface[data-marker-scale="detail"] .station-marker.label-detail>.price-pin-name{max-width:190px;padding:7px 9px;text-align:left}',
+    '.map-surface[data-marker-scale="detail"] .station-marker.label-detail .price-label-value{display:block;margin-top:3px;color:var(--pin,#087156);font-size:12px}',
+    '.map-surface[data-marker-scale="detail"] .station-marker.label-detail .price-label-detail{display:block;margin-top:3px;color:#587168;font-size:10px;font-weight:650}',
     '.map-you:after{content:"내 위치";position:absolute;left:50%;top:calc(100% + 10px);transform:translateX(-50%);white-space:nowrap;background:#155bc0;color:white;border:2px solid white;border-radius:12px;padding:3px 7px;font:bold 11px sans-serif}',
     '.map-surface[data-marker-scale="dot"] .price-pin:not(.selected),.map-surface.dense-markers .price-pin:not(.selected){width:15px;height:15px;min-width:15px;min-height:15px;border-width:2px;bottom:1px;box-shadow:0 1px 4px #1236}',
     '.map-surface[data-marker-scale="dot"] .price-pin:not(.selected):before,.map-surface.dense-markers .price-pin:not(.selected):before{content:"";position:absolute;inset:-10px;border-radius:50%;background:transparent}',
@@ -801,11 +808,11 @@ export class MapController {
     const lowestBadge=isTopPrice&&!selected?'<button type="button" class="lowest-price-badge rank-'+priceRank+'" style="--rank-delay:'+rankDelay+'" data-station-id="'+escapeHTML(id)+'" aria-label="'+escapeHTML((row.name||'주유소')+' '+rankLabel+' '+visiblePrice+'원 상세 보기')+'" title="'+escapeHTML((row.name||'주유소')+' 상세 보기')+'">'+pinBrandBadge+'<span class="lowest-tag">'+escapeHTML(rankLabel)+'</span><strong>'+escapeHTML(visiblePrice)+'원</strong></button>':'';
     const selectedRankChip=isTopPrice&&selected?'<span class="selected-rank-chip rank-'+priceRank+'">'+escapeHTML(rankLabel)+'</span>':'';
     const detailLabel=selected?'':'<span class="price-pin-name"><span class="price-label-title">'+escapeHTML(row.name || '주유소')+'</span><span class="price-label-value">'+escapeHTML(visiblePrice+(visiblePrice!=='—'?unit:''))+'</span><span class="price-label-detail">'+escapeHTML(facts)+'</span></span>';
-    const content = '<div class="station-marker tone-' + tone + (selected ? ' is-selected' : '') + (isTopPrice ? ' is-lowest rank-'+priceRank : '') + (hasVisiblePrice ? ' has-visible-price' : '') + '">'+sideBadge+lowestBadge+callout+'<button type="button" class="price-pin' + (selected ? ' selected' : '') +
+    const content = '<div class="station-marker tone-' + tone + (selected ? ' is-selected' : '') + (isTopPrice ? ' is-lowest rank-'+priceRank : '') + (hasVisiblePrice ? ' has-visible-price' : '') + '" data-station-id="'+escapeHTML(id)+'">'+sideBadge+lowestBadge+callout+'<button type="button" class="price-pin' + (selected ? ' selected' : '') +
       (stale ? ' is-stale' : '') + '" data-station-id="' + escapeHTML(id) +
       '" aria-label="' + escapeHTML(label) + '" aria-pressed="' + selected + '" title="' + escapeHTML(label) +
       '">'+pinBrandBadge+selectedRankChip+'<span class="price-pin-glyph" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="12" height="17" rx="2"/><path d="M6 7h6v4H6ZM1 21h16m-2-8h2v5a2 2 0 0 0 4 0V8l-4-4m3 3v4h1"/></svg></span><span class="price-pin-value">' + escapeHTML(visiblePrice) +
-      (visiblePrice!=='—'&&unit ? '<small>' + escapeHTML(unit) + '</small>' : '') + '</span>'+detailLabel+'</button></div>';
+      (visiblePrice!=='—'&&unit ? '<small>' + escapeHTML(unit) + '</small>' : '') + '</span></button>'+detailLabel+'</div>';
     let marker = this._markers.get(id) || this._markerPool.get(id);
     const zIndex = selected ? 5000 : isTopPrice ? 4100-priceRank*10 : this._retainedLabels.has(id) ? 1000 : 100;
     const changed = !previous || previous.content !== content;
@@ -862,7 +869,7 @@ export class MapController {
       const ids = labelCandidates(this._markers.keys(), this._selectedId, this._retainedLabels, budget);
       // Only a bounded set of labels is measured, never every nationwide marker.
       const wanted = new Set([...ids, ...this._retainedLabels.keys()]);
-      const nodes = [...this.canvas.querySelectorAll('[data-station-id]')].filter(node => wanted.has(node.dataset.stationId));
+      const nodes = [...this.canvas.querySelectorAll('.station-marker[data-station-id]')].filter(node => wanted.has(node.dataset.stationId));
       const byId = new Map(nodes.map(node => [node.dataset.stationId, node]));
       for (const node of nodes) {
         node.classList.remove('label-visible', 'label-measure', 'label-detail');
