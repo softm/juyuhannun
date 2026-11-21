@@ -46,6 +46,9 @@ test('주유한눈 14·15·18 scale boundaries show station names at the approve
   assert.equal(labelBudget(13,0,600),0);
   assert.equal(labelBudget(18,4000,4000),40);
   assert.equal(markerDensityLimit(390,600),26);
+  assert.match(mapSource,/data-marker-scale="name"[^']*station-marker:is\(\.label-visible,\.label-measure\)>\.price-pin-name/);
+  assert.match(mapSource,/\.station-marker\.is-lowest>\.price-pin-name\{bottom:94px\}/);
+  assert.match(mapSource,/querySelectorAll\('\.station-marker\[data-station-id\]'\)/);
 });
 
 test('viewport culling keeps every matching point, deduplicates IDs and excludes missing coordinates', () => {
@@ -203,6 +206,8 @@ test('lowest price badge is a clickable station selector',()=>{
   assert.match(content,/최저 1,578원 상세 보기/);
   assert.match(content,/최저/);
   assert.match(content,/1,578원/);
+  assert.match(content,/class="station-marker[^"]*" data-station-id="low"/);
+  assert.match(content,/class="price-pin[^]*<\/button><span class="price-pin-name">/);
 });
 
 
