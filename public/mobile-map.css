@@ -957,3 +957,6 @@ body:not(.mobile-map-mode):not(.mobile-map-fullscreen) .results-header select{mi
 .detail-dialog .detail-favorite[aria-pressed="true"]{background:#b43852;border-color:#b43852;color:white}
 .detail-dialog .detail-favorite[aria-pressed="true"] svg{fill:currentColor}
 .detail-dialog .detail-favorite:focus-visible{outline:3px solid #277dc0;outline-offset:3px}
+
+/* Driving follows GPS automatically; manual rescan must not overlap the scale. */
+body.driving-mode .focus-rescan{display:none!important}
