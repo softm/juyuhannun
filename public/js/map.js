@@ -248,6 +248,8 @@ function installMarkerStyles() {
     '.selected-station-callout .callout-pump svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:2}',
     '.selected-station-callout strong{max-width:168px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.selected-station-callout b{font-size:18px;font-weight:500;color:#42675d}',
     '.price-pin-name{display:none!important}',
+    '.map-surface[data-marker-scale="name"] .price-pin-name,.map-surface[data-marker-scale="detail"] .price-pin-name{display:block!important}',
+    '.map-you:after{content:"내 위치";position:absolute;left:50%;top:calc(100% + 10px);transform:translateX(-50%);white-space:nowrap;background:#155bc0;color:white;border:2px solid white;border-radius:12px;padding:3px 7px;font:bold 11px sans-serif}',
     '.map-surface[data-marker-scale="dot"] .price-pin:not(.selected),.map-surface.dense-markers .price-pin:not(.selected){width:15px;height:15px;min-width:15px;min-height:15px;border-width:2px;bottom:1px;box-shadow:0 1px 4px #1236}',
     '.map-surface[data-marker-scale="dot"] .price-pin:not(.selected):before,.map-surface.dense-markers .price-pin:not(.selected):before{content:"";position:absolute;inset:-10px;border-radius:50%;background:transparent}',
     'body.route-mode .map-surface[data-marker-scale="dot"] .price-pin:not(.selected),body.route-mode .map-surface.dense-markers .price-pin:not(.selected){width:18px;height:18px;min-width:18px;min-height:18px;border-width:3px;box-shadow:0 0 0 1px #0f172a4d,0 2px 7px #0f172a66}',
@@ -259,9 +261,9 @@ function installMarkerStyles() {
     '.map-surface[data-marker-scale="pin"] .station-marker:not(.is-selected) .price-pin-glyph,.map-surface[data-marker-scale="name"] .station-marker:not(.is-selected) .price-pin-glyph,.map-surface[data-marker-scale="detail"] .station-marker:not(.is-selected) .price-pin-glyph{display:none}',
     '.map-surface[data-marker-scale="pin"] .station-marker:not(.is-selected) .price-pin-value,.map-surface[data-marker-scale="name"] .station-marker:not(.is-selected) .price-pin-value,.map-surface[data-marker-scale="detail"] .station-marker:not(.is-selected) .price-pin-value{display:block;font-size:12px;letter-spacing:-.3px}',
     '.map-surface[data-marker-scale="detail"] .station-marker:not(.is-selected) .price-pin-value{font-size:13px}',
-    '.map-you{display:block;position:relative;width:18px;height:18px;border:3px solid #fff;border-radius:50%;background:#2674db;box-shadow:0 0 0 7px #2674db30,0 2px 8px #193a6040}',
-    '.map-you.is-driving{width:30px;height:30px;border-width:4px;background:#1769d7;box-shadow:0 0 0 9px #2674db26,0 4px 14px #193a6050}',
-    '.map-you.is-driving:before{content:"";position:absolute;left:50%;top:-15px;width:0;height:0;border-left:7px solid transparent;border-right:7px solid transparent;border-bottom:15px solid #1769d7;transform:translateX(-50%) rotate(var(--drive-heading,0deg));transform-origin:50% 30px;filter:drop-shadow(0 1px 1px #fff)}',
+    '.map-you{display:block;box-sizing:border-box;position:relative;width:28px;height:28px;border:4px solid #fff;border-radius:50%;background:#2674db;box-shadow:0 0 0 7px #2674db30,0 2px 8px #193a6040}',
+    '.map-you.is-driving{width:38px;height:38px;border-width:4px;background:#1769d7;box-shadow:0 0 0 9px #2674db26,0 4px 14px #193a6050}',
+    '.map-you.is-driving.has-heading:before{content:"";position:absolute;left:50%;top:-15px;width:0;height:0;border-left:7px solid transparent;border-right:7px solid transparent;border-bottom:15px solid #1769d7;transform:translateX(-50%) rotate(var(--drive-heading,0deg));transform-origin:50% 30px;filter:drop-shadow(0 1px 1px #fff)}',
     '.driving-side-badge{position:absolute;bottom:calc(100% + 3px);left:50%;transform:translateX(-50%);white-space:nowrap;border-radius:12px;background:#0f766e;color:white;border:2px solid white;padding:3px 7px;font:800 11px/1.3 system-ui,sans-serif;box-shadow:0 2px 8px #0003;pointer-events:none;z-index:3}',
     '.route-endpoint{display:flex;align-items:center;justify-content:center;width:36px;height:36px;border:3px solid #fff;border-radius:50%;color:#fff;box-shadow:0 4px 13px #183a3445;font:900 12px/1 system-ui,sans-serif}',
     '.route-endpoint-start{background:#1d4ed8}.route-endpoint-destination{background:#111827}',
@@ -1094,7 +1096,7 @@ export class MapController {
       this._youPoint = { ...point };
       this._setDrivingInteraction(active);
       this._setDrivingHeadingUp(heading, active);
-      this._showYou(point, { heading, driving: active&&heading!=null });
+      this._showYou(point, { heading, driving: active });
       if(active)this._renderDrivingGuides(point, heading, this._driveMotion.speed);
 
       if (this.map && this.ready) {
@@ -1170,20 +1172,23 @@ export class MapController {
     // The map surface rotates by -heading, so rotating the arrow by +heading
     // cancels that transform and keeps the direction indicator screen-up.
     const displayHeading=normalized??0;
-    const content = '<span class="map-you' + (driving ? ' is-driving' : '') + '" style="--drive-heading:' + displayHeading.toFixed(1) + 'deg" aria-label="' + (driving ? '주행 중 현재 위치' : '내 위치') + '"></span>';
-    const size = driving ? 30 : 18;
+    const content = '<span class="map-you' + (driving ? ' is-driving' : '') + (normalized!=null?' has-heading':'') + '" style="--drive-heading:' + displayHeading.toFixed(1) + 'deg" aria-label="' + (driving ? '주행 중 현재 위치' : '내 위치') + '"></span>';
+    const size = driving ? 38 : 28;
     const anchor = size / 2;
     if (this.provider === 'naver') {
-      const icon = { content, anchor: new globalThis.naver.maps.Point(anchor, anchor) };
+      const maps=globalThis.naver?.maps;
+      if(!maps?.Point||!maps?.Marker)return;
+      const icon = { content, anchor: new maps.Point(anchor, anchor) };
       if (this._you) {
         this._you.setPosition(this._naverPoint(point));
         this._you.setIcon(icon);
         this._you.setZIndex(6000);
       } else {
-        this._you = new globalThis.naver.maps.Marker({ map: this.map, position: this._naverPoint(point), title: '내 위치', zIndex: 6000, icon });
+        this._you = new maps.Marker({ map: this.map, position: this._naverPoint(point), title: '내 위치', zIndex: 6000, icon });
       }
       return;
     }
+    if(!globalThis.L?.divIcon||!globalThis.L?.marker)return;
     const icon = globalThis.L.divIcon({ className: 'price-marker-shell', html: content, iconSize: [size, size], iconAnchor: [anchor, anchor] });
     if (this._you) {
       this._you.setLatLng([point.lat, point.lng]);

@@ -13,6 +13,7 @@ import {addressSearchPresentation} from './address-search.js';
 import {normalizeRouteHistory,rememberRouteDestination} from './route-history.js';
 import {brandVisual} from './brand-visuals.js';
 import {createDrivingHud} from './driving-hud.js';
+import {drivingRefreshDue,drivingUiTransition} from './driving-controller.js';
 import {favoriteIds,normalizeFavoriteSnapshot,toggleFavoriteSnapshot} from './favorite-sync.js';
 
 const $=(id)=>document.getElementById(id);
@@ -743,6 +744,7 @@ function syncDrivingButton(){
 function stopDrivingMode({message=''}={}){
  if(state.driving.active||map.isDriving())map.stopDriving({keepMarker:true});
  state.driving={active:false,hud:false,phase:'off',point:null,heading:null,speed:0,accuracy:null,zoomMode:'auto'};
+ mobileMapView.leaveDriving();
  syncDrivingButton();
  if(state.mapReady){state.center=map.getCenter();state.bounds=map.getBounds();}
  render();
@@ -772,17 +774,25 @@ async function refreshDrivingRoadPrediction(point,heading,speed){
   if(result?.status==='ready'&&Array.isArray(result.path)&&result.path.length>1)map.setDrivingPredictionPath(result.path);
  }catch{}
 }
+let lastDrivingRenderAt=0;
 function handleDrivingUpdate({point,heading,speed,accuracy,phase='active'}){
- const active=['active','paused'].includes(phase),reliableHeading=Number.isFinite(heading)?heading:(Number.isFinite(state.driving.heading)?state.driving.heading:lastDrivingHeading);
+ const transition=drivingUiTransition(state.driving.active,phase),active=transition.active,reliableHeading=Number.isFinite(heading)?heading:(Number.isFinite(state.driving.heading)?state.driving.heading:lastDrivingHeading);
  if(Number.isFinite(reliableHeading))lastDrivingHeading=reliableHeading;
  if(point&&Number.isFinite(point.lat)&&Number.isFinite(point.lng))lastDrivingPoint={...point};
- state.driving={...state.driving,active,phase,point,heading:reliableHeading,speed,accuracy};lastLocatedPoint={...point,accuracy,timestamp:Date.now()};state.center={...point};syncDrivingButton();if(active){refreshDrivingRoadPrediction(point,reliableHeading,speed);updateDrivingHud();render();}
+ state.driving={...state.driving,active,phase,point,heading:reliableHeading,speed,accuracy};lastLocatedPoint={...point,accuracy,timestamp:Date.now()};state.center={...point};
+ if(transition.enter)mobileMapView.enterDriving();
+ syncDrivingButton();
+ if(active){
+  const now=Date.now();state.bounds=map.getBounds();$('drive-forward-control').hidden=false;refreshDrivingRoadPrediction(point,reliableHeading,speed);updateDrivingHud();
+  if(transition.enter||drivingRefreshDue(lastDrivingRenderAt,now)){lastDrivingRenderAt=now;mobileComparisonRefreshRequested=true;render();}
+ }
 }
 $('drive-forward-only')?.addEventListener('change',()=>{map.setDrivingForwardOnly($('drive-forward-only').checked);render();});
 function startDrivingMode({hud=false}={}){
  if(!state.mapReady){toast('지도가 준비된 뒤 주행 추적을 시작해 주세요.');return;}
  try{
    $('drive-forward-control').hidden=false;map.setDrivingForwardOnly($('drive-forward-only').checked);
+   mobileMapView.enterDriving();
    state.driving.active=true;state.driving.hud=hud;state.driving.point=lastDrivingPoint||lastLocatedPoint||state.driving.point;state.driving.heading=lastDrivingHeading;syncDrivingButton();syncDrivingStationStatus();updateDrivingHud();
    map.startDriving({
      onUpdate:({point,heading,speed,accuracy})=>{
