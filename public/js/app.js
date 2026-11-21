@@ -13,7 +13,7 @@ import {addressSearchPresentation} from './address-search.js';
 import {normalizeRouteHistory,rememberRouteDestination} from './route-history.js';
 import {brandVisual} from './brand-visuals.js';
 import {createDrivingHud} from './driving-hud.js';
-import {drivingRefreshDue,drivingUiTransition} from './driving-controller.js';
+import {drivingPredictionDistance,drivingRefreshDue,drivingUiTransition} from './driving-controller.js';
 import {favoriteIds,normalizeFavoriteSnapshot,toggleFavoriteSnapshot} from './favorite-sync.js';
 
 const $=(id)=>document.getElementById(id);
@@ -764,7 +764,7 @@ function updateDrivingHud(){
 }
 async function refreshDrivingRoadPrediction(point,heading,speed){
  if(!apiBase||!point||!Number.isFinite(heading))return;
- const now=Date.now(),distance=Math.max(1200,Math.min(5000,(Number(speed)||0)*140||2200));
+ const now=Date.now(),distance=drivingPredictionDistance(speed);
  const key=[point.lat.toFixed(3),point.lng.toFixed(3),Math.round(heading/15)*15,Math.round(distance/500)*500].join(':');
  if(now-drivingPredictionAt<45000&&key===drivingPredictionKey)return;
  drivingPredictionAt=now;drivingPredictionKey=key;

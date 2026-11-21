@@ -52,7 +52,9 @@ export function updateDrivingMotion(previous,fix,{now=Date.now(),routeActive=fal
   return state;
 }
 
-export function drivingZoomForSpeed(speed){const kmh=Math.max(0,Number(speed)||0)*3.6;return kmh<10?14:kmh<40?13:kmh<80?12:11;}
+export function drivingZoomForSpeed(speed){const kmh=Math.max(0,Number(speed)||0)*3.6;return kmh<10?15:kmh<40?14:kmh<80?13:12;}
+
+export function drivingPredictionDistance(speed){return Math.max(3000,Math.min(6000,(Number(speed)||0)*180||3000));}
 
 export function drivingUiTransition(wasActive,phase){
   const active=phase==='active'||phase==='paused';

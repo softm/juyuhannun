@@ -2,7 +2,7 @@ import { APP_CONFIG } from '../config.js';
 import { escapeHTML, getFuelPrice, freshness, FUEL_TYPES, BRANDS, priceBandsForStations } from './core.js';
 import { markerScale, labelBudget, markerDensityLimit, visibleStations, labelCandidates } from './marker-display.js';
 import { mergeLocationSearchResults, normalizeAddressSearchResults, normalizePlaceSearchResults } from './address-search.js';
-import {createDrivingMotionState,drivingZoomForSpeed,updateDrivingMotion} from './driving-controller.js';
+import {createDrivingMotionState,drivingPredictionDistance,drivingZoomForSpeed,updateDrivingMotion} from './driving-controller.js';
 import {brandVisual} from './brand-visuals.js';
 import {angleDelta,forwardCandidate} from './driving-approach.js';
 import '../shared/care-location.js';
@@ -1026,7 +1026,7 @@ export class MapController {
       if (this._driveTrailCoords.length > 120) this._driveTrailCoords.splice(0, this._driveTrailCoords.length - 120);
     }
     const trailPoints = this._driveTrailCoords.map(({ lat, lng }) => ({ lat, lng }));
-    const horizon = Math.max(900, Math.min(5000, (Number(speed) || 0) * 120));
+    const horizon = drivingPredictionDistance(speed);
     const fallbackPredicted = [0.28,0.56,0.8,1].map(ratio => projectPoint(point, heading, horizon * ratio)).filter(Boolean);
     const predicted = this._driveRoadPredictionCoords.length > 1 ? this._driveRoadPredictionCoords.map(p=>({lat:p.lat,lng:p.lng})) : fallbackPredicted;
 
