@@ -24,7 +24,7 @@ test('automatic driving requires sustained movement and pauses after a sustained
  assert.equal(state.phase,'paused');assert.ok(Math.abs(state.reliableHeading-90)<1);
 });
 
-test('driving zoom follows speed bands',()=>{assert.equal(drivingZoomForSpeed(0),15);assert.equal(drivingZoomForSpeed(5),14);assert.equal(drivingZoomForSpeed(15),13);assert.equal(drivingZoomForSpeed(30),12);});
+test('driving zoom keeps a wider view across speed bands',()=>{assert.equal(drivingZoomForSpeed(0),14);assert.equal(drivingZoomForSpeed(5),13);assert.equal(drivingZoomForSpeed(15),12);assert.equal(drivingZoomForSpeed(30),11);});
 
 test('driving UI enters once and remains active while paused',()=>{
  assert.deepEqual(drivingUiTransition(false,'candidate'),{active:false,enter:false});
