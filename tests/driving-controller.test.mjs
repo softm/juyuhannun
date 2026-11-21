@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {createDrivingMotionState,drivingZoomForSpeed,smoothHeading,updateDrivingMotion} from '../public/js/driving-controller.js';
+import {createDrivingMotionState,drivingRefreshDue,drivingUiTransition,drivingZoomForSpeed,smoothHeading,updateDrivingMotion} from '../public/js/driving-controller.js';
 
 test('heading smoothing crosses north without jumping south',()=>{
  const value=smoothHeading(359,1,.5);assert.ok(value<2||value>358);
@@ -24,4 +24,15 @@ test('automatic driving requires sustained movement and pauses after a sustained
  assert.equal(state.phase,'paused');assert.ok(Math.abs(state.reliableHeading-90)<1);
 });
 
-test('driving zoom follows speed bands',()=>{assert.equal(drivingZoomForSpeed(0),16);assert.equal(drivingZoomForSpeed(5),15);assert.equal(drivingZoomForSpeed(15),14);assert.equal(drivingZoomForSpeed(30),13);});
+test('driving zoom follows speed bands',()=>{assert.equal(drivingZoomForSpeed(0),15);assert.equal(drivingZoomForSpeed(5),14);assert.equal(drivingZoomForSpeed(15),13);assert.equal(drivingZoomForSpeed(30),12);});
+
+test('driving UI enters once and remains active while paused',()=>{
+ assert.deepEqual(drivingUiTransition(false,'candidate'),{active:false,enter:false});
+ assert.deepEqual(drivingUiTransition(false,'active'),{active:true,enter:true});
+ assert.deepEqual(drivingUiTransition(true,'paused'),{active:true,enter:false});
+});
+
+test('driving comparison refresh is limited to once per second',()=>{
+ assert.equal(drivingRefreshDue(1000,1500),false);
+ assert.equal(drivingRefreshDue(1000,2000),true);
+});
